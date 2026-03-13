@@ -26,7 +26,7 @@ function renderAssistantContent(text, showHints) {
       return (
         <span
           key={index}
-          className="block text-[11px] text-[#FFE9A6]/70"
+          className="block text-[11px] font-medium text-[#FF6B4A]"
         >
           {part}
         </span>
