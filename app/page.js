@@ -119,9 +119,9 @@ export default function HomePage() {
           </p>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-[1.2fr,1fr] md:gap-6 md:items-start">
+        <section className="flex flex-col gap-4 md:grid md:grid-cols-[1.2fr,1fr] md:gap-6 md:items-start">
           <div className="space-y-4 sm:space-y-5">
-            <div className="rounded-3xl border border-[#3A2515] bg-[#241208]/90 p-3 sm:p-5 shadow-[0_18px_50px_rgba(0,0,0,0.5)]">
+            <div className="mb-4 rounded-3xl border border-[#3A2515] bg-[#241208]/90 p-3 sm:p-5 shadow-[0_18px_50px_rgba(0,0,0,0.5)]">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-semibold text-[#FFE9A6]">
@@ -169,7 +169,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[#3A2515] bg-[#241208]/90 p-3 sm:p-5 shadow-[0_18px_50px_rgba(0,0,0,0.5)]">
+            <div className="mb-4 rounded-3xl border border-[#3A2515] bg-[#241208]/90 p-3 sm:p-5 shadow-[0_18px_50px_rgba(0,0,0,0.5)]">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-semibold text-[#FFE9A6]">
@@ -220,7 +220,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <aside className="fixed inset-x-0 bottom-0 z-30 space-y-3 rounded-t-3xl border-t border-[#3A2515] bg-[#241208]/98 px-4 py-3 shadow-[0_-10px_30px_rgba(0,0,0,0.8)] md:static md:space-y-4 md:rounded-3xl md:border md:bg-[#241208]/95 md:p-4 md:shadow-[0_18px_50px_rgba(0,0,0,0.6)]">
+          <aside className="space-y-3 rounded-3xl border border-[#3A2515] bg-[#241208]/95 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.6)] md:space-y-4">
             <h2 className="text-sm font-semibold text-[#FFE9A6]">
               {language === "ko" ? "내 오구 설정" : "My Ogu Setup"}
             </h2>
