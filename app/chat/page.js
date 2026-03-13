@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function stripHints(text, enabled) {
@@ -9,7 +9,7 @@ function stripHints(text, enabled) {
   return text.replace(/\s*\([^)]*\)/g, "");
 }
 
-export default function ChatPage() {
+function ChatContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -289,5 +289,13 @@ export default function ChatPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<main className="flex min-h-screen items-center justify-center bg-[#1A1008] px-4 py-6 text-slate-50">로딩중...</main>}>
+      <ChatContent />
+    </Suspense>
   );
 }

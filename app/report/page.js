@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-export default function ReportPage() {
+function ReportContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [history, setHistory] = useState([]);
@@ -292,5 +292,13 @@ export default function ReportPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense fallback={<main className="flex min-h-screen items-center justify-center bg-[#1A1008] px-4 py-8 text-slate-50">로딩중...</main>}>
+      <ReportContent />
+    </Suspense>
   );
 }
