@@ -112,7 +112,7 @@ export default function HomePage() {
               : "AI Korean Conversation Practice"}
           </p>
           <h1 className="text-3xl font-extrabold tracking-tight text-[#FFD93D] drop-shadow-[0_0_22px_rgba(255,217,61,0.4)] sm:text-4xl">
-            🐥 오구오구
+            {language === "ko" ? "🐥 오구오구" : "🐥 OguOgu"}
           </h1>
           <p className="text-sm text-[#FFE9A6] sm:text-base">
             {language === "ko"
