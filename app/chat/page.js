@@ -9,6 +9,38 @@ function stripHints(text, enabled) {
   return text.replace(/\s*\([^)]*\)/g, "");
 }
 
+function renderAssistantContent(text, showHints) {
+  if (!text) return null;
+  if (!showHints) {
+    return stripHints(text, false);
+  }
+
+  // 괄호 안 영어 번역을 감지해서 줄바꿈 + 스타일 분리
+  const parts = text.split(/(\([^)]*\))/g);
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+    const isTranslation = part.startsWith("(") && part.endsWith(")");
+
+    if (isTranslation) {
+      return (
+        <span
+          key={index}
+          className="block text-[11px] text-[#FFE9A6]/70"
+        >
+          {part}
+        </span>
+      );
+    }
+
+    return (
+      <span key={index} className="block">
+        {part.trim()}
+      </span>
+    );
+  });
+}
+
 function ChatContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -206,10 +238,7 @@ function ChatContent() {
         <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
           {messages.map((m, idx) => {
             const isUser = m.role === "user";
-            const bubbleText =
-              m.role === "assistant"
-                ? stripHints(m.content || "", showHints)
-                : m.content || "";
+            const content = m.content || "";
 
             return (
               <div
@@ -235,7 +264,9 @@ function ChatContent() {
                         : "bg-[#2D1A0E] text-[#FFE9A6]"
                     }`}
                   >
-                    {bubbleText}
+                    {isUser
+                      ? content
+                      : renderAssistantContent(content, showHints)}
                   </div>
                 </div>
               </div>
@@ -273,10 +304,10 @@ function ChatContent() {
               rows={1}
               placeholder={
                 language === "ko"
-                  ? "한국어로 말해보세요. (Shift+Enter 줄바꿈)"
-                  : "Type in Korean. (Shift+Enter for newline)"
+                  ? "한국어로 말해보세요..."
+                  : "Type in Korean..."
               }
-              className="max-h-32 flex-1 resize-none rounded-2xl border border-[#3A2515] bg-[#241208] px-3 py-2 text-[13px] text-slate-50 placeholder:text-[#8F6E57] focus:border-[#FF6B4A] focus:outline-none focus:ring-1 focus:ring-[#FF6B4A]"
+              className="h-10 flex-1 resize-none rounded-2xl border border-[#3A2515] bg-[#241208] px-3 text-sm text-slate-50 placeholder:text-[#8F6E57] focus:border-[#FF6B4A] focus:outline-none focus:ring-1 focus:ring-[#FF6B4A]"
             />
             <button
               type="submit"
