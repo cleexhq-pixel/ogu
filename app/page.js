@@ -143,7 +143,7 @@ export default function HomePage() {
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    (e.currentTarget as HTMLButtonElement).blur();
+                    e.currentTarget.blur();
                     setSelectedLevel(level.id);
                   }}
                   className={`group flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-[12px] transition-all active:scale-[0.98] md:flex-col md:items-start md:py-3 ${
@@ -193,7 +193,7 @@ export default function HomePage() {
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    (e.currentTarget as HTMLButtonElement).blur();
+                    e.currentTarget.blur();
                     setSelectedPersona(persona.id);
                   }}
                   className={`group flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-[12px] transition-all active:scale-[0.98] md:flex-col md:items-start md:py-3 ${
