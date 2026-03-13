@@ -141,7 +141,11 @@ export default function HomePage() {
                 <button
                   key={level.id}
                   type="button"
-                  onClick={() => setSelectedLevel(level.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    (e.currentTarget as HTMLButtonElement).blur();
+                    setSelectedLevel(level.id);
+                  }}
                   className={`group flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-[12px] transition-all active:scale-[0.98] md:flex-col md:items-start md:py-3 ${
                     isActive
                       ? "border-[#FF6B4A] bg-[#34160E] shadow-[0_10px_28px_rgba(255,107,74,0.5)]"
@@ -187,7 +191,11 @@ export default function HomePage() {
                 <button
                   key={persona.id}
                   type="button"
-                  onClick={() => setSelectedPersona(persona.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    (e.currentTarget as HTMLButtonElement).blur();
+                    setSelectedPersona(persona.id);
+                  }}
                   className={`group flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-[12px] transition-all active:scale-[0.98] md:flex-col md:items-start md:py-3 ${
                     isActive
                       ? "border-[#FFD93D] bg-[#3A210C] shadow-[0_10px_28px_rgba(255,217,61,0.5)]"
@@ -249,7 +257,10 @@ export default function HomePage() {
         <section className="space-y-2 pt-1">
           <button
             type="button"
-            onClick={handleStart}
+            onClick={(e) => {
+              e.preventDefault();
+              handleStart();
+            }}
             disabled={!canStart}
             className={`flex w-full items-center justify-center gap-1.5 rounded-full px-5 py-3 text-base font-semibold text-white transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD93D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A1008] ${
               canStart
