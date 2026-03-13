@@ -186,18 +186,18 @@ function ChatContent() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-[#1A1008] px-4 py-6 text-slate-50">
-      <div className="flex w-full max-w-3xl flex-1 flex-col rounded-3xl border border-[#3A2515] bg-[#241208]/95 shadow-[0_18px_50px_rgba(0,0,0,0.7)] overflow-hidden">
-        <header className="flex items-center justify-between border-b border-[#3A2515] bg-[#1D1009] px-4 py-3">
+    <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-4 py-6 text-[#3D2010]">
+      <div className="flex w-full max-w-3xl flex-1 flex-col rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] shadow-[0_18px_50px_rgba(0,0,0,0.08)] overflow-hidden">
+        <header className="flex items-center justify-between border-b border-[#FFE0D0] bg-[#FFF8F0] px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#2D1A0E] text-xl">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#FFE0D0] text-xl">
               {personaMeta.emoji}
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-[#FFE9A6]">
+              <span className="text-sm font-semibold text-[#3D2010]">
                 {personaMeta.name}
               </span>
-              <span className="text-[11px] text-[#D9BFA3]">
+              <span className="text-[11px] text-[#9A7060]">
                 {level === "beginner"
                   ? language === "ko"
                     ? "왕초보 오구 레벨"
@@ -219,8 +219,8 @@ function ChatContent() {
               onClick={() => setShowHints((v) => !v)}
               className={`rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
                 showHints
-                  ? "border-[#FFD93D] bg-[#3A210C] text-[#FFE9A6]"
-                  : "border-[#3A2515] bg-[#241208] text-[#D9BFA3] hover:border-[#FFD93D55]"
+                  ? "border-[#FF6B4A] bg-[#FFF0E8] text-[#3D2010]"
+                  : "border-[#FFE0D0] bg-[#FFFFFF] text-[#9A7060] hover:border-[#FF6B4A66]"
               }`}
             >
               힌트 보기 👀
@@ -228,7 +228,7 @@ function ChatContent() {
             <button
               type="button"
               onClick={handleEndConversation}
-              className="rounded-full bg-[#3A2515] px-3 py-1.5 text-[11px] font-semibold text-[#FFE9A6] hover:bg-[#4A2F1C] active:translate-y-0.5 active:scale-[0.97] transition"
+              className="rounded-full bg-[#FF6B4A] px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-[#ff5a33] active:translate-y-0.5 active:scale-[0.97] transition"
             >
               {language === "ko" ? "대화 끝내기" : "End Conversation"}
             </button>
@@ -252,7 +252,7 @@ function ChatContent() {
                 >
                   <div
                     className={`flex h-8 w-8 items-center justify-center rounded-2xl text-lg ${
-                      isUser ? "bg-[#FF6B4A]" : "bg-[#2D1A0E]"
+                      isUser ? "bg-[#FF6B4A]" : "bg-[#FFE0D0]"
                     }`}
                   >
                     {isUser ? "👤" : "🐥"}
@@ -261,7 +261,7 @@ function ChatContent() {
                     className={`rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-md ${
                       isUser
                         ? "bg-[#FF6B4A] text-white"
-                        : "bg-[#2D1A0E] text-[#FFE9A6]"
+                        : "bg-[#FFF0E8] text-[#3D2010]"
                     }`}
                   >
                     {isUser
@@ -276,10 +276,10 @@ function ChatContent() {
           {isLoading && (
             <div className="flex justify-start">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-[#2D1A0E] text-lg">
+                <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-[#FFE0D0] text-lg">
                   🐥
                 </div>
-                <div className="flex items-center gap-1 rounded-2xl bg-[#2D1A0E] px-3 py-2 text-[11px] text-[#FFE9A6]">
+                <div className="flex items-center gap-1 rounded-2xl bg-[#FFF0E8] px-3 py-2 text-[11px] text-[#3D2010]">
                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#FFE9A6]" />
                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#FFE9A6] [animation-delay:0.1s]" />
                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#FFE9A6] [animation-delay:0.2s]" />
@@ -289,35 +289,30 @@ function ChatContent() {
           )}
         </div>
 
-        <form
-          className="border-t border-[#3A2515] bg-[#1D1009]/95 px-4 py-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSend();
-          }}
-        >
-          <div className="flex items-end gap-2">
-            <textarea
+        <div className="border-t border-[#FFE0D0] bg-[#FFF8F0] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              rows={1}
               placeholder={
                 language === "ko"
                   ? "한국어로 말해보세요..."
                   : "Type in Korean..."
               }
-              className="h-10 flex-1 resize-none rounded-2xl border border-[#3A2515] bg-[#241208] px-3 text-sm text-slate-50 placeholder:text-[#8F6E57] focus:border-[#FF6B4A] focus:outline-none focus:ring-1 focus:ring-[#FF6B4A]"
+              className="flex h-12 flex-1 items-center rounded-2xl border border-[#FFD0BC] bg-[#FFFFFF] px-3 text-sm leading-snug text-[#3D2010] placeholder:text-[#C09A8A] focus:border-[#FF6B4A] focus:outline-none focus:ring-1 focus:ring-[#FF6B4A]"
             />
             <button
-              type="submit"
+              type="button"
               disabled={!input.trim() || isLoading}
-              className="flex items-center justify-center rounded-2xl bg-[#FF6B4A] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_10px_25px_rgba(255,107,74,0.7)] transition disabled:cursor-not-allowed disabled:bg-[#6A4A3A] disabled:shadow-none hover:bg-[#ff5a33] active:translate-y-0.5 active:scale-[0.97]"
+              onClick={handleSend}
+              className="flex h-12 items-center justify-center rounded-2xl bg-[#FF6B4A] px-4 text-[13px] font-semibold text-white shadow-[0_10px_25px_rgba(255,107,74,0.7)] transition disabled:cursor-not-allowed disabled:bg-[#F1B3A1] disabled:shadow-none hover:bg-[#ff5a33] active:translate-y-0.5 active:scale-[0.97]"
             >
               {language === "ko" ? "전송" : "Send"}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </main>
   );
