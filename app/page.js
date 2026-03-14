@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getSupabase } from "@/lib/supabase";
 
 const LEVELS = [
   {
@@ -56,24 +57,88 @@ export default function HomePage() {
   const [language, setLanguage] = useState("en"); // 'ko' | 'en'
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [selectedPersona, setSelectedPersona] = useState(null);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [learningCount, setLearningCount] = useState(0);
+  const activeUserIdRef = useRef(null);
+  const channelRef = useRef(null);
 
   const canStart = !!selectedLevel && !!selectedPersona;
 
-  const handleStart = () => {
-    if (!canStart) return;
+  useEffect(() => {
+    const supabase = getSupabase();
+    if (!supabase) return;
 
+    const id = crypto.randomUUID?.() ?? `ogu-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    activeUserIdRef.current = id;
+
+    const fetchCounts = async () => {
+      const { data, error } = await supabase.from("active_users").select("id, status");
+      if (error) return;
+      const list = data ?? [];
+      setOnlineCount(list.length);
+      setLearningCount(list.filter((r) => r.status === "chatting").length);
+    };
+
+    (async () => {
+      await supabase.from("active_users").insert({
+        id,
+        status: "browsing",
+        last_seen: new Date().toISOString()
+      });
+      await fetchCounts();
+    })();
+
+    const channel = supabase
+      .channel("active_users_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "active_users" },
+        () => { fetchCounts(); }
+      )
+      .subscribe();
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      const toDelete = activeUserIdRef.current;
+      if (toDelete) {
+        supabase.from("active_users").delete().eq("id", toDelete).then(() => {});
+        activeUserIdRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleStart = (e) => {
+    e?.preventDefault?.();
+    if (!canStart) return;
+    const userId = activeUserIdRef.current;
     const params = new URLSearchParams({
       level: selectedLevel,
       persona: selectedPersona,
       lang: language
-    }).toString();
-
-    router.push(`/chat?${params}`);
+    });
+    if (userId) params.set("userId", userId);
+    router.push(`/chat?${params.toString()}`);
   };
 
   return (
     <main className="min-h-screen bg-[#FFF8F0] px-4 py-8 text-[#3D2010]">
       <div className="mx-auto flex max-w-lg flex-col gap-5">
+        {/* 실시간 접속자/학습자 뱃지 */}
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-2.5 py-1 text-[11px] font-medium text-[#FF6B4A]">
+            <span aria-hidden>🟢</span>
+            {language === "ko" ? `현재 접속자 ${onlineCount}명` : `${onlineCount} online`}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-2.5 py-1 text-[11px] font-medium text-[#FF6B4A]">
+            <span aria-hidden>📚</span>
+            {language === "ko" ? `학습 중 ${learningCount}명` : `${learningCount} learning`}
+          </span>
+        </div>
+
         {/* 1. 언어 토글 버튼 */}
         <div className="flex justify-end">
           <div className="inline-flex items-center gap-1 rounded-full border border-[#FFE0D0] bg-[#FFFFFF] px-2 py-1 text-[11px] shadow-[0_8px_20px_rgba(0,0,0,0.12)]">
@@ -257,10 +322,7 @@ export default function HomePage() {
         <section className="space-y-2 pt-1">
           <button
             type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              handleStart();
-            }}
+            onClick={handleStart}
             disabled={!canStart}
             className={`flex w-full items-center justify-center gap-1.5 rounded-full px-5 py-3 text-base font-semibold text-white transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD93D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFF8F0] ${
               canStart

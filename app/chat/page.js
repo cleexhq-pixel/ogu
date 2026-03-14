@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getSupabase } from "@/lib/supabase";
 
 function stripHints(text, enabled) {
   if (enabled) return text;
@@ -48,6 +49,7 @@ function ChatContent() {
   const level = searchParams.get("level") || "beginner";
   const persona = searchParams.get("persona") || "cafe";
   const language = searchParams.get("lang") || "en";
+  const userIdFromUrl = searchParams.get("userId");
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -67,6 +69,32 @@ function ChatContent() {
   useEffect(() => {
     setShowHints(language === "en");
   }, [language]);
+
+  const activeUserIdRef = useRef(null);
+
+  useEffect(() => {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    const id = userIdFromUrl || crypto.randomUUID?.() || `ogu-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    activeUserIdRef.current = id;
+
+    supabase
+      .from("active_users")
+      .upsert(
+        { id, status: "chatting", last_seen: new Date().toISOString() },
+        { onConflict: "id" }
+      )
+      .then(() => {});
+
+    return () => {
+      const toDelete = activeUserIdRef.current;
+      if (toDelete) {
+        supabase.from("active_users").delete().eq("id", toDelete).then(() => {});
+        activeUserIdRef.current = null;
+      }
+    };
+  }, [userIdFromUrl]);
 
   useEffect(() => {
     try {
@@ -156,6 +184,12 @@ function ChatContent() {
   };
 
   const handleEndConversation = () => {
+    const supabase = getSupabase();
+    const id = activeUserIdRef.current;
+    if (id && supabase) {
+      supabase.from("active_users").delete().eq("id", id).then(() => {});
+      activeUserIdRef.current = null;
+    }
     try {
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem(
