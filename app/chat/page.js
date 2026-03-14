@@ -88,10 +88,17 @@ function ChatContent() {
   const level3CountdownStartedRef = useRef(false);
 
   const personaMeta = useMemo(() => {
-    if (persona === "office") return { emoji: "💼", name: "직장오구" };
-    if (persona === "drama") return { emoji: "📺", name: "드라마오구" };
-    return { emoji: "☕", name: "카페오구" };
-  }, [persona]);
+    if (persona === "office") return { emoji: "💼", name: "직장오구", subtitle: null };
+    if (persona === "drama") return { emoji: "📺", name: "드라마오구", subtitle: null };
+    if (persona === "free") {
+      return {
+        emoji: "🌟",
+        name: language === "ko" ? "자유대화오구" : "Free Talk Ogu",
+        subtitle: language === "ko" ? "어떤 주제든 OK!" : "Any topic OK!"
+      };
+    }
+    return { emoji: "☕", name: "카페오구", subtitle: null };
+  }, [persona, language]);
 
   useEffect(() => {
     setShowHints(language === "en");
@@ -400,7 +407,9 @@ function ChatContent() {
               <p className="truncate text-sm font-semibold text-[#3D2010]">
                 {personaMeta.name}
               </p>
-              <p className="text-[11px] text-[#9A7060]">{levelLabel}</p>
+              <p className="text-[11px] text-[#9A7060]">
+                {personaMeta.subtitle ?? levelLabel}
+              </p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
