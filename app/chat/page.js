@@ -6,7 +6,6 @@ import { getSupabase } from "@/lib/supabase";
 
 function stripHints(text, enabled) {
   if (enabled) return text;
-  // 괄호 안 영어 번역을 단순히 제거
   return text.replace(/\s*\([^)]*\)/g, "");
 }
 
@@ -16,7 +15,6 @@ function renderAssistantContent(text, showHints) {
     return stripHints(text, false);
   }
 
-  // 괄호 안 영어 번역을 감지해서 줄바꿈 + 스타일 분리
   const parts = text.split(/(\([^)]*\))/g);
 
   return parts.map((part, index) => {
@@ -57,12 +55,8 @@ function ChatContent() {
   const [showHints, setShowHints] = useState(language === "en");
 
   const personaMeta = useMemo(() => {
-    if (persona === "office") {
-      return { emoji: "💼", name: "직장오구" };
-    }
-    if (persona === "drama") {
-      return { emoji: "📺", name: "드라마오구" };
-    }
+    if (persona === "office") return { emoji: "💼", name: "직장오구" };
+    if (persona === "drama") return { emoji: "📺", name: "드라마오구" };
     return { emoji: "☕", name: "카페오구" };
   }, [persona]);
 
@@ -100,40 +94,22 @@ function ChatContent() {
     try {
       if (typeof window !== "undefined") {
         if (!window.sessionStorage.getItem("ogu-chat-start")) {
-          window.sessionStorage.setItem(
-            "ogu-chat-start",
-            String(Date.now())
-          );
+          window.sessionStorage.setItem("ogu-chat-start", String(Date.now()));
         }
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
 
-    // 첫 진입 시 AI 인사말 요청
     const startConversation = async () => {
       setIsLoading(true);
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            level,
-            persona,
-            language,
-            messages: []
-          })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ level, persona, language, messages: [] })
         });
         if (!res.ok) throw new Error("Failed to start chat");
         const data = await res.json();
-        setMessages([
-          {
-            role: "assistant",
-            content: data.reply ?? ""
-          }
-        ]);
+        setMessages([{ role: "assistant", content: data.reply ?? "" }]);
       } catch (e) {
         console.error(e);
       } finally {
@@ -142,17 +118,13 @@ function ChatContent() {
     };
 
     startConversation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level, persona, language]);
 
   const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
 
-    const nextMessages = [
-      ...messages,
-      { role: "user", content: trimmed }
-    ];
+    const nextMessages = [...messages, { role: "user", content: trimmed }];
     setMessages(nextMessages);
     setInput("");
     setIsLoading(true);
@@ -160,22 +132,12 @@ function ChatContent() {
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          level,
-          persona,
-          language,
-          messages: nextMessages
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level, persona, language, messages: nextMessages })
       });
       if (!res.ok) throw new Error("Failed to send message");
       const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.reply ?? "" }
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: data.reply ?? "" }]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -192,24 +154,13 @@ function ChatContent() {
     }
     try {
       if (typeof window !== "undefined") {
-        window.sessionStorage.setItem(
-          "ogu-chat-history",
-          JSON.stringify(messages)
-        );
-        window.sessionStorage.setItem(
-          "ogu-chat-end",
-          String(Date.now())
-        );
+        window.sessionStorage.setItem("ogu-chat-history", JSON.stringify(messages));
+        window.sessionStorage.setItem("ogu-chat-end", String(Date.now()));
       }
     } catch (e) {
       console.error("Failed to store history", e);
     }
-    const params = new URLSearchParams({
-      level,
-      persona,
-      lang: language
-    }).toString();
-    router.push(`/report?${params}`);
+    router.push(`/report?level=${level}&persona=${persona}&lang=${language}`);
   };
 
   const handleKeyDown = (e) => {
@@ -219,57 +170,53 @@ function ChatContent() {
     }
   };
 
+  const levelLabel =
+    level === "beginner"
+      ? language === "ko" ? "왕초보" : "Beginner"
+      : level === "elementary"
+      ? language === "ko" ? "초급" : "Elementary"
+      : language === "ko" ? "중급" : "Intermediate";
+
   return (
-    <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-4 py-6 text-[#3D2010]">
-      <div className="flex w-full max-w-3xl flex-1 flex-col rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] shadow-[0_18px_50px_rgba(0,0,0,0.08)] overflow-hidden">
-        <header className="flex items-center justify-between border-b border-[#FFE0D0] bg-[#FFF8F0] px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#FFE0D0] text-xl">
+    <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-3 py-4 sm:px-4 sm:py-6 text-[#3D2010]">
+      <div className="flex w-full max-w-2xl flex-1 flex-col rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] shadow-[0_20px_50px_rgba(0,0,0,0.06)] overflow-hidden">
+        {/* 헤더 */}
+        <header className="flex items-center justify-between gap-3 border-b border-[#FFE0D0] bg-[#FFF8F0] px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0E8] text-xl shadow-sm">
               {personaMeta.emoji}
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-[#3D2010]">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[#3D2010]">
                 {personaMeta.name}
-              </span>
-              <span className="text-[11px] text-[#9A7060]">
-                {level === "beginner"
-                  ? language === "ko"
-                    ? "왕초보 오구 레벨"
-                    : "Beginner level Ogu"
-                  : level === "elementary"
-                  ? language === "ko"
-                    ? "초급 오구 레벨"
-                    : "Elementary level Ogu"
-                  : language === "ko"
-                  ? "중급 오구 레벨"
-                  : "Intermediate level Ogu"}
-              </span>
+              </p>
+              <p className="text-[11px] text-[#9A7060]">{levelLabel}</p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
               onClick={() => setShowHints((v) => !v)}
-              className={`rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
+              className={`rounded-xl border px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
                 showHints
                   ? "border-[#FF6B4A] bg-[#FFF0E8] text-[#3D2010]"
-                  : "border-[#FFE0D0] bg-[#FFFFFF] text-[#9A7060] hover:border-[#FF6B4A66]"
+                  : "border-[#FFE0D0] bg-[#FFFFFF] text-[#9A7060] hover:border-[#FF6B4A]/60"
               }`}
             >
-              힌트 보기 👀
+              {language === "ko" ? "힌트 👀" : "Hints 👀"}
             </button>
             <button
               type="button"
               onClick={handleEndConversation}
-              className="rounded-full bg-[#FF6B4A] px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-[#ff5a33] active:translate-y-0.5 active:scale-[0.97] transition"
+              className="rounded-xl bg-[#FF6B4A] px-3 py-2 text-[11px] font-semibold text-white shadow-[0_4px_14px_rgba(255,107,74,0.35)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
             >
-              {language === "ko" ? "대화 끝내기" : "End Conversation"}
+              {language === "ko" ? "끝내기" : "End"}
             </button>
           </div>
         </header>
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        {/* 채팅 영역 */}
+        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5">
           {messages.map((m, idx) => {
             const isUser = m.role === "user";
             const content = m.content || "";
@@ -277,30 +224,28 @@ function ChatContent() {
             return (
               <div
                 key={idx}
-                className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
+                className={`animate-bubble-in flex w-full ${isUser ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`flex max-w-[80%] items-end gap-2 ${
+                  className={`flex max-w-[85%] items-end gap-2 sm:max-w-[80%] ${
                     isUser ? "flex-row-reverse" : "flex-row"
                   }`}
                 >
                   <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-2xl text-lg ${
-                      isUser ? "bg-[#FF6B4A]" : "bg-[#FFE0D0]"
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base ${
+                      isUser ? "bg-[#FF6B4A]" : "bg-[#FFF0E8]"
                     }`}
                   >
                     {isUser ? "👤" : "🐥"}
                   </div>
                   <div
-                    className={`rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-md ${
+                    className={`rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${
                       isUser
-                        ? "bg-[#FF6B4A] text-white"
-                        : "bg-[#FFF0E8] text-[#3D2010]"
+                        ? "bg-[#FF6B4A] text-white shadow-[0_4px_14px_rgba(255,107,74,0.25)]"
+                        : "bg-[#FFF0E8] text-[#3D2010] shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
                     }`}
                   >
-                    {isUser
-                      ? content
-                      : renderAssistantContent(content, showHints)}
+                    {isUser ? content : renderAssistantContent(content, showHints)}
                   </div>
                 </div>
               </div>
@@ -310,19 +255,20 @@ function ChatContent() {
           {isLoading && (
             <div className="flex justify-start">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-[#FFE0D0] text-lg">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FFF0E8] text-base animate-pulse-soft">
                   🐥
                 </div>
-                <div className="flex items-center gap-1 rounded-2xl bg-[#FFF0E8] px-3 py-2 text-[11px] text-[#3D2010]">
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#FFE9A6]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#FFE9A6] [animation-delay:0.1s]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#FFE9A6] [animation-delay:0.2s]" />
+                <div className="flex items-center gap-1.5 rounded-2xl bg-[#FFF0E8] px-4 py-2.5">
+                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#FF6B4A]/60" style={{ animationDelay: "0ms" }} />
+                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#FF6B4A]/60" style={{ animationDelay: "200ms" }} />
+                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#FF6B4A]/60" style={{ animationDelay: "400ms" }} />
                 </div>
               </div>
             </div>
           )}
         </div>
 
+        {/* 입력창 */}
         <div className="border-t border-[#FFE0D0] bg-[#FFF8F0] px-4 py-3">
           <div className="flex items-center gap-2">
             <input
@@ -331,17 +277,15 @@ function ChatContent() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                language === "ko"
-                  ? "한국어로 말해보세요..."
-                  : "Type in Korean..."
+                language === "ko" ? "한국어로 말해보세요..." : "Type in Korean..."
               }
-              className="flex h-12 flex-1 items-center rounded-2xl border border-[#FFD0BC] bg-[#FFFFFF] px-3 text-sm leading-snug text-[#3D2010] placeholder:text-[#C09A8A] focus:border-[#FF6B4A] focus:outline-none focus:ring-1 focus:ring-[#FF6B4A]"
+              className="h-12 flex-1 rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] px-4 text-sm text-[#3D2010] placeholder:text-[#C09A8A] shadow-sm transition focus:border-[#FF6B4A] focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/20"
             />
             <button
               type="button"
               disabled={!input.trim() || isLoading}
               onClick={handleSend}
-              className="flex h-12 items-center justify-center rounded-2xl bg-[#FF6B4A] px-4 text-[13px] font-semibold text-white shadow-[0_10px_25px_rgba(255,107,74,0.7)] transition disabled:cursor-not-allowed disabled:bg-[#F1B3A1] disabled:shadow-none hover:bg-[#ff5a33] active:translate-y-0.5 active:scale-[0.97]"
+              className="flex h-12 items-center justify-center rounded-2xl bg-[#FF6B4A] px-5 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(255,107,74,0.35)] transition disabled:cursor-not-allowed disabled:bg-[#E8D5CF] disabled:shadow-none hover:bg-[#ff5a33] active:scale-[0.98]"
             >
               {language === "ko" ? "전송" : "Send"}
             </button>
@@ -354,7 +298,13 @@ function ChatContent() {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={<main className="flex min-h-screen items-center justify-center bg-[#1A1008] px-4 py-6 text-slate-50">로딩중...</main>}>
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[#FFF8F0] px-4 py-6 text-[#3D2010]">
+          <span className="animate-pulse-soft">🐥</span>
+        </main>
+      }
+    >
       <ChatContent />
     </Suspense>
   );

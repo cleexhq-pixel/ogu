@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 body {
-  @apply text-slate-50;
-  background-color: #1A1008;
+  @apply antialiased;
+  background-color: #FFF8F0;
+  color: #3D2010;
 }
 

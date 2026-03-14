@@ -54,7 +54,7 @@ const PERSONAS = [
 
 export default function HomePage() {
   const router = useRouter();
-  const [language, setLanguage] = useState("en"); // 'ko' | 'en'
+  const [language, setLanguage] = useState("en");
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [onlineCount, setOnlineCount] = useState(0);
@@ -125,107 +125,93 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FFF8F0] px-4 py-8 text-[#3D2010]">
-      <div className="mx-auto flex max-w-lg flex-col gap-5">
-        {/* 실시간 접속자/학습자 뱃지 */}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-2.5 py-1 text-[11px] font-medium text-[#FF6B4A]">
-            <span aria-hidden>🟢</span>
-            {language === "ko" ? `현재 접속자 ${onlineCount}명` : `${onlineCount} online`}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-2.5 py-1 text-[11px] font-medium text-[#FF6B4A]">
-            <span aria-hidden>📚</span>
-            {language === "ko" ? `학습 중 ${learningCount}명` : `${learningCount} learning`}
-          </span>
-        </div>
-
-        {/* 1. 언어 토글 버튼 */}
-        <div className="flex justify-end">
-          <div className="inline-flex items-center gap-1 rounded-full border border-[#FFE0D0] bg-[#FFFFFF] px-2 py-1 text-[11px] shadow-[0_8px_20px_rgba(0,0,0,0.12)]">
-            <button
-              type="button"
-              onClick={() => setLanguage("ko")}
-              className={`flex items-center gap-1 rounded-full px-2 py-0.5 transition-colors ${
-                language === "ko"
-                  ? "bg-[#FF6B4A] text-white"
-                  : "text-[#3D2010] hover:bg-[#FFE0D0]"
-              }`}
-            >
-              <span>🇰🇷</span>
-              <span>한국어</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setLanguage("en")}
-              className={`flex items-center gap-1 rounded-full px-2 py-0.5 transition-colors ${
-                language === "en"
-                  ? "bg-[#FF6B4A] text-white"
-                  : "text-[#3D2010] hover:bg-[#FFE0D0]"
-              }`}
-            >
-              <span>🇺🇸</span>
-              <span>English</span>
-            </button>
+    <main className="min-h-screen bg-[#FFF8F0] px-4 py-6 sm:py-10 text-[#3D2010]">
+      <div className="mx-auto flex max-w-lg flex-col gap-8 sm:gap-10">
+        {/* 상단 헤더: 로고 + 뱃지 + 언어 토글 */}
+        <header className="flex flex-col gap-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "0ms", animationFillMode: "forwards" }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl" aria-hidden>🐥</span>
+              <span className="text-lg font-bold tracking-tight text-[#3D2010]">OguOgu</span>
+            </div>
+            <div className="inline-flex items-center gap-1 rounded-full border border-[#FFE0D0] bg-[#FFFFFF] px-2 py-1.5 text-[11px] font-medium shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setLanguage("ko"); }}
+                className={`rounded-full px-2.5 py-1 transition-all duration-200 ${
+                  language === "ko" ? "bg-[#FF6B4A] text-white shadow-sm" : "text-[#3D2010] hover:bg-[#FFF0E8]"
+                }`}
+              >
+                🇰🇷 한국어
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setLanguage("en"); }}
+                className={`rounded-full px-2.5 py-1 transition-all duration-200 ${
+                  language === "en" ? "bg-[#FF6B4A] text-white shadow-sm" : "text-[#3D2010] hover:bg-[#FFF0E8]"
+                }`}
+              >
+                🇺🇸 English
+              </button>
+            </div>
           </div>
-        </div>
-
-        {/* 2. 헤더 */}
-        <header className="space-y-2 text-center">
-          <p className="text-xs font-medium tracking-wide text-[#9A7060]">
-            {language === "ko"
-              ? "AI 한국어 회화 연습"
-              : "AI Korean Conversation Practice"}
-          </p>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#FF6B4A] drop-shadow-[0_0_18px_rgba(255,107,74,0.3)] sm:text-4xl">
-            {language === "ko" ? "🐥 오구오구" : "🐥 OguOgu"}
-          </h1>
-          <p className="text-sm text-[#9A7060] sm:text-base">
-            {language === "ko"
-              ? "통통 튀는 오구 친구들과 레벨에 딱 맞는 한국어 회화를 연습해보세요."
-              : "Practice real Korean conversations with your Ogu friends!"}
-          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-3 py-1.5 text-[11px] font-medium text-[#FF6B4A]">
+              <span aria-hidden>🟢</span>
+              {language === "ko" ? `접속자 ${onlineCount}명` : `${onlineCount} online`}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-3 py-1.5 text-[11px] font-medium text-[#FF6B4A]">
+              <span aria-hidden>📚</span>
+              {language === "ko" ? `학습 중 ${learningCount}명` : `${learningCount} learning`}
+            </span>
+          </div>
         </header>
 
-        {/* 3. 레벨 선택 */}
-        <section className="space-y-2">
+        {/* 히어로 섹션 */}
+        <section className="space-y-3 text-center opacity-0 animate-fade-in-up" style={{ animationDelay: "80ms", animationFillMode: "forwards" }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9A7060]">
+            {language === "ko" ? "AI 한국어 회화" : "AI Korean Conversation"}
+          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#FF6B4A] sm:text-4xl md:text-[2.5rem]">
+            {language === "ko" ? "오구오구" : "OguOgu"}
+          </h1>
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-[#9A7060] sm:text-base">
+            {language === "ko"
+              ? "따뜻한 오구 친구와 함께, 내 레벨에 맞는 한국어 회화를 연습해보세요."
+              : "Practice real Korean with your Ogu friends—warm, fun, and level-just-right."}
+          </p>
+        </section>
+
+        {/* 레벨 선택 */}
+        <section className="space-y-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "160ms", animationFillMode: "forwards" }}>
           <div>
             <h2 className="text-sm font-semibold text-[#3D2010]">
               {language === "ko" ? "레벨 선택" : "Choose Your Level"}
             </h2>
-            <p className="text-[11px] text-[#9A7060]">
-              {language === "ko"
-                ? "지금 내 실력에 맞는 오구를 골라주세요."
-                : "Pick the Ogu that matches your Korean level."}
+            <p className="mt-0.5 text-[11px] text-[#9A7060]">
+              {language === "ko" ? "실력에 맞는 오구를 골라주세요." : "Pick the Ogu that matches you."}
             </p>
           </div>
-
-          <div className="mt-1 grid gap-3 md:grid-cols-3">
-            {LEVELS.map((level) => {
+          <div className="grid gap-3 md:grid-cols-3">
+            {LEVELS.map((level, idx) => {
               const isActive = selectedLevel === level.id;
               return (
                 <button
                   key={level.id}
                   type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.blur();
-                    setSelectedLevel(level.id);
-                  }}
-                  className={`group flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-[12px] transition-all active:scale-[0.98] md:flex-col md:items-start md:py-3 ${
+                  onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setSelectedLevel(level.id); }}
+                  className={`opacity-0 animate-fade-in-up group flex w-full items-center gap-3 rounded-2xl border-2 bg-[#FFFFFF] px-4 py-3 text-left transition-all duration-300 hover:shadow-[0_8px_24px_rgba(255,107,74,0.15)] active:scale-[0.98] md:flex-col md:items-start md:py-4 ${
                     isActive
-                      ? "border-[#FF6B4A] bg-[#FFF0E8] shadow-[0_10px_28px_rgba(255,107,74,0.35)]"
-                      : "border-[#FFE0D0] bg-[#FFFFFF] hover:border-[#FF6B4A99]"
+                      ? "border-[#FF6B4A] bg-[#FFF0E8] shadow-[0_8px_24px_rgba(255,107,74,0.2)]"
+                      : "border-[#FFE0D0] hover:border-[#FF6B4A]/60"
                   }`}
+                  style={{ animationDelay: `${240 + idx * 80}ms`, animationFillMode: "forwards" }}
                 >
-                  <span className="text-2xl">{level.emoji}</span>
+                  <span className="text-2xl md:text-3xl">{level.emoji}</span>
                   <div className="flex-1 space-y-0.5">
-                    <p className="text-xs font-semibold text-[#3D2010]">
-                      {level.title}
-                    </p>
-                    <p className="text-[10px] text-[#9A7060]">
-                      {language === "ko"
-                        ? level.subtitleKo
-                        : level.subtitleEn}
+                    <p className="text-sm font-semibold text-[#3D2010]">{level.title}</p>
+                    <p className="text-[11px] text-[#9A7060]">
+                      {language === "ko" ? level.subtitleKo : level.subtitleEn}
                     </p>
                   </div>
                 </button>
@@ -234,48 +220,36 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 4. 페르소나 선택 */}
-        <section className="space-y-2">
+        {/* 페르소나 선택 */}
+        <section className="space-y-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "340ms", animationFillMode: "forwards" }}>
           <div>
             <h2 className="text-sm font-semibold text-[#3D2010]">
-              {language === "ko"
-                ? "페르소나 선택"
-                : "Choose Your Ogu Friend"}
+              {language === "ko" ? "함께할 오구" : "Choose Your Ogu Friend"}
             </h2>
-            <p className="text-[11px] text-[#9A7060]">
-              {language === "ko"
-                ? "어떤 상황의 오구와 함께 연습해볼까요?"
-                : "Who do you want to practice Korean with?"}
+            <p className="mt-0.5 text-[11px] text-[#9A7060]">
+              {language === "ko" ? "어떤 상황에서 연습할까요?" : "Who do you want to practice with?"}
             </p>
           </div>
-
-          <div className="mt-1 grid gap-3 md:grid-cols-3">
-            {PERSONAS.map((persona) => {
+          <div className="grid gap-3 md:grid-cols-3">
+            {PERSONAS.map((persona, idx) => {
               const isActive = selectedPersona === persona.id;
               return (
                 <button
                   key={persona.id}
                   type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.blur();
-                    setSelectedPersona(persona.id);
-                  }}
-                  className={`group flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-[12px] transition-all active:scale-[0.98] md:flex-col md:items-start md:py-3 ${
+                  onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setSelectedPersona(persona.id); }}
+                  className={`opacity-0 animate-fade-in-up group flex w-full items-center gap-3 rounded-2xl border-2 bg-[#FFFFFF] px-4 py-3 text-left transition-all duration-300 hover:shadow-[0_8px_24px_rgba(255,107,74,0.15)] active:scale-[0.98] md:flex-col md:items-start md:py-4 ${
                     isActive
-                      ? "border-[#FF6B4A] bg-[#FFF0E8] shadow-[0_10px_28px_rgba(255,107,74,0.35)]"
-                      : "border-[#FFE0D0] bg-[#FFFFFF] hover:border-[#FF6B4A99]"
+                      ? "border-[#FF6B4A] bg-[#FFF0E8] shadow-[0_8px_24px_rgba(255,107,74,0.2)]"
+                      : "border-[#FFE0D0] hover:border-[#FF6B4A]/60"
                   }`}
+                  style={{ animationDelay: `${480 + idx * 80}ms`, animationFillMode: "forwards" }}
                 >
-                  <span className="text-2xl">{persona.emoji}</span>
+                  <span className="text-2xl md:text-3xl">{persona.emoji}</span>
                   <div className="flex-1 space-y-0.5">
-                    <p className="text-xs font-semibold text-[#3D2010]">
-                      {persona.title}
-                    </p>
-                    <p className="text-[10px] text-[#9A7060]">
-                      {language === "ko"
-                        ? persona.subtitleKo
-                        : persona.subtitleEn}
+                    <p className="text-sm font-semibold text-[#3D2010]">{persona.title}</p>
+                    <p className="text-[11px] text-[#9A7060]">
+                      {language === "ko" ? persona.subtitleKo : persona.subtitleEn}
                     </p>
                   </div>
                 </button>
@@ -284,58 +258,41 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 5. 내 오구 설정 박스 */}
-        <section className="space-y-3 rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+        {/* 내 오구 설정 + CTA */}
+        <section className="space-y-4 rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] opacity-0 animate-fade-in-up" style={{ animationDelay: "520ms", animationFillMode: "forwards" }}>
           <h2 className="text-sm font-semibold text-[#3D2010]">
             {language === "ko" ? "내 오구 설정" : "My Ogu Setup"}
           </h2>
-
-          <div className="space-y-3 rounded-2xl bg-[#FFF8F0] p-3 text-[11px] text-[#9A7060]">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-[#3D2010]">
-                {language === "ko" ? "레벨" : "Level"}
-              </span>
-              <span className="text-xs font-medium">
-                {selectedLevel
-                  ? LEVELS.find((l) => l.id === selectedLevel)?.title
-                  : language === "ko"
-                  ? "아직 선택 안 함"
-                  : "Not selected yet"}
+          <div className="space-y-3 rounded-2xl bg-[#FFF8F0] p-3">
+            <div className="flex items-center justify-between text-[12px]">
+              <span className="text-[#9A7060]">{language === "ko" ? "레벨" : "Level"}</span>
+              <span className="font-medium text-[#3D2010]">
+                {selectedLevel ? LEVELS.find((l) => l.id === selectedLevel)?.title : (language === "ko" ? "선택 안 함" : "Not selected")}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-[#3D2010]">
-                {language === "ko" ? "페르소나" : "Persona"}
-              </span>
-              <span className="text-xs font-medium">
-                {selectedPersona
-                  ? PERSONAS.find((p) => p.id === selectedPersona)?.title
-                  : language === "ko"
-                  ? "아직 선택 안 함"
-                  : "Not selected yet"}
+            <div className="flex items-center justify-between text-[12px]">
+              <span className="text-[#9A7060]">{language === "ko" ? "페르소나" : "Persona"}</span>
+              <span className="font-medium text-[#3D2010]">
+                {selectedPersona ? PERSONAS.find((p) => p.id === selectedPersona)?.title : (language === "ko" ? "선택 안 함" : "Not selected")}
               </span>
             </div>
           </div>
-        </section>
-
-        {/* 6. 시작 버튼 */}
-        <section className="space-y-2 pt-1">
           <button
             type="button"
             onClick={handleStart}
             disabled={!canStart}
-            className={`flex w-full items-center justify-center gap-1.5 rounded-full px-5 py-3 text-base font-semibold text-white transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD93D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFF8F0] ${
+            className={`flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-base font-semibold text-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#FF6B4A] focus:ring-offset-2 focus:ring-offset-[#FFF8F0] ${
               canStart
-                ? "bg-[#FF6B4A] shadow-[0_14px_40px_rgba(255,107,74,0.7)] hover:bg-[#ff5a33] active:translate-y-0.5 active:scale-[0.97]"
-                : "cursor-not-allowed bg-[#6A4A3A] opacity-60"
+                ? "bg-[#FF6B4A] shadow-[0_12px_32px_rgba(255,107,74,0.4)] hover:bg-[#ff5a33] hover:shadow-[0_16px_40px_rgba(255,107,74,0.45)] active:scale-[0.98]"
+                : "cursor-not-allowed bg-[#E8D5CF] text-[#9A7060]"
             }`}
           >
-            {language === "ko" ? "오구오구 시작! 🐥" : "Start OguOgu! 🐥"}
+            {language === "ko" ? "오구오구 시작하기 🐥" : "Start OguOgu 🐥"}
           </button>
-          <p className="text-center text-[10px] leading-relaxed text-[#BFA28D]">
+          <p className="text-center text-[11px] leading-relaxed text-[#9A7060]">
             {language === "ko"
-              ? "레벨과 페르소나를 모두 선택하면, 당신만을 위한 오구 시나리오로 한국어 회화 연습이 시작돼요."
-              : "Select both level and persona to start your personalized Korean conversation!"}
+              ? "레벨과 페르소나를 선택하면 맞춤 한국어 회화가 시작돼요."
+              : "Select both to start your personalized Korean conversation."}
           </p>
         </section>
       </div>
