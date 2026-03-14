@@ -32,26 +32,41 @@ function parseViolationReply(reply) {
   return null;
 }
 
-function parseResponseWithCorrections(reply) {
-  if (!reply || typeof reply !== "string") return { content: reply, corrections: [] };
-  const raw = reply.trim();
-  const responseMatch = raw.match(/\[RESPONSE\]\s*([\s\S]*?)\s*\[\/RESPONSE\]/);
-  const correctionMatch = raw.match(/\[CORRECTION\]\s*([\s\S]*?)\s*\[\/CORRECTION\]/);
-  let content = responseMatch ? responseMatch[1].trim() : raw;
+/**
+ * AI 응답 파싱: 말풍선에는 [RESPONSE]/[CORRECTION] 태그와 JSON이 절대 보이지 않도록 처리.
+ * - [RESPONSE]...[/RESPONSE] 있으면 그 안의 텍스트만 표시
+ * - 없으면 [CORRECTION] 이전 텍스트만 표시 (CORRECTION 블록 제거)
+ */
+function parseAIResponse(rawText) {
+  if (!rawText || typeof rawText !== "string") return { displayText: rawText || "", corrections: [] };
+  const raw = rawText.trim();
+  let displayText = raw;
   let corrections = [];
+
+  const correctionMatch = raw.match(/\[CORRECTION\]([\s\S]*?)\[\/CORRECTION\]/);
   if (correctionMatch) {
     try {
       let jsonStr = correctionMatch[1].trim();
       if (jsonStr.startsWith("```")) jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
       const data = JSON.parse(jsonStr);
       if (Array.isArray(data.corrections)) {
-        corrections = data.corrections.filter(
-          (c) => c && (c.original != null || c.corrected != null)
-        );
+        corrections = data.corrections.filter((c) => c && (c.original != null || c.corrected != null));
       }
     } catch (_) {}
+    displayText = raw.replace(/\[CORRECTION\][\s\S]*?\[\/CORRECTION\]/g, "").trim();
   }
-  return { content, corrections };
+
+  const responseMatch = displayText.match(/\[RESPONSE\]([\s\S]*?)\[\/RESPONSE\]/);
+  if (responseMatch) {
+    displayText = responseMatch[1].trim();
+  } else {
+    displayText = displayText
+      .replace(/\[\/RESPONSE\]/g, "")
+      .replace(/\[RESPONSE\]/g, "")
+      .trim();
+  }
+
+  return { displayText, corrections };
 }
 
 function renderAssistantContent(text, showHints) {
@@ -284,9 +299,9 @@ function ChatContent() {
           setViolationCount(violation.level);
           if (violation.level === 3) setLevel3Countdown(3);
         } else {
-          const { content, corrections } = parseResponseWithCorrections(reply);
+          const { displayText, corrections } = parseAIResponse(reply);
           if (corrections.length) setAllCorrections((prev) => [...prev, ...corrections]);
-          setMessages([{ role: "assistant", content, corrections: corrections.length ? corrections : undefined }]);
+          setMessages([{ role: "assistant", content: displayText, corrections: corrections.length ? corrections : undefined }]);
         }
       } catch (e) {
         console.error(e);
@@ -329,9 +344,9 @@ function ChatContent() {
         setViolationCount(violation.level);
         if (violation.level === 3) setLevel3Countdown(3);
       } else {
-        const { content, corrections } = parseResponseWithCorrections(reply);
+        const { displayText, corrections } = parseAIResponse(reply);
         if (corrections.length) setAllCorrections((prev) => [...prev, ...corrections]);
-        setMessages((prev) => [...prev, { role: "assistant", content, corrections: corrections.length ? corrections : undefined }]);
+        setMessages((prev) => [...prev, { role: "assistant", content: displayText, corrections: corrections.length ? corrections : undefined }]);
       }
     } catch (e) {
       console.error(e);
