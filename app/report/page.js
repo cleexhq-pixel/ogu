@@ -22,9 +22,7 @@ function ReportContent() {
       const raw = window.sessionStorage.getItem("ogu-chat-history");
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        setHistory(parsed);
-      }
+      if (Array.isArray(parsed)) setHistory(parsed);
 
       const startRaw = window.sessionStorage.getItem("ogu-chat-start");
       const endRaw = window.sessionStorage.getItem("ogu-chat-end");
@@ -32,16 +30,11 @@ function ReportContent() {
         const start = Number(startRaw);
         const end = Number(endRaw);
         if (!Number.isNaN(start) && !Number.isNaN(end) && end > start) {
-          const minutes = Math.max(
-            1,
-            Math.round((end - start) / 1000 / 60)
-          );
+          const minutes = Math.max(1, Math.round((end - start) / 1000 / 60));
           setDurationMinutes(minutes);
         }
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -65,32 +58,15 @@ function ReportContent() {
         setIsLoadingExpressions(false);
       }
     };
-
     fetchExpressions();
   }, [history]);
 
-  const title =
-    language === "ko"
-      ? "오구오구 회화 리포트"
-      : "OguOgu Conversation Report";
-
-  const summaryText =
-    language === "ko"
-      ? "오늘 오구와 나눈 대화를 다시 보면서 표현을 복습해보세요."
-      : "Review your conversation with Ogu and reflect on the expressions you used.";
-
   const levelLabel =
     level === "beginner"
-      ? language === "ko"
-        ? "왕초보 오구"
-        : "Beginner Ogu"
+      ? language === "ko" ? "왕초보 오구" : "Beginner Ogu"
       : level === "elementary"
-      ? language === "ko"
-        ? "초급 오구"
-        : "Elementary Ogu"
-      : language === "ko"
-      ? "중급 오구"
-      : "Intermediate Ogu";
+      ? language === "ko" ? "초급 오구" : "Elementary Ogu"
+      : language === "ko" ? "중급 오구" : "Intermediate Ogu";
 
   const progressPercent =
     level === "beginner" ? 33 : level === "elementary" ? 66 : 100;
@@ -112,9 +88,7 @@ function ReportContent() {
         : "🐥 OguOgu Korean Conversation Report"
     );
     lines.push(
-      language === "ko"
-        ? `레벨: ${levelLabel}`
-        : `Level: ${levelLabel}`
+      language === "ko" ? `레벨: ${levelLabel}` : `Level: ${levelLabel}`
     );
     if (durationMinutes != null) {
       lines.push(
@@ -126,19 +100,13 @@ function ReportContent() {
     if (expressions.length) {
       lines.push("");
       lines.push(
-        language === "ko"
-          ? "오늘 배운 표현:"
-          : "Key expressions today:"
+        language === "ko" ? "오늘 배운 표현:" : "Key expressions today:"
       );
       expressions.forEach((e, idx) => {
-        lines.push(
-          `${idx + 1}. ${e.korean} - ${e.english} (${e.example})`
-        );
+        lines.push(`${idx + 1}. ${e.korean} - ${e.english} (${e.example})`);
       });
     }
-
     const text = lines.join("\n");
-
     try {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
@@ -154,30 +122,28 @@ function ReportContent() {
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-4 py-8 text-[#3D2010]">
-      <div className="w-full max-w-3xl space-y-6">
-        {/* ① 상단 칭찬 배너 */}
-        <section className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] px-5 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
+      <div className="w-full max-w-2xl space-y-8">
+        {/* ① 칭찬 배너 */}
+        <section className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] px-6 py-6 shadow-[0_16px_48px_rgba(0,0,0,0.06)]">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9A7060]">
-                {language === "ko" ? "오늘의 오구 리포트" : "Today’s Ogu Report"}
+                {language === "ko" ? "오늘의 오구 리포트" : "Today's Ogu Report"}
               </p>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#FF6B4A]">
+              <h1 className="text-2xl font-extrabold text-[#FF6B4A] sm:text-3xl">
                 오구오구~ 잘했어요! 🎉
               </h1>
-              <p className="text-xs sm:text-sm text-[#9A7060]">
-                Great job today!
-              </p>
-              <p className="text-[11px] text-[#9A7060]">{durationText}</p>
+              <p className="text-sm text-[#9A7060]">Great job today!</p>
+              <p className="text-[12px] text-[#9A7060]">{durationText}</p>
             </div>
-            <div className="hidden sm:flex h-14 w-14 items-center justify-center rounded-3xl bg-[#FFF8F0] text-3xl shadow-[0_0_26px_rgba(255,107,74,0.35)]">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0E8] text-3xl shadow-[0_8px_24px_rgba(255,107,74,0.2)]">
               🐥
             </div>
           </div>
         </section>
 
         {/* ② 오늘 배운 표현 카드 */}
-        <section className="space-y-3">
+        <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[#3D2010]">
               {language === "ko" ? "오늘 배운 표현" : "Key Expressions Today"}
@@ -190,13 +156,13 @@ function ReportContent() {
           </div>
 
           {expressions.length === 0 && !isLoadingExpressions ? (
-            <p className="text-[11px] text-[#9A7060]">
+            <p className="rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 text-[12px] text-[#9A7060] shadow-sm">
               {language === "ko"
                 ? "표현을 아직 불러오지 못했어요. 대화를 조금 더 길게 나눠보면 더 잘 분석할 수 있어요."
-                : "We couldn’t extract expressions yet. Try having a slightly longer conversation next time."}
+                : "We couldn't extract expressions yet. Try having a slightly longer conversation next time."}
             </p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-3">
               {(expressions.length ? expressions : [1, 2, 3]).map((expr, idx) => {
                 const korean = expr?.korean ?? "…";
                 const english = expr?.english ?? "…";
@@ -204,24 +170,16 @@ function ReportContent() {
                 return (
                   <div
                     key={idx}
-                    className="flex flex-col justify-between rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] p-3 text-[11px] text-[#3D2010] shadow-[0_14px_35px_rgba(0,0,0,0.08)]"
+                    className="flex flex-col rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)]"
                   >
-                    <div className="mb-1 flex items-center justify-between text-[10px] text-[#9A7060]">
-                      <span>
-                        {language === "ko"
-                          ? `표현 ${idx + 1}`
-                          : `Expression ${idx + 1}`}
-                      </span>
-                    </div>
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-semibold text-[#3D2010]">
-                        {korean}
-                      </p>
-                      <p className="text-[10px] text-[#9A7060]">{english}</p>
-                      <p className="mt-1 text-[10px] text-[#C09A8A]">
-                        {example}
-                      </p>
-                    </div>
+                    <span className="mb-2 text-[10px] font-medium uppercase tracking-wider text-[#FF6B4A]">
+                      {language === "ko" ? `표현 ${idx + 1}` : `Expression ${idx + 1}`}
+                    </span>
+                    <p className="text-sm font-semibold text-[#3D2010]">{korean}</p>
+                    <p className="mt-1 text-[11px] text-[#9A7060]">{english}</p>
+                    <p className="mt-2 text-[11px] leading-relaxed text-[#C09A8A]">
+                      {example}
+                    </p>
                   </div>
                 );
               })}
@@ -229,67 +187,62 @@ function ReportContent() {
           )}
         </section>
 
-        {/* ③ 나의 오구 레벨 진행도 */}
-        <section className="space-y-3 rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.08)]">
-          <div className="flex items-center justify-between gap-2">
+        {/* ③ 레벨 진행도 */}
+        <section className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-5 shadow-[0_16px_48px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-[#3D2010]">
-                {language === "ko"
-                  ? "나의 오구 레벨 진행도"
-                  : "My Ogu Level Progress"}
+                {language === "ko" ? "나의 오구 레벨" : "My Ogu Level"}
               </h2>
-              <p className="text-[11px] text-[#9A7060]">
+              <p className="mt-0.5 text-[11px] text-[#9A7060]">
                 {language === "ko"
-                  ? "오늘의 연습이 다음 레벨로 한 걸음 더 가까워졌어요."
-                  : "Today’s practice moved you one step closer to the next level."}
+                  ? "다음 레벨까지 한 걸음 더!"
+                  : "One step closer to the next level."}
               </p>
             </div>
-            <span className="rounded-full bg-[#FFF0E8] px-3 py-1 text-[11px] font-semibold text-[#FF6B4A]">
+            <span className="rounded-full bg-[#FFF0E8] px-3 py-1.5 text-[11px] font-semibold text-[#FF6B4A]">
               {levelLabel}
             </span>
           </div>
-
-          <div className="space-y-1">
-            <div className="h-3 w-full rounded-full bg-[#FFE0D0]">
+          <div className="mt-4 space-y-2">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#FFE0D0]">
               <div
-                className="h-3 rounded-full bg-[#FF6B4A] shadow-[0_0_14px_rgba(255,107,74,0.6)] transition-[width] duration-500"
+                className="h-full rounded-full bg-[#FF6B4A] transition-[width] duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <p className="text-[10px] text-[#9A7060]">
+            <p className="text-[11px] text-[#9A7060]">
               {language === "ko"
-                ? "다음 레벨까지 조금만 더! 내일도 오구오구와 연습해볼까요?"
-                : "You’re getting close to the next level. Come back and practice with Ogu again tomorrow!"}
+                ? "내일도 오구오구와 연습해볼까요?"
+                : "Come back and practice with Ogu again tomorrow!"}
             </p>
           </div>
         </section>
 
-        {/* ④ 하단 버튼들 */}
-        <section className="flex flex-col items-center gap-3 pt-2 sm:flex-row sm:justify-between">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              className="flex items-center justify-center rounded-full bg-[#FF6B4A] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_14px_35px_rgba(255,107,74,0.6)] transition hover:bg-[#ff5a33] active:translate-y-0.5 active:scale-[0.97]"
-            >
-              {language === "ko" ? "다시 대화하기 🐥" : "Talk Again 🐥"}
-            </button>
-            <button
-              type="button"
-              onClick={handleShare}
-              className="flex items-center justify-center rounded-full border border-[#FFE0D0] bg-[#FFFFFF] px-4 py-2 text-[13px] font-semibold text-[#3D2010] shadow-[0_10px_25px_rgba(0,0,0,0.08)] transition hover:bg-[#FFF0E8] active:translate-y-0.5 active:scale-[0.97]"
-            >
-              {language === "ko" ? "공유하기 📸" : "Share Result 📸"}
-            </button>
-          </div>
-          {shareCopied && (
-            <p className="text-[10px] text-[#9A7060]">
-              {language === "ko"
-                ? "리포트가 클립보드에 복사되었어요!"
-                : "Report copied to clipboard!"}
-            </p>
-          )}
+        {/* ④ 하단 버튼 */}
+        <section className="flex flex-col items-center gap-4 pt-2 sm:flex-row sm:justify-center">
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FF6B4A] px-5 py-3.5 text-[14px] font-semibold text-white shadow-[0_12px_32px_rgba(255,107,74,0.4)] transition hover:bg-[#ff5a33] hover:shadow-[0_16px_40px_rgba(255,107,74,0.45)] active:scale-[0.98] sm:w-auto"
+          >
+            {language === "ko" ? "다시 대화하기 🐥" : "Talk Again 🐥"}
+          </button>
+          <button
+            type="button"
+            onClick={handleShare}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#FFE0D0] bg-[#FFFFFF] px-5 py-3.5 text-[14px] font-semibold text-[#3D2010] transition hover:bg-[#FFF0E8] hover:border-[#FF6B4A]/40 active:scale-[0.98] sm:w-auto"
+          >
+            {language === "ko" ? "공유하기 📸" : "Share Result 📸"}
+          </button>
         </section>
+        {shareCopied && (
+          <p className="text-center text-[12px] text-[#9A7060]">
+            {language === "ko"
+              ? "리포트가 클립보드에 복사되었어요!"
+              : "Report copied to clipboard!"}
+          </p>
+        )}
       </div>
     </main>
   );
@@ -297,7 +250,13 @@ function ReportContent() {
 
 export default function ReportPage() {
   return (
-    <Suspense fallback={<main className="flex min-h-screen items-center justify-center bg-[#1A1008] px-4 py-8 text-slate-50">로딩중...</main>}>
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[#FFF8F0] px-4 py-8 text-[#3D2010]">
+          <span className="animate-pulse-soft">🐥</span>
+        </main>
+      }
+    >
       <ReportContent />
     </Suspense>
   );
