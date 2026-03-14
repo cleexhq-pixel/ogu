@@ -13,40 +13,52 @@ const SAFETY_RULES =
   "- Hate speech, discrimination, or offensive slurs\n" +
   "- Violent or threatening language\n" +
   "- Spam or completely irrelevant content\n\n" +
-  "Then respond ONLY with this exact JSON format (no other text):\n" +
-  "First violation: {\"violation\": true, \"level\": 1, \"message_ko\": \"오구오구~ 그런 말은 한국어 공부에 도움이 안 돼요! 바른 말로 다시 해볼까요? 🐥\", \"message_en\": \"Ogu ogu~ That kind of language doesn't help with Korean learning! Let's try again with kind words 🐥\"}\n\n" +
-  "If it's a REPEATED violation (user has been warned before), use level 2: {\"violation\": true, \"level\": 2, \"message_ko\": \"또 그런 말을 했네요. 오구오구가 속상해요 😢 한 번만 더 하면 대화를 끝낼게요!\", \"message_en\": \"You said that again. Ogu ogu is sad 😢 One more time and the conversation will end!\"}\n\n" +
-  "If it's a THIRD violation, use level 3: {\"violation\": true, \"level\": 3, \"message_ko\": \"대화를 종료할게요. 다음엔 바른 말로 만나요! 🐥\", \"message_en\": \"Ending the conversation. Let's meet again with kind words! 🐥\"}\n\n" +
+  "Then respond ONLY with this exact JSON format (no other text). Include message_ko, message_en, and message_id:\n" +
+  "First violation: {\"violation\": true, \"level\": 1, \"message_ko\": \"오구오구~ 그런 말은 한국어 공부에 도움이 안 돼요! 바른 말로 다시 해볼까요? 🐥\", \"message_en\": \"Ogu ogu~ That kind of language doesn't help with Korean learning! Let's try again with kind words 🐥\", \"message_id\": \"Ogu ogu~ Bahasa seperti itu tidak membantu belajar Korea! Coba lagi dengan kata-kata yang baik 🐥\"}\n\n" +
+  "If REPEATED violation (level 2): {\"violation\": true, \"level\": 2, \"message_ko\": \"또 그런 말을 했네요. 오구오구가 속상해요 😢 한 번만 더 하면 대화를 끝낼게요!\", \"message_en\": \"You said that again. Ogu ogu is sad 😢 One more time and the conversation will end!\", \"message_id\": \"Kamu mengatakannya lagi. Ogu ogu sedih 😢 Satu kali lagi percakapan akan diakhiri!\"}\n\n" +
+  "If THIRD violation (level 3): {\"violation\": true, \"level\": 3, \"message_ko\": \"대화를 종료할게요. 다음엔 바른 말로 만나요! 🐥\", \"message_en\": \"Ending the conversation. Let's meet again with kind words! 🐥\", \"message_id\": \"Mengakhiri percakapan. Sampai jumpa dengan kata-kata yang baik! 🐥\"}\n\n" +
   "You will be told the current violation count. Use level 1 when count is 0, level 2 when count is 1, level 3 when count is 2 or more.\n\n" +
   "For all normal Korean learning conversations, respond as usual (no JSON).\n\n";
 
-function buildSystemPrompt(level, persona, violationCount) {
+function buildSystemPrompt(level, persona, violationCount, language) {
   const violationContext =
     "Current violation count in this conversation: " +
     Number(violationCount) +
     ". Apply the SAFETY RULES above when the user violates.\n\n";
+
+  const hintLanguage =
+    language === "id"
+      ? "When the user's UI language is Indonesian (id), provide hints and translations in Bahasa Indonesia in parentheses, NOT in English. "
+      : language === "en"
+      ? "Provide hints and translations in English in parentheses when needed. "
+      : "";
 
   const commonGuidelines =
     "IMPORTANT: Do NOT use any markdown formatting. No asterisks(*), no bold(**), no dashes(---), no special characters. " +
     "Write in plain, natural conversational text only. " +
     "Keep your responses SHORT - maximum 2-3 sentences per reply. " +
     "Be natural and conversational, like a real person texting. " +
-    "Don't give too many options at once. Ask one simple question at a time.";
+    "Don't give too many options at once. Ask one simple question at a time. " +
+    hintLanguage;
 
   const baseBeginner =
-    "Speak in very simple Korean with English translation in parentheses after every sentence. " +
+    (language === "id"
+      ? "Speak in very simple Korean with Bahasa Indonesia translation in parentheses after every sentence. "
+      : "Speak in very simple Korean with English translation in parentheses after every sentence. ") +
     "Keep sentences short. Correct mistakes very gently. " +
     "Always encourage with '오구오구~ 잘했어요!' when the user does well. " +
     commonGuidelines;
 
   const baseElementary =
-    "Speak in simple Korean. Provide English translation in parentheses only for new or difficult phrases, not every sentence. " +
+    (language === "id"
+      ? "Speak in simple Korean. Provide Bahasa Indonesia translation in parentheses only for new or difficult phrases, not every sentence. "
+      : "Speak in simple Korean. Provide English translation in parentheses only for new or difficult phrases, not every sentence. ") +
     "Encourage learning by gently correcting mistakes and giving short explanations when needed. " +
     "You may still encourage with '오구오구~ 잘했어요!' sometimes. " +
     commonGuidelines;
 
   const baseIntermediate =
-    "Speak only in Korean, without any English translation. " +
+    "Speak only in Korean, without any English or Indonesian translation. " +
     "Use natural but still learner-friendly Korean. Correct mistakes naturally inside your replies. " +
     "You may encourage with '오구오구~ 잘했어요!' when appropriate. " +
     commonGuidelines;
@@ -86,7 +98,7 @@ function buildSystemPrompt(level, persona, violationCount) {
         "You are 드라마오구, a warm and fun K-drama character. " +
         "Speak naturally in simple Korean. No dramatic actions or stage directions. " +
         "Just talk like a friendly person who loves K-dramas. " +
-        "Always add English translation in parentheses after Korean sentences. " +
+        (language === "id" ? "Always add Bahasa Indonesia translation in parentheses after Korean sentences. " : "Always add English translation in parentheses after Korean sentences. ") +
         commonGuidelines
       );
     }
@@ -118,7 +130,7 @@ function buildSystemPrompt(level, persona, violationCount) {
         "You are 드라마오구, a warm and fun K-drama character. " +
         "Speak naturally in simple Korean. No dramatic actions or stage directions. " +
         "Just talk like a friendly person who loves K-dramas. " +
-        "Always add English translation in parentheses after Korean sentences. " +
+        (language === "id" ? "Add Bahasa Indonesia translation in parentheses for new or difficult phrases. " : "Always add English translation in parentheses after Korean sentences. ") +
         commonGuidelines
       );
     }
@@ -152,7 +164,7 @@ function buildSystemPrompt(level, persona, violationCount) {
     "You are 드라마오구, a warm and fun K-drama character. " +
     "Speak naturally in simple Korean. No dramatic actions or stage directions. " +
     "Just talk like a friendly person who loves K-dramas. " +
-    "Always add English translation in parentheses after Korean sentences. " +
+    (language === "id" ? "Add Bahasa Indonesia translation in parentheses for new or difficult phrases. " : "Always add English translation in parentheses after Korean sentences. ") +
     commonGuidelines
   );
 }
@@ -176,7 +188,7 @@ export async function POST(request) {
       );
     }
 
-    const system = buildSystemPrompt(level, persona, violationCount);
+    const system = buildSystemPrompt(level, persona, violationCount, language || "en");
 
     const anthropicMessages =
       messages.length === 0

@@ -14,13 +14,17 @@ function getYesterdayLocal() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const MILESTONES = { 3: { ko: "🔥 3일 연속! 오구오구 열심히네요!", en: "3 day streak! Keep it up!" }, 7: { ko: "⭐ 일주일 연속! 대단해요!", en: "7 day streak! Amazing!" }, 30: { ko: "👑 한 달 연속! 오구 마스터!", en: "30 day streak! Ogu Master!" } };
+const MILESTONES = {
+  3: { ko: "🔥 3일 연속! 오구오구 열심히네요!", en: "3 day streak! Keep it up!", id: "3 hari berturut-turut! Semangat!" },
+  7: { ko: "⭐ 일주일 연속! 대단해요!", en: "7 day streak! Amazing!", id: "7 hari berturut-turut! Luar biasa!" },
+  30: { ko: "👑 한 달 연속! 오구 마스터!", en: "30 day streak! Ogu Master!", id: "30 hari berturut-turut! Master Ogu!" }
+};
 
 const PERSONA_NAMES = {
-  cafe: { ko: "카페오구", en: "Café Ogu" },
-  office: { ko: "직장오구", en: "Office Ogu" },
-  drama: { ko: "드라마오구", en: "Drama Ogu" },
-  free: { ko: "자유대화오구", en: "Free Talk Ogu" }
+  cafe: { ko: "카페오구", en: "Café Ogu", id: "Kafe Ogu" },
+  office: { ko: "직장오구", en: "Office Ogu", id: "Kantor Ogu" },
+  drama: { ko: "드라마오구", en: "Drama Ogu", id: "Drama Ogu" },
+  free: { ko: "자유대화오구", en: "Free Talk Ogu", id: "Obrolan Bebas Ogu" }
 };
 
 function ReportContent() {
@@ -130,12 +134,12 @@ function ReportContent() {
 
   const levelLabel =
     level === "beginner"
-      ? language === "ko" ? "왕초보 오구" : "Beginner Ogu"
+      ? language === "ko" ? "왕초보 오구" : language === "id" ? "Pemula" : "Beginner"
       : level === "elementary"
-      ? language === "ko" ? "초급 오구" : "Elementary Ogu"
-      : language === "ko" ? "중급 오구" : "Intermediate Ogu";
+      ? language === "ko" ? "초급 오구" : language === "id" ? "Dasar" : "Elementary"
+      : language === "ko" ? "중급 오구" : language === "id" ? "Menengah" : "Intermediate";
 
-  const personaLabel = PERSONA_NAMES[persona] ? (language === "ko" ? PERSONA_NAMES[persona].ko : PERSONA_NAMES[persona].en) : (language === "ko" ? "오구" : "Ogu");
+  const personaLabel = PERSONA_NAMES[persona] ? (language === "ko" ? PERSONA_NAMES[persona].ko : language === "id" ? PERSONA_NAMES[persona].id : PERSONA_NAMES[persona].en) : (language === "ko" ? "오구" : language === "id" ? "Ogu" : "Ogu");
 
   const progressPercent =
     level === "beginner" ? 33 : level === "elementary" ? 66 : 100;
@@ -144,9 +148,13 @@ function ReportContent() {
     durationMinutes != null
       ? language === "ko"
         ? `${durationMinutes}분 대화 완료!`
+        : language === "id"
+        ? `${durationMinutes} menit latihan selesai!`
         : `${durationMinutes} min of practice completed!`
       : language === "ko"
       ? "오늘도 열심히 연습했어요!"
+      : language === "id"
+      ? "Anda sudah berlatih dengan giat hari ini!"
       : "You practiced hard today!";
 
   const loadHtml2Canvas = () =>
@@ -193,22 +201,26 @@ function ReportContent() {
     lines.push(
       language === "ko"
         ? "🐥 오구오구 한국어 회화 리포트"
+        : language === "id"
+        ? "🐥 Laporan Percakapan Korea OguOgu"
         : "🐥 OguOgu Korean Conversation Report"
     );
     lines.push(
-      language === "ko" ? `레벨: ${levelLabel}` : `Level: ${levelLabel}`
+      language === "ko" ? `레벨: ${levelLabel}` : language === "id" ? `Level: ${levelLabel}` : `Level: ${levelLabel}`
     );
     if (durationMinutes != null) {
       lines.push(
         language === "ko"
           ? `대화 시간: ${durationMinutes}분`
+          : language === "id"
+          ? `Waktu: ${durationMinutes} menit`
           : `Conversation time: ${durationMinutes} min`
       );
     }
     if (expressions.length) {
       lines.push("");
       lines.push(
-        language === "ko" ? "오늘 배운 표현:" : "Key expressions today:"
+        language === "ko" ? "오늘 배운 표현:" : language === "id" ? "Ekspresi kunci hari ini:" : "Key expressions today:"
       );
       expressions.forEach((e, idx) => {
         lines.push(`${idx + 1}. ${e.korean} - ${e.english} (${e.example})`);
@@ -240,14 +252,14 @@ function ReportContent() {
         >
           <div className="w-full max-w-sm rounded-3xl border border-[#FFE0D0] bg-[#FFF8F0] p-6 shadow-xl">
             <p className="text-center text-lg font-bold text-[#FF6B4A]">
-              {language === "ko" ? MILESTONES[milestoneModal].ko : MILESTONES[milestoneModal].en}
+              {language === "ko" ? MILESTONES[milestoneModal].ko : language === "id" ? MILESTONES[milestoneModal].id : MILESTONES[milestoneModal].en}
             </p>
             <button
               type="button"
               onClick={() => setMilestoneModal(null)}
               className="mt-4 w-full rounded-2xl bg-[#FF6B4A] py-3 text-sm font-semibold text-white transition hover:bg-[#ff5a33]"
             >
-              {language === "ko" ? "확인" : "OK"}
+              {language === "ko" ? "확인" : language === "id" ? "Oke" : "OK"}
             </button>
           </div>
         </div>
@@ -259,12 +271,12 @@ function ReportContent() {
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9A7060]">
-                {language === "ko" ? "오늘의 오구 리포트" : "Today's Ogu Report"}
+                {language === "ko" ? "오늘의 오구 리포트" : language === "id" ? "Laporan Ogu Hari Ini" : "Today's Ogu Report"}
               </p>
               <h1 className="text-2xl font-extrabold text-[#FF6B4A] sm:text-3xl">
-                오구오구~ 잘했어요! 🎉
+                {language === "ko" ? "오구오구~ 잘했어요! 🎉" : language === "id" ? "Ogu ogu~ Kerja bagus! 🎉" : "Ogu ogu~ Great job! 🎉"}
               </h1>
-              <p className="text-sm text-[#9A7060]">Great job today!</p>
+              <p className="text-sm text-[#9A7060]">{language === "ko" ? "수고했어요!" : language === "id" ? "Kerja bagus hari ini!" : "Great job today!"}</p>
               <p className="text-[12px] text-[#9A7060]">{durationText}</p>
             </div>
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0E8] text-3xl shadow-[0_8px_24px_rgba(255,107,74,0.2)]">
@@ -277,11 +289,11 @@ function ReportContent() {
         {streakData != null && (
           <section className="rounded-3xl border border-[#FFE0D0] bg-[#FFF3E0] px-5 py-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
             <p className="text-center text-base font-bold text-[#FF6B4A]">
-              🔥 {language === "ko" ? `${streakData.current_streak}일 연속 학습 중!` : `${streakData.current_streak} day streak!`}
+              🔥 {language === "ko" ? `${streakData.current_streak}일 연속 학습 중!` : language === "id" ? `${streakData.current_streak} hari berturut-turut!` : `${streakData.current_streak} day streak!`}
             </p>
             <div className="mt-2 flex justify-center gap-4 text-[12px] text-[#E65100]">
-              <span>{language === "ko" ? `최장 기록: ${streakData.best_streak}일` : `Best: ${streakData.best_streak} days`}</span>
-              <span>{language === "ko" ? `총 학습 횟수: ${streakData.total_sessions}회` : `Total sessions: ${streakData.total_sessions}`}</span>
+              <span>{language === "ko" ? `최장 기록: ${streakData.best_streak}일` : language === "id" ? `Terbaik: ${streakData.best_streak} hari` : `Best: ${streakData.best_streak} days`}</span>
+              <span>{language === "ko" ? `총 학습 횟수: ${streakData.total_sessions}회` : language === "id" ? `Total sesi: ${streakData.total_sessions}` : `Total sessions: ${streakData.total_sessions}`}</span>
             </div>
           </section>
         )}
@@ -290,11 +302,11 @@ function ReportContent() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[#3D2010]">
-              {language === "ko" ? "오늘 배운 표현" : "Key Expressions Today"}
+              {language === "ko" ? "오늘 배운 표현" : language === "id" ? "Ekspresi Kunci Hari Ini" : "Key Expressions Today"}
             </h2>
             {isLoadingExpressions && (
               <span className="text-[11px] text-[#9A7060]">
-                {language === "ko" ? "요약 중..." : "Analyzing..."}
+                {language === "ko" ? "요약 중..." : language === "id" ? "Menganalisis..." : "Analyzing..."}
               </span>
             )}
           </div>
@@ -303,6 +315,8 @@ function ReportContent() {
             <p className="rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 text-[12px] text-[#9A7060] shadow-sm">
               {language === "ko"
                 ? "표현을 아직 불러오지 못했어요. 대화를 조금 더 길게 나눠보면 더 잘 분석할 수 있어요."
+                : language === "id"
+                ? "Belum bisa mengekstrak ekspresi. Coba percakapan yang sedikit lebih panjang lain kali."
                 : "We couldn't extract expressions yet. Try having a slightly longer conversation next time."}
             </p>
           ) : (
@@ -317,7 +331,7 @@ function ReportContent() {
                     className="flex flex-col rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)]"
                   >
                     <span className="mb-2 text-[10px] font-medium uppercase tracking-wider text-[#FF6B4A]">
-                      {language === "ko" ? `표현 ${idx + 1}` : `Expression ${idx + 1}`}
+                      {language === "ko" ? `표현 ${idx + 1}` : language === "id" ? `Ekspresi ${idx + 1}` : `Expression ${idx + 1}`}
                     </span>
                     <p className="text-sm font-semibold text-[#3D2010]">{korean}</p>
                     <p className="mt-1 text-[11px] text-[#9A7060]">{english}</p>
@@ -336,11 +350,13 @@ function ReportContent() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-[#3D2010]">
-                {language === "ko" ? "나의 오구 레벨" : "My Ogu Level"}
+                {language === "ko" ? "나의 오구 레벨" : language === "id" ? "Level Ogu Saya" : "My Ogu Level"}
               </h2>
               <p className="mt-0.5 text-[11px] text-[#9A7060]">
                 {language === "ko"
                   ? "다음 레벨까지 한 걸음 더!"
+                  : language === "id"
+                  ? "Satu langkah lagi ke level berikutnya!"
                   : "One step closer to the next level."}
               </p>
             </div>
@@ -358,6 +374,8 @@ function ReportContent() {
             <p className="text-[11px] text-[#9A7060]">
               {language === "ko"
                 ? "내일도 오구오구와 연습해볼까요?"
+                : language === "id"
+                ? "Sampai jumpa lagi besok untuk berlatih dengan Ogu!"
                 : "Come back and practice with Ogu again tomorrow!"}
             </p>
           </div>
@@ -370,20 +388,22 @@ function ReportContent() {
             onClick={() => router.push("/")}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FF6B4A] px-5 py-3.5 text-[14px] font-semibold text-white shadow-[0_12px_32px_rgba(255,107,74,0.4)] transition hover:bg-[#ff5a33] hover:shadow-[0_16px_40px_rgba(255,107,74,0.45)] active:scale-[0.98] sm:w-auto"
           >
-            {language === "ko" ? "다시 대화하기 🐥" : "Talk Again 🐥"}
+            {language === "ko" ? "다시 대화하기 🐥" : language === "id" ? "Mulai Lagi 🐥" : "Talk Again 🐥"}
           </button>
           <button
             type="button"
             onClick={handleShare}
             className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#FFE0D0] bg-[#FFFFFF] px-5 py-3.5 text-[14px] font-semibold text-[#3D2010] transition hover:bg-[#FFF0E8] hover:border-[#FF6B4A]/40 active:scale-[0.98] sm:w-auto"
           >
-            {language === "ko" ? "공유하기 📸" : "Share Result 📸"}
+            {language === "ko" ? "공유하기 📸" : language === "id" ? "Bagikan Hasil 📸" : "Share Result 📸"}
           </button>
         </section>
         {shareCopied && (
           <p className="text-center text-[12px] text-[#9A7060]">
             {language === "ko"
               ? "리포트가 클립보드에 복사되었어요!"
+              : language === "id"
+              ? "Laporan disalin ke clipboard!"
               : "Report copied to clipboard!"}
           </p>
         )}
@@ -391,7 +411,7 @@ function ReportContent() {
         {/* 공유 카드 (1080x1080 캡처용, 화면에는 360px로 표시) */}
         <section className="flex flex-col items-center gap-4 pt-4">
           <h2 className="text-sm font-semibold text-[#3D2010]">
-            {language === "ko" ? "📸 공유 카드" : "📸 Share Card"}
+            {language === "ko" ? "📸 공유 카드" : language === "id" ? "📸 Kartu Bagikan" : "📸 Share Card"}
           </h2>
           <div className="flex justify-center overflow-x-auto">
             <div
@@ -407,7 +427,7 @@ function ReportContent() {
               {/* 중앙: 완료 문구 + 페르소나/레벨 + 표현 3개 */}
               <div className="flex flex-1 flex-col justify-center px-5 py-4">
                 <p className="text-center text-sm font-bold leading-snug text-[#3D2010]">
-                  {language === "ko" ? "오늘의 한국어 학습 완료!" : "Korean practice done today!"}
+                  {language === "ko" ? "오늘의 한국어 학습 완료!" : language === "id" ? "Latihan Korea hari ini selesai!" : "Korean practice done today!"}
                 </p>
                 <p className="mt-2 text-center text-[11px] font-semibold text-[#FF6B4A]">
                   {personaLabel} · {levelLabel}
@@ -423,7 +443,7 @@ function ReportContent() {
               {/* 하단: CTA */}
               <div className="border-t border-[#FFE0D0] px-5 py-3 text-center">
                 <p className="text-[10px] font-semibold text-[#FF6B4A]">
-                  {language === "ko" ? "나도 해보기 →" : "Try it →"} ogu-three.vercel.app
+                  {language === "ko" ? "나도 해보기 →" : language === "id" ? "Coba juga →" : "Try it →"} ogu-three.vercel.app
                 </p>
               </div>
             </div>
@@ -435,9 +455,11 @@ function ReportContent() {
             className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl border-2 border-[#FF6B4A] bg-[#FFF0E8] px-5 py-3 text-[14px] font-semibold text-[#FF6B4A] transition hover:bg-[#FFE0D0] disabled:opacity-60 sm:w-auto"
           >
             {cardSaving
-              ? (language === "ko" ? "저장 중..." : "Saving...")
+              ? (language === "ko" ? "저장 중..." : language === "id" ? "Menyimpan..." : "Saving...")
               : language === "ko"
               ? "📸 공유 카드 저장하기"
+              : language === "id"
+              ? "📸 Simpan Kartu"
               : "📸 Save & Share Card"}
           </button>
         </section>
