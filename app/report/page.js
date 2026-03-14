@@ -2,6 +2,19 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { getSupabase } from "@/lib/supabase";
+
+function getTodayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function getYesterdayLocal() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const MILESTONES = { 3: { ko: "🔥 3일 연속! 오구오구 열심히네요!", en: "3 day streak! Keep it up!" }, 7: { ko: "⭐ 일주일 연속! 대단해요!", en: "7 day streak! Amazing!" }, 30: { ko: "👑 한 달 연속! 오구 마스터!", en: "30 day streak! Ogu Master!" } };
 
 const PERSONA_NAMES = {
   cafe: { ko: "카페오구", en: "Café Ogu" },
@@ -19,6 +32,8 @@ function ReportContent() {
   const [durationMinutes, setDurationMinutes] = useState(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [cardSaving, setCardSaving] = useState(false);
+  const [streakData, setStreakData] = useState(null);
+  const [milestoneModal, setMilestoneModal] = useState(null);
   const shareCardRef = useRef(null);
 
   const level = searchParams.get("level") || "beginner";
@@ -69,6 +84,49 @@ function ReportContent() {
     };
     fetchExpressions();
   }, [history]);
+
+  // 스트릭: localStorage + Supabase 업데이트
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let userId = window.localStorage.getItem("ogu_user_id");
+    if (!userId) {
+      userId = crypto.randomUUID?.() ?? `ogu-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      window.localStorage.setItem("ogu_user_id", userId);
+    }
+    const lastStudy = window.localStorage.getItem("ogu_last_study");
+    const today = getTodayLocal();
+    const yesterday = getYesterdayLocal();
+
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    (async () => {
+      const { data: row } = await supabase.from("streaks").select("current_streak, best_streak, total_sessions").eq("user_id", userId).single();
+
+      let current = row?.current_streak ?? 0;
+      let best = row?.best_streak ?? 0;
+      const total = (row?.total_sessions ?? 0) + 1;
+
+      if (lastStudy === today) {
+        // 오늘 이미 학습 → 스트릭 변화 없음
+      } else if (lastStudy === yesterday) {
+        current += 1;
+        best = Math.max(best, current);
+      } else {
+        current = 1;
+        best = Math.max(best, 1);
+      }
+
+      await supabase.from("streaks").upsert(
+        { user_id: userId, current_streak: current, best_streak: best, total_sessions: total, last_study: today },
+        { onConflict: "user_id" }
+      );
+      window.localStorage.setItem("ogu_last_study", today);
+
+      setStreakData({ current_streak: current, best_streak: best, total_sessions: total });
+      if ([3, 7, 30].includes(current)) setMilestoneModal(current);
+    })().catch((e) => console.error("Streak update failed", e));
+  }, []);
 
   const levelLabel =
     level === "beginner"
@@ -172,6 +230,29 @@ function ReportContent() {
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-4 py-8 text-[#3D2010]">
+      {/* 마일스톤 축하 모달 */}
+      {milestoneModal && MILESTONES[milestoneModal] && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-sm rounded-3xl border border-[#FFE0D0] bg-[#FFF8F0] p-6 shadow-xl">
+            <p className="text-center text-lg font-bold text-[#FF6B4A]">
+              {language === "ko" ? MILESTONES[milestoneModal].ko : MILESTONES[milestoneModal].en}
+            </p>
+            <button
+              type="button"
+              onClick={() => setMilestoneModal(null)}
+              className="mt-4 w-full rounded-2xl bg-[#FF6B4A] py-3 text-sm font-semibold text-white transition hover:bg-[#ff5a33]"
+            >
+              {language === "ko" ? "확인" : "OK"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-2xl space-y-8">
         {/* ① 칭찬 배너 */}
         <section className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] px-6 py-6 shadow-[0_16px_48px_rgba(0,0,0,0.06)]">
@@ -191,6 +272,19 @@ function ReportContent() {
             </div>
           </div>
         </section>
+
+        {/* 스트릭 카드 */}
+        {streakData != null && (
+          <section className="rounded-3xl border border-[#FFE0D0] bg-[#FFF3E0] px-5 py-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+            <p className="text-center text-base font-bold text-[#FF6B4A]">
+              🔥 {language === "ko" ? `${streakData.current_streak}일 연속 학습 중!` : `${streakData.current_streak} day streak!`}
+            </p>
+            <div className="mt-2 flex justify-center gap-4 text-[12px] text-[#E65100]">
+              <span>{language === "ko" ? `최장 기록: ${streakData.best_streak}일` : `Best: ${streakData.best_streak} days`}</span>
+              <span>{language === "ko" ? `총 학습 횟수: ${streakData.total_sessions}회` : `Total sessions: ${streakData.total_sessions}`}</span>
+            </div>
+          </section>
+        )}
 
         {/* ② 오늘 배운 표현 카드 */}
         <section className="space-y-4">
