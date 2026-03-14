@@ -67,6 +67,7 @@ export default function HomePage() {
   const [selectedPersona, setSelectedPersona] = useState(null);
   const [onlineCount, setOnlineCount] = useState(0);
   const [learningCount, setLearningCount] = useState(0);
+  const [streakBadge, setStreakBadge] = useState(null);
   const activeUserIdRef = useRef(null);
   const channelRef = useRef(null);
 
@@ -119,6 +120,24 @@ export default function HomePage() {
     };
   }, []);
 
+  // 스트릭 뱃지: localStorage user_id로 Supabase 조회, 2일 이상일 때만 표시
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const userId = window.localStorage.getItem("ogu_user_id");
+    if (!userId) return;
+    const supabase = getSupabase();
+    if (!supabase) return;
+    supabase
+      .from("streaks")
+      .select("current_streak")
+      .eq("user_id", userId)
+      .single()
+      .then(({ data }) => {
+        if (data?.current_streak >= 2) setStreakBadge(data.current_streak);
+      })
+      .catch(() => {});
+  }, []);
+
   const handleStart = (e) => {
     e?.preventDefault?.();
     if (!canStart) return;
@@ -164,6 +183,12 @@ export default function HomePage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            {streakBadge != null && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF3E0] px-3 py-1.5 text-[11px] font-medium text-[#E65100]">
+                <span aria-hidden>🔥</span>
+                {language === "ko" ? `${streakBadge}일 연속` : `${streakBadge} day streak`}
+              </span>
+            )}
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-3 py-1.5 text-[11px] font-medium text-[#FF6B4A]">
               <span aria-hidden>🟢</span>
               {language === "ko" ? `접속자 ${onlineCount}명` : `${onlineCount} online`}
