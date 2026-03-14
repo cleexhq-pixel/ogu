@@ -1,7 +1,14 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+
+const PERSONA_NAMES = {
+  cafe: { ko: "카페오구", en: "Café Ogu" },
+  office: { ko: "직장오구", en: "Office Ogu" },
+  drama: { ko: "드라마오구", en: "Drama Ogu" },
+  free: { ko: "자유대화오구", en: "Free Talk Ogu" }
+};
 
 function ReportContent() {
   const searchParams = useSearchParams();
@@ -11,6 +18,8 @@ function ReportContent() {
   const [isLoadingExpressions, setIsLoadingExpressions] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [cardSaving, setCardSaving] = useState(false);
+  const shareCardRef = useRef(null);
 
   const level = searchParams.get("level") || "beginner";
   const persona = searchParams.get("persona") || "cafe";
@@ -68,6 +77,8 @@ function ReportContent() {
       ? language === "ko" ? "초급 오구" : "Elementary Ogu"
       : language === "ko" ? "중급 오구" : "Intermediate Ogu";
 
+  const personaLabel = PERSONA_NAMES[persona] ? (language === "ko" ? PERSONA_NAMES[persona].ko : PERSONA_NAMES[persona].en) : (language === "ko" ? "오구" : "Ogu");
+
   const progressPercent =
     level === "beginner" ? 33 : level === "elementary" ? 66 : 100;
 
@@ -79,6 +90,45 @@ function ReportContent() {
       : language === "ko"
       ? "오늘도 열심히 연습했어요!"
       : "You practiced hard today!";
+
+  const loadHtml2Canvas = () =>
+    new Promise((resolve, reject) => {
+      if (typeof window === "undefined") {
+        reject(new Error("No window"));
+        return;
+      }
+      if (window.html2canvas) {
+        resolve(window.html2canvas);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+      script.async = true;
+      script.onload = () => resolve(window.html2canvas);
+      script.onerror = () => reject(new Error("Failed to load html2canvas"));
+      document.head.appendChild(script);
+    });
+
+  const handleSaveShareCard = async () => {
+    if (!shareCardRef.current) return;
+    setCardSaving(true);
+    try {
+      const html2canvas = await loadHtml2Canvas();
+      const canvas = await html2canvas(shareCardRef.current, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: "#FFF8F0"
+      });
+      const link = document.createElement("a");
+      link.download = "oguogu-card.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (e) {
+      console.error("Share card save failed:", e);
+    } finally {
+      setCardSaving(false);
+    }
+  };
 
   const handleShare = async () => {
     const lines = [];
@@ -243,6 +293,60 @@ function ReportContent() {
               : "Report copied to clipboard!"}
           </p>
         )}
+
+        {/* 공유 카드 (1080x1080 캡처용, 화면에는 360px로 표시) */}
+        <section className="flex flex-col items-center gap-4 pt-4">
+          <h2 className="text-sm font-semibold text-[#3D2010]">
+            {language === "ko" ? "📸 공유 카드" : "📸 Share Card"}
+          </h2>
+          <div className="flex justify-center overflow-x-auto">
+            <div
+              ref={shareCardRef}
+              className="flex shrink-0 flex-col rounded-3xl border-2 border-[#FFE0D0] bg-[#FFF8F0] shadow-xl"
+              style={{ width: 360, height: 360 }}
+            >
+              {/* 상단: 로고 + URL */}
+              <div className="flex items-center justify-between border-b border-[#FFE0D0] px-5 py-3">
+                <span className="text-lg font-bold text-[#FF6B4A]">🐥 OguOgu</span>
+                <span className="text-[9px] text-[#9A7060]">ogu-three.vercel.app</span>
+              </div>
+              {/* 중앙: 완료 문구 + 페르소나/레벨 + 표현 3개 */}
+              <div className="flex flex-1 flex-col justify-center px-5 py-4">
+                <p className="text-center text-sm font-bold leading-snug text-[#3D2010]">
+                  {language === "ko" ? "오늘의 한국어 학습 완료!" : "Korean practice done today!"}
+                </p>
+                <p className="mt-2 text-center text-[11px] font-semibold text-[#FF6B4A]">
+                  {personaLabel} · {levelLabel}
+                </p>
+                <div className="mt-3 space-y-0.5 rounded-xl border border-[#FFE0D0] bg-[#FFFFFF] px-3 py-2">
+                  {(expressions.length ? expressions : []).slice(0, 3).map((e, i) => (
+                    <p key={i} className="line-clamp-2 text-[10px] leading-tight text-[#3D2010]">
+                      {i + 1}. {e.korean} — {e.english}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              {/* 하단: CTA */}
+              <div className="border-t border-[#FFE0D0] px-5 py-3 text-center">
+                <p className="text-[10px] font-semibold text-[#FF6B4A]">
+                  {language === "ko" ? "나도 해보기 →" : "Try it →"} ogu-three.vercel.app
+                </p>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveShareCard}
+            disabled={cardSaving}
+            className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl border-2 border-[#FF6B4A] bg-[#FFF0E8] px-5 py-3 text-[14px] font-semibold text-[#FF6B4A] transition hover:bg-[#FFE0D0] disabled:opacity-60 sm:w-auto"
+          >
+            {cardSaving
+              ? (language === "ko" ? "저장 중..." : "Saving...")
+              : language === "ko"
+              ? "📸 공유 카드 저장하기"
+              : "📸 Save & Share Card"}
+          </button>
+        </section>
       </div>
     </main>
   );
