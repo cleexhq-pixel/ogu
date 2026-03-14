@@ -324,6 +324,16 @@ export default function HomePage() {
           </p>
         </section>
 
+        {/* 게시판 링크 */}
+        <div className="mt-6 text-center">
+          <a
+            href="/board"
+            className="inline-flex items-center gap-1.5 rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] px-4 py-2.5 text-sm font-medium text-[#3D2010] shadow-sm transition hover:border-[#FF6B4A] hover:bg-[#FFF0E8] hover:text-[#FF6B4A]"
+          >
+            {language === "ko" ? "📋 유저 게시판" : "📋 Community Board"}
+          </a>
+        </div>
+
         {/* 푸터 */}
         <footer className="mt-10 border-t border-[#FFE0D0] bg-[#FFF0E8] py-6 text-center text-sm text-[#9A7060]">
           <p className="font-medium text-[#9A7060]">White Rabbit</p>
