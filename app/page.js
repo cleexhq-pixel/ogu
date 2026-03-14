@@ -323,6 +323,21 @@ export default function HomePage() {
               : "Select both to start your personalized Korean conversation."}
           </p>
         </section>
+
+        {/* 푸터 */}
+        <footer className="mt-10 border-t border-[#FFE0D0] bg-[#FFF0E8] py-6 text-center text-sm text-[#9A7060]">
+          <p className="font-medium text-[#9A7060]">White Rabbit</p>
+          <p className="mt-1">
+            {language === "ko" ? "문의사항은 " : "For inquiries, contact "}
+            <a
+              href="mailto:cleex.hq@gmail.com"
+              className="text-[#FF6B4A] underline decoration-[#FF6B4A]/60 underline-offset-2 transition hover:decoration-[#FF6B4A]"
+            >
+              cleex.hq@gmail.com
+            </a>
+            {language === "ko" ? " 로 보내주세요." : "."}
+          </p>
+        </footer>
       </div>
     </main>
   );
