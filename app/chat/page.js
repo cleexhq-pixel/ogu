@@ -1,12 +1,22 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 
 function stripHints(text, enabled) {
   if (enabled) return text;
   return text.replace(/\s*\([^)]*\)/g, "");
+}
+
+function getSpeechRecognition() {
+  if (typeof window === "undefined") return null;
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+function getSpeechSynthesis() {
+  if (typeof window === "undefined") return null;
+  return window.speechSynthesis;
 }
 
 function renderAssistantContent(text, showHints) {
@@ -53,6 +63,11 @@ function ChatContent() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showHints, setShowHints] = useState(language === "en");
+  const [isRecording, setIsRecording] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const recognitionRef = useRef(null);
+  const synthesisRef = useRef(getSpeechSynthesis());
 
   const personaMeta = useMemo(() => {
     if (persona === "office") return { emoji: "💼", name: "직장오구" };
@@ -65,6 +80,89 @@ function ChatContent() {
   }, [language]);
 
   const activeUserIdRef = useRef(null);
+
+  // STT: SpeechRecognition 초기화 및 이벤트
+  useEffect(() => {
+    const SpeechRecognition = getSpeechRecognition();
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "ko-KR";
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          transcript += event.results[i][0].transcript;
+        }
+      }
+      if (transcript.trim()) {
+        setInput((prev) => (prev ? `${prev} ${transcript}` : transcript).trim());
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === "not-allowed" || event.error === "aborted") {
+        setIsRecording(false);
+      }
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = recognition;
+    return () => {
+      try {
+        recognition.abort();
+      } catch (_) {}
+      recognitionRef.current = null;
+      getSpeechSynthesis()?.cancel();
+    };
+  }, []);
+
+  const toggleRecording = useCallback(() => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    if (isRecording) {
+      try {
+        recognition.stop();
+      } catch (_) {}
+      setIsRecording(false);
+    } else {
+      try {
+        recognition.start();
+        setIsRecording(true);
+      } catch (e) {
+        console.warn("SpeechRecognition start failed", e);
+      }
+    }
+  }, [isRecording]);
+
+  const lastSpokenRef = useRef(null);
+
+  // TTS: 마지막 AI 응답이 바뀌었을 때만 한국어로 읽기 (힌트 제외)
+  useEffect(() => {
+    if (isMuted || messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (last?.role !== "assistant" || !last?.content) return;
+
+    const toSpeak = stripHints(String(last.content), false).trim();
+    if (!toSpeak || lastSpokenRef.current === toSpeak) return;
+    lastSpokenRef.current = toSpeak;
+
+    const synth = synthesisRef.current;
+    if (!synth) return;
+
+    synth.cancel();
+    const utterance = new SpeechSynthesisUtterance(toSpeak);
+    utterance.lang = "ko-KR";
+    utterance.rate = 0.9;
+    synth.speak(utterance);
+  }, [messages, isMuted]);
 
   useEffect(() => {
     const supabase = getSupabase();
@@ -196,6 +294,18 @@ function ChatContent() {
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
+              onClick={() => setIsMuted((m) => !m)}
+              className={`rounded-xl border px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
+                isMuted
+                  ? "border-[#FFE0D0] bg-[#FFFFFF] text-[#9A7060] hover:border-[#FF6B4A]/60"
+                  : "border-[#FF6B4A] bg-[#FFF0E8] text-[#3D2010]"
+              }`}
+              title={isMuted ? (language === "ko" ? "음성 켜기" : "Turn on voice") : (language === "ko" ? "음성 끄기" : "Mute voice")}
+            >
+              {isMuted ? "🔇" : "🔊"}
+            </button>
+            <button
+              type="button"
               onClick={() => setShowHints((v) => !v)}
               className={`rounded-xl border px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
                 showHints
@@ -270,7 +380,26 @@ function ChatContent() {
 
         {/* 입력창 */}
         <div className="border-t border-[#FFE0D0] bg-[#FFF8F0] px-4 py-3">
+          {isRecording && (
+            <div className="mb-2 flex items-center justify-center gap-1.5 text-[11px] text-[#C53030]">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#C53030]" />
+              {language === "ko" ? "녹음 중..." : "Recording..."}
+            </div>
+          )}
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleRecording}
+              disabled={!getSpeechRecognition()}
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition active:scale-[0.98] ${
+                isRecording
+                  ? "bg-[#C53030] text-white shadow-[0_0_0_3px_rgba(197,48,48,0.3)] animate-pulse"
+                  : "border border-[#FFE0D0] bg-[#FFFFFF] text-[#3D2010] hover:border-[#FF6B4A]/60 hover:bg-[#FFF0E8]"
+              }`}
+              title={language === "ko" ? (isRecording ? "녹음 중지" : "음성 입력") : (isRecording ? "Stop recording" : "Voice input")}
+            >
+              🎤
+            </button>
             <input
               type="text"
               value={input}
