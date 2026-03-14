@@ -32,6 +32,28 @@ function parseViolationReply(reply) {
   return null;
 }
 
+function parseResponseWithCorrections(reply) {
+  if (!reply || typeof reply !== "string") return { content: reply, corrections: [] };
+  const raw = reply.trim();
+  const responseMatch = raw.match(/\[RESPONSE\]\s*([\s\S]*?)\s*\[\/RESPONSE\]/);
+  const correctionMatch = raw.match(/\[CORRECTION\]\s*([\s\S]*?)\s*\[\/CORRECTION\]/);
+  let content = responseMatch ? responseMatch[1].trim() : raw;
+  let corrections = [];
+  if (correctionMatch) {
+    try {
+      let jsonStr = correctionMatch[1].trim();
+      if (jsonStr.startsWith("```")) jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
+      const data = JSON.parse(jsonStr);
+      if (Array.isArray(data.corrections)) {
+        corrections = data.corrections.filter(
+          (c) => c && (c.original != null || c.corrected != null)
+        );
+      }
+    } catch (_) {}
+  }
+  return { content, corrections };
+}
+
 function renderAssistantContent(text, showHints) {
   if (!text) return null;
   if (!showHints) {
@@ -82,6 +104,8 @@ function ChatContent() {
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [violationCount, setViolationCount] = useState(0);
   const [level3Countdown, setLevel3Countdown] = useState(null);
+  const [allCorrections, setAllCorrections] = useState([]);
+  const [correctionCollapsed, setCorrectionCollapsed] = useState({});
 
   const recognitionRef = useRef(null);
   const synthesisRef = useRef(getSpeechSynthesis());
@@ -260,7 +284,9 @@ function ChatContent() {
           setViolationCount(violation.level);
           if (violation.level === 3) setLevel3Countdown(3);
         } else {
-          setMessages([{ role: "assistant", content: reply }]);
+          const { content, corrections } = parseResponseWithCorrections(reply);
+          if (corrections.length) setAllCorrections((prev) => [...prev, ...corrections]);
+          setMessages([{ role: "assistant", content, corrections: corrections.length ? corrections : undefined }]);
         }
       } catch (e) {
         console.error(e);
@@ -303,7 +329,9 @@ function ChatContent() {
         setViolationCount(violation.level);
         if (violation.level === 3) setLevel3Countdown(3);
       } else {
-        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+        const { content, corrections } = parseResponseWithCorrections(reply);
+        if (corrections.length) setAllCorrections((prev) => [...prev, ...corrections]);
+        setMessages((prev) => [...prev, { role: "assistant", content, corrections: corrections.length ? corrections : undefined }]);
       }
     } catch (e) {
       console.error(e);
@@ -323,6 +351,7 @@ function ChatContent() {
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem("ogu-chat-history", JSON.stringify(messages));
         window.sessionStorage.setItem("ogu-chat-end", String(Date.now()));
+        window.localStorage.setItem("ogu_corrections", JSON.stringify(allCorrections));
       }
     } catch (e) {
       console.error("Failed to store history", e);
@@ -462,38 +491,79 @@ function ChatContent() {
                 : "border-2 border-[#F44336] bg-[#FFEBEE] text-[#B71C1C]"
               : "bg-[#FFF0E8] text-[#3D2010] shadow-[0_2px_12px_rgba(0,0,0,0.04)]";
 
+            const hasCorrections = !isUser && !isViolationBubble && m.corrections && m.corrections.length > 0;
+            const isCorrectionCollapsed = correctionCollapsed[idx];
+
             return (
-              <div
-                key={idx}
-                className={`animate-bubble-in flex w-full ${isUser ? "justify-end" : "justify-start"}`}
-              >
+              <div key={idx} className="w-full space-y-2">
                 <div
-                  className={`flex max-w-[85%] items-end gap-2 sm:max-w-[80%] ${
-                    isUser ? "flex-row-reverse" : "flex-row"
-                  }`}
+                  className={`animate-bubble-in flex w-full ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base ${
-                      isUser ? "bg-[#FF6B4A]" : "bg-[#FFF0E8]"
+                    className={`flex max-w-[85%] items-end gap-2 sm:max-w-[80%] ${
+                      isUser ? "flex-row-reverse" : "flex-row"
                     }`}
                   >
-                    {isUser ? "👤" : "🐥"}
-                  </div>
-                  <div
-                    className={`rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${bubbleStyle}`}
-                  >
-                    {isUser ? content : isViolationBubble ? content : renderAssistantContent(content, showHints)}
-                    {isViolationBubble && violationLevel === 3 && level3Countdown != null && (
-                      <p className="mt-2 text-[11px] font-medium opacity-90">
-                        {language === "ko"
-                          ? `${level3Countdown}초 후 대화가 종료됩니다...`
-                          : language === "id"
-                          ? `Percakapan berakhir dalam ${level3Countdown} detik...`
-                          : `Ending in ${level3Countdown} seconds...`}
-                      </p>
-                    )}
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base ${
+                        isUser ? "bg-[#FF6B4A]" : "bg-[#FFF0E8]"
+                      }`}
+                    >
+                      {isUser ? "👤" : "🐥"}
+                    </div>
+                    <div
+                      className={`rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${bubbleStyle}`}
+                    >
+                      {isUser ? content : isViolationBubble ? content : renderAssistantContent(content, showHints)}
+                      {isViolationBubble && violationLevel === 3 && level3Countdown != null && (
+                        <p className="mt-2 text-[11px] font-medium opacity-90">
+                          {language === "ko"
+                            ? `${level3Countdown}초 후 대화가 종료됩니다...`
+                            : language === "id"
+                            ? `Percakapan berakhir dalam ${level3Countdown} detik...`
+                            : `Ending in ${level3Countdown} seconds...`}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
+                {hasCorrections && (
+                  <div
+                    className="animate-bubble-in ml-10 rounded-2xl border-2 px-4 py-3 sm:ml-12"
+                    style={{ backgroundColor: "#FFF8E1", borderColor: "#FFB300" }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[12px] font-semibold text-[#3D2010]">
+                        ✏️ {language === "ko" ? "교정" : language === "id" ? "Koreksi" : "Correction"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCorrectionCollapsed((prev) => ({ ...prev, [idx]: !prev[idx] }))}
+                        className="text-[11px] font-medium text-[#FFB300] hover:underline"
+                      >
+                        {isCorrectionCollapsed
+                          ? (language === "ko" ? "펼치기 ▼" : language === "id" ? "Buka ▼" : "Expand ▼")
+                          : (language === "ko" ? "접기 ▲" : language === "id" ? "Tutup ▲" : "Collapse ▲")}
+                      </button>
+                    </div>
+                    {!isCorrectionCollapsed && (
+                      <div className="mt-2 space-y-2">
+                        {m.corrections.map((c, cIdx) => (
+                          <div key={cIdx} className="rounded-xl bg-white/60 px-3 py-2">
+                            <p className="text-[12px]">
+                              <span className="text-red-600 line-through">{c.original ?? ""}</span>
+                              <span className="mx-1.5 text-[#FFB300]">→</span>
+                              <span className="font-medium text-green-700">{c.corrected ?? ""}</span>
+                            </p>
+                            <p className="mt-1 text-[11px] text-[#6D4C41]">
+                              {language === "ko" ? (c.explanation_ko ?? c.explanation_en) : language === "id" ? (c.explanation_id ?? c.explanation_en) : (c.explanation_en ?? c.explanation_ko)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

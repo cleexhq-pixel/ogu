@@ -20,6 +20,18 @@ const SAFETY_RULES =
   "You will be told the current violation count. Use level 1 when count is 0, level 2 when count is 1, level 3 when count is 2 or more.\n\n" +
   "For all normal Korean learning conversations, respond as usual (no JSON).\n\n";
 
+const CORRECTION_RULES =
+  "CORRECTION RULES:\n" +
+  "After your natural conversational response, if the user made ANY Korean language mistakes (grammar, word order, spelling, particles, verb endings, honorifics), add a correction section.\n\n" +
+  "Format your response EXACTLY like this:\n\n" +
+  "[RESPONSE]\n(your natural conversational reply here)\n[/RESPONSE]\n\n" +
+  "[CORRECTION]\n{\"corrections\": [\n" +
+  "  {\"original\": \"틀린 표현\", \"corrected\": \"올바른 표현\", \"explanation_ko\": \"한국어 설명 (짧게)\", \"explanation_en\": \"English explanation (brief)\", \"explanation_id\": \"Penjelasan bahasa Indonesia (singkat)\"}\n" +
+  "]}\n[/CORRECTION]\n\n" +
+  "If there are NO mistakes, omit the [CORRECTION] section entirely.\n" +
+  "Maximum 2 corrections per response to avoid overwhelming the learner.\n" +
+  "Focus on the most important mistakes only.\n\n";
+
 function buildSystemPrompt(level, persona, violationCount, language) {
   const violationContext =
     "Current violation count in this conversation: " +
@@ -63,7 +75,7 @@ function buildSystemPrompt(level, persona, violationCount, language) {
     "You may encourage with '오구오구~ 잘했어요!' when appropriate. " +
     commonGuidelines;
 
-  const basePrompt = SAFETY_RULES + violationContext;
+  const basePrompt = SAFETY_RULES + CORRECTION_RULES + violationContext;
 
   const freePersonaIntro =
     "You are 자유오구 (Free Talk Ogu), a friendly Korean-speaking companion who can talk about ANYTHING the user wants. " +
