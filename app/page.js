@@ -5,59 +5,16 @@ import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 
 const LEVELS = [
-  {
-    id: "beginner",
-    emoji: "🐣",
-    title: "왕초보 오구",
-    subtitleKo: "한국어 처음이에요!",
-    subtitleEn: "Total Beginner!"
-  },
-  {
-    id: "elementary",
-    emoji: "🐥",
-    title: "초급 오구",
-    subtitleKo: "조금 알아요~",
-    subtitleEn: "I know a little~"
-  },
-  {
-    id: "intermediate",
-    emoji: "🐦",
-    title: "중급 오구",
-    subtitleKo: "꽤 잘해요!",
-    subtitleEn: "Getting pretty good!"
-  }
+  { id: "beginner", emoji: "🐣", title: "왕초보 오구", titleEn: "Beginner", titleId: "Pemula", subtitleKo: "한국어 처음이에요!", subtitleEn: "Total beginner!", subtitleId: "Pemula total!" },
+  { id: "elementary", emoji: "🐥", title: "초급 오구", titleEn: "Elementary", titleId: "Dasar", subtitleKo: "조금 알아요~", subtitleEn: "I know a little~", subtitleId: "Sudah sedikit bisa~" },
+  { id: "intermediate", emoji: "🐦", title: "중급 오구", titleEn: "Intermediate", titleId: "Menengah", subtitleKo: "꽤 잘해요!", subtitleEn: "Getting pretty good!", subtitleId: "Lumayan lancar!" }
 ];
 
 const PERSONAS = [
-  {
-    id: "cafe",
-    emoji: "☕",
-    title: "카페오구",
-    subtitleKo: "카페 알바생 지은이",
-    subtitleEn: "Café barista Jieun"
-  },
-  {
-    id: "office",
-    emoji: "💼",
-    title: "직장오구",
-    subtitleKo: "직장 선배 민준 씨",
-    subtitleEn: "Office senior Minjun"
-  },
-  {
-    id: "drama",
-    emoji: "📺",
-    title: "드라마오구",
-    subtitleKo: "K-드라마 주인공",
-    subtitleEn: "K-drama lead character"
-  },
-  {
-    id: "free",
-    emoji: "🌟",
-    title: "자유대화오구",
-    titleEn: "Free Talk Ogu",
-    subtitleKo: "어떤 주제든 OK!",
-    subtitleEn: "Any topic, anytime!"
-  }
+  { id: "cafe", emoji: "☕", title: "카페오구", titleEn: "Café Ogu", titleId: "Kafe Ogu", subtitleKo: "카페 알바생 지은이", subtitleEn: "Café barista Jieun", subtitleId: "Barista kafe Jieun" },
+  { id: "office", emoji: "💼", title: "직장오구", titleEn: "Office Ogu", titleId: "Kantor Ogu", subtitleKo: "직장 선배 민준 씨", subtitleEn: "Office senior Minjun", subtitleId: "Senior kantor Minjun" },
+  { id: "drama", emoji: "📺", title: "드라마오구", titleEn: "Drama Ogu", titleId: "Drama Ogu", subtitleKo: "K-드라마 주인공", subtitleEn: "K-drama lead character", subtitleId: "Pemeran K-drama" },
+  { id: "free", emoji: "🌟", title: "자유대화오구", titleEn: "Free Talk Ogu", titleId: "Obrolan Bebas Ogu", subtitleKo: "어떤 주제든 OK!", subtitleEn: "Any topic, anytime!", subtitleId: "Topik apa saja, kapan saja!" }
 ];
 
 export default function HomePage() {
@@ -161,12 +118,12 @@ export default function HomePage() {
               <span className="text-2xl" aria-hidden>🐥</span>
               <span className="text-lg font-bold tracking-tight text-[#3D2010]">OguOgu</span>
             </div>
-            <div className="inline-flex items-center gap-1 rounded-full border border-[#FFE0D0] bg-[#FFFFFF] px-2 py-1.5 text-[11px] font-medium shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
+            <div className="inline-flex rounded-full border border-[#FFE0D0] bg-[#FFFFFF] p-1 text-[11px] font-medium shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
               <button
                 type="button"
                 onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setLanguage("ko"); }}
                 className={`rounded-full px-2.5 py-1 transition-all duration-200 ${
-                  language === "ko" ? "bg-[#FF6B4A] text-white shadow-sm" : "text-[#3D2010] hover:bg-[#FFF0E8]"
+                  language === "ko" ? "bg-[#FF6B4A] text-white" : "bg-transparent text-[#FF6B4A] hover:bg-[#FFF0E8]"
                 }`}
               >
                 🇰🇷 한국어
@@ -175,10 +132,19 @@ export default function HomePage() {
                 type="button"
                 onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setLanguage("en"); }}
                 className={`rounded-full px-2.5 py-1 transition-all duration-200 ${
-                  language === "en" ? "bg-[#FF6B4A] text-white shadow-sm" : "text-[#3D2010] hover:bg-[#FFF0E8]"
+                  language === "en" ? "bg-[#FF6B4A] text-white" : "bg-transparent text-[#FF6B4A] hover:bg-[#FFF0E8]"
                 }`}
               >
                 🇺🇸 English
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setLanguage("id"); }}
+                className={`rounded-full px-2.5 py-1 transition-all duration-200 ${
+                  language === "id" ? "bg-[#FF6B4A] text-white" : "bg-transparent text-[#FF6B4A] hover:bg-[#FFF0E8]"
+                }`}
+              >
+                🇮🇩 Indonesia
               </button>
             </div>
           </div>
@@ -186,16 +152,16 @@ export default function HomePage() {
             {streakBadge != null && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF3E0] px-3 py-1.5 text-[11px] font-medium text-[#E65100]">
                 <span aria-hidden>🔥</span>
-                {language === "ko" ? `${streakBadge}일 연속` : `${streakBadge} day streak`}
+                {language === "ko" ? `${streakBadge}일 연속` : language === "id" ? `${streakBadge} hari berturut-turut` : `${streakBadge} day streak`}
               </span>
             )}
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-3 py-1.5 text-[11px] font-medium text-[#FF6B4A]">
               <span aria-hidden>🟢</span>
-              {language === "ko" ? `접속자 ${onlineCount}명` : `${onlineCount} online`}
+              {language === "ko" ? `접속자 ${onlineCount}명` : language === "id" ? `${onlineCount} daring` : `${onlineCount} online`}
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-3 py-1.5 text-[11px] font-medium text-[#FF6B4A]">
               <span aria-hidden>📚</span>
-              {language === "ko" ? `학습 중 ${learningCount}명` : `${learningCount} learning`}
+              {language === "ko" ? `학습 중 ${learningCount}명` : language === "id" ? `${learningCount} sedang belajar` : `${learningCount} learning`}
             </span>
           </div>
         </header>
@@ -203,7 +169,7 @@ export default function HomePage() {
         {/* 히어로 섹션 */}
         <section className="space-y-3 text-center opacity-0 animate-fade-in-up" style={{ animationDelay: "80ms", animationFillMode: "forwards" }}>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9A7060]">
-            {language === "ko" ? "AI 한국어 회화" : "AI Korean Conversation"}
+            {language === "ko" ? "AI 한국어 회화" : language === "id" ? "Percakapan Korea AI" : "AI Korean Conversation"}
           </p>
           <h1 className="text-3xl font-extrabold tracking-tight text-[#FF6B4A] sm:text-4xl md:text-[2.5rem]">
             {language === "ko" ? "오구오구" : "OguOgu"}
@@ -211,6 +177,8 @@ export default function HomePage() {
           <p className="mx-auto max-w-md text-sm leading-relaxed text-[#9A7060] sm:text-base">
             {language === "ko"
               ? "따뜻한 오구 친구와 함께, 내 레벨에 맞는 한국어 회화를 연습해보세요."
+              : language === "id"
+              ? "Berlatih percakapan Korea dengan teman Ogu—hangat, seru, dan sesuai level."
               : "Practice real Korean with your Ogu friends—warm, fun, and level-just-right."}
           </p>
         </section>
@@ -219,15 +187,17 @@ export default function HomePage() {
         <section className="space-y-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "160ms", animationFillMode: "forwards" }}>
           <div>
             <h2 className="text-sm font-semibold text-[#3D2010]">
-              {language === "ko" ? "레벨 선택" : "Choose Your Level"}
+              {language === "ko" ? "레벨 선택" : language === "id" ? "Pilih Level" : "Choose Your Level"}
             </h2>
             <p className="mt-0.5 text-[11px] text-[#9A7060]">
-              {language === "ko" ? "실력에 맞는 오구를 골라주세요." : "Pick the Ogu that matches you."}
+              {language === "ko" ? "실력에 맞는 오구를 골라주세요." : language === "id" ? "Pilih Ogu yang sesuai dengan level Anda." : "Pick the Ogu that matches your level."}
             </p>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             {LEVELS.map((level, idx) => {
               const isActive = selectedLevel === level.id;
+              const levelTitle = language === "ko" ? level.title : language === "id" ? (level.titleId || level.title) : (level.titleEn || level.title);
+              const levelSub = language === "ko" ? level.subtitleKo : language === "id" ? (level.subtitleId || level.subtitleEn) : level.subtitleEn;
               return (
                 <button
                   key={level.id}
@@ -242,10 +212,8 @@ export default function HomePage() {
                 >
                   <span className="text-2xl md:text-3xl">{level.emoji}</span>
                   <div className="flex-1 space-y-0.5">
-                    <p className="text-sm font-semibold text-[#3D2010]">{level.title}</p>
-                    <p className="text-[11px] text-[#9A7060]">
-                      {language === "ko" ? level.subtitleKo : level.subtitleEn}
-                    </p>
+                    <p className="text-sm font-semibold text-[#3D2010]">{levelTitle}</p>
+                    <p className="text-[11px] text-[#9A7060]">{levelSub}</p>
                   </div>
                 </button>
               );
@@ -257,17 +225,17 @@ export default function HomePage() {
         <section className="space-y-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "340ms", animationFillMode: "forwards" }}>
           <div>
             <h2 className="text-sm font-semibold text-[#3D2010]">
-              {language === "ko" ? "함께할 오구" : "Choose Your Ogu Friend"}
+              {language === "ko" ? "함께할 오구" : language === "id" ? "Pilih Teman Ogu" : "Choose Your Ogu Friend"}
             </h2>
             <p className="mt-0.5 text-[11px] text-[#9A7060]">
-              {language === "ko" ? "어떤 상황에서 연습할까요?" : "Who do you want to practice with?"}
+              {language === "ko" ? "어떤 상황에서 연습할까요?" : language === "id" ? "Siapa yang ingin Anda ajak berlatih?" : "Who do you want to practice with?"}
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
             {PERSONAS.map((persona, idx) => {
               const isActive = selectedPersona === persona.id;
               const isFree = persona.id === "free";
-              const titleText = persona.titleEn && language === "en" ? persona.titleEn : persona.title;
+              const titleText = language === "ko" ? persona.title : language === "id" ? (persona.titleId || persona.titleEn) : (persona.titleEn || persona.title);
               return (
                 <button
                   key={persona.id}
@@ -297,7 +265,7 @@ export default function HomePage() {
                   <div className="flex-1 space-y-0.5 pr-6">
                     <p className="text-sm font-semibold text-[#3D2010]">{titleText}</p>
                     <p className="text-[11px] text-[#9A7060]">
-                      {language === "ko" ? persona.subtitleKo : persona.subtitleEn}
+                      {language === "ko" ? persona.subtitleKo : language === "id" ? (persona.subtitleId || persona.subtitleEn) : persona.subtitleEn}
                     </p>
                   </div>
                 </button>
@@ -309,24 +277,27 @@ export default function HomePage() {
         {/* 내 오구 설정 + CTA */}
         <section className="space-y-4 rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] opacity-0 animate-fade-in-up" style={{ animationDelay: "520ms", animationFillMode: "forwards" }}>
           <h2 className="text-sm font-semibold text-[#3D2010]">
-            {language === "ko" ? "내 오구 설정" : "My Ogu Setup"}
+            {language === "ko" ? "내 오구 설정" : language === "id" ? "Pengaturan Ogu Saya" : "My Ogu Setup"}
           </h2>
           <div className="space-y-3 rounded-2xl bg-[#FFF8F0] p-3">
             <div className="flex items-center justify-between text-[12px]">
-              <span className="text-[#9A7060]">{language === "ko" ? "레벨" : "Level"}</span>
+              <span className="text-[#9A7060]">{language === "ko" ? "레벨" : language === "id" ? "Level" : "Level"}</span>
               <span className="font-medium text-[#3D2010]">
-                {selectedLevel ? LEVELS.find((l) => l.id === selectedLevel)?.title : (language === "ko" ? "선택 안 함" : "Not selected")}
+                {selectedLevel
+                  ? (language === "ko" ? LEVELS.find((l) => l.id === selectedLevel)?.title : language === "id" ? LEVELS.find((l) => l.id === selectedLevel)?.titleId : LEVELS.find((l) => l.id === selectedLevel)?.titleEn)
+                  : (language === "ko" ? "선택 안 함" : language === "id" ? "Belum dipilih" : "Not selected")}
               </span>
             </div>
             <div className="flex items-center justify-between text-[12px]">
-              <span className="text-[#9A7060]">{language === "ko" ? "페르소나" : "Persona"}</span>
+              <span className="text-[#9A7060]">{language === "ko" ? "페르소나" : language === "id" ? "Persona" : "Persona"}</span>
               <span className="font-medium text-[#3D2010]">
                 {selectedPersona
                   ? (() => {
                       const p = PERSONAS.find((x) => x.id === selectedPersona);
-                      return p && p.titleEn && language === "en" ? p.titleEn : p?.title ?? (language === "ko" ? "선택 안 함" : "Not selected");
+                      if (!p) return language === "ko" ? "선택 안 함" : language === "id" ? "Belum dipilih" : "Not selected";
+                      return language === "ko" ? p.title : language === "id" ? (p.titleId || p.titleEn) : (p.titleEn || p.title);
                     })()
-                  : (language === "ko" ? "선택 안 함" : "Not selected")}
+                  : (language === "ko" ? "선택 안 함" : language === "id" ? "Belum dipilih" : "Not selected")}
               </span>
             </div>
           </div>
@@ -340,11 +311,13 @@ export default function HomePage() {
                 : "cursor-not-allowed bg-[#E8D5CF] text-[#9A7060]"
             }`}
           >
-            {language === "ko" ? "오구오구 시작하기 🐥" : "Start OguOgu 🐥"}
+            {language === "ko" ? "오구오구 시작하기 🐥" : language === "id" ? "Mulai Belajar 🐥" : "Start Learning! 🐥"}
           </button>
           <p className="text-center text-[11px] leading-relaxed text-[#9A7060]">
             {language === "ko"
               ? "레벨과 페르소나를 선택하면 맞춤 한국어 회화가 시작돼요."
+              : language === "id"
+              ? "Pilih level dan persona untuk memulai percakapan Korea."
               : "Select both to start your personalized Korean conversation."}
           </p>
         </section>
@@ -352,10 +325,10 @@ export default function HomePage() {
         {/* 게시판 링크 */}
         <div className="mt-6 text-center">
           <a
-            href="/board"
+            href={"/board" + (language && language !== "ko" ? "?lang=" + language : "")}
             className="inline-flex items-center gap-1.5 rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] px-4 py-2.5 text-sm font-medium text-[#3D2010] shadow-sm transition hover:border-[#FF6B4A] hover:bg-[#FFF0E8] hover:text-[#FF6B4A]"
           >
-            {language === "ko" ? "📋 유저 게시판" : "📋 Community Board"}
+            {language === "ko" ? "📋 유저 게시판" : language === "id" ? "📋 Forum Komunitas" : "📋 Community Board"}
           </a>
         </div>
 
@@ -363,14 +336,14 @@ export default function HomePage() {
         <footer className="mt-10 border-t border-[#FFE0D0] bg-[#FFF0E8] py-6 text-center text-sm text-[#9A7060]">
           <p className="font-medium text-[#9A7060]">White Rabbit</p>
           <p className="mt-1">
-            {language === "ko" ? "문의사항은 " : "For inquiries, contact "}
+            {language === "ko" ? "문의사항은 " : language === "id" ? "Untuk pertanyaan, hubungi " : "For inquiries, contact "}
             <a
               href="mailto:cleex.hq@gmail.com"
               className="text-[#FF6B4A] underline decoration-[#FF6B4A]/60 underline-offset-2 transition hover:decoration-[#FF6B4A]"
             >
               cleex.hq@gmail.com
             </a>
-            {language === "ko" ? " 로 보내주세요." : "."}
+            {language === "ko" ? " 로 보내주세요." : language === "id" ? "." : "."}
           </p>
         </footer>
       </div>

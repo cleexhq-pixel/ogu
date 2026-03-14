@@ -75,7 +75,7 @@ function ChatContent() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showHints, setShowHints] = useState(language === "en");
+  const [showHints, setShowHints] = useState(language === "en" || language === "id");
   const [isRecording, setIsRecording] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showMicPermissionModal, setShowMicPermissionModal] = useState(false);
@@ -88,20 +88,16 @@ function ChatContent() {
   const level3CountdownStartedRef = useRef(false);
 
   const personaMeta = useMemo(() => {
-    if (persona === "office") return { emoji: "💼", name: "직장오구", subtitle: null };
-    if (persona === "drama") return { emoji: "📺", name: "드라마오구", subtitle: null };
-    if (persona === "free") {
-      return {
-        emoji: "🌟",
-        name: language === "ko" ? "자유대화오구" : "Free Talk Ogu",
-        subtitle: language === "ko" ? "어떤 주제든 OK!" : "Any topic OK!"
-      };
-    }
-    return { emoji: "☕", name: "카페오구", subtitle: null };
+    const names = { cafe: { ko: "카페오구", en: "Café Ogu", id: "Kafe Ogu" }, office: { ko: "직장오구", en: "Office Ogu", id: "Kantor Ogu" }, drama: { ko: "드라마오구", en: "Drama Ogu", id: "Drama Ogu" }, free: { ko: "자유대화오구", en: "Free Talk Ogu", id: "Obrolan Bebas Ogu" } };
+    const subs = { free: { ko: "어떤 주제든 OK!", en: "Any topic OK!", id: "Topik apa saja!" } };
+    const n = names[persona] || names.cafe;
+    const name = language === "ko" ? n.ko : language === "id" ? n.id : n.en;
+    const sub = persona === "free" ? (language === "ko" ? subs.free.ko : language === "id" ? subs.free.id : subs.free.en) : null;
+    return { emoji: persona === "office" ? "💼" : persona === "drama" ? "📺" : persona === "free" ? "🌟" : "☕", name, subtitle: sub };
   }, [persona, language]);
 
   useEffect(() => {
-    setShowHints(language === "en");
+    setShowHints(language === "en" || language === "id");
   }, [language]);
 
   const activeUserIdRef = useRef(null);
@@ -259,7 +255,7 @@ function ChatContent() {
         const reply = data.reply ?? "";
         const violation = parseViolationReply(reply);
         if (violation) {
-          const content = language === "ko" ? violation.message_ko : violation.message_en;
+          const content = language === "ko" ? violation.message_ko : (violation.message_id || violation.message_en);
           setMessages([{ role: "assistant", content, violationLevel: violation.level }]);
           setViolationCount(violation.level);
           if (violation.level === 3) setLevel3Countdown(3);
@@ -302,7 +298,7 @@ function ChatContent() {
       const reply = data.reply ?? "";
       const violation = parseViolationReply(reply);
       if (violation) {
-        const content = language === "ko" ? violation.message_ko : violation.message_en;
+        const content = language === "ko" ? violation.message_ko : (violation.message_id || violation.message_en);
         setMessages((prev) => [...prev, { role: "assistant", content, violationLevel: violation.level }]);
         setViolationCount(violation.level);
         if (violation.level === 3) setLevel3Countdown(3);
@@ -360,10 +356,10 @@ function ChatContent() {
 
   const levelLabel =
     level === "beginner"
-      ? language === "ko" ? "왕초보" : "Beginner"
+      ? language === "ko" ? "왕초보" : language === "id" ? "Pemula" : "Beginner"
       : level === "elementary"
-      ? language === "ko" ? "초급" : "Elementary"
-      : language === "ko" ? "중급" : "Intermediate";
+      ? language === "ko" ? "초급" : language === "id" ? "Dasar" : "Elementary"
+      : language === "ko" ? "중급" : language === "id" ? "Menengah" : "Intermediate";
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-3 py-4 sm:px-4 sm:py-6 text-[#3D2010]">
@@ -378,11 +374,13 @@ function ChatContent() {
         >
           <div className="w-full max-w-md rounded-3xl border border-[#FFE0D0] bg-[#FFF8F0] p-6 shadow-[0_24px_48px_rgba(0,0,0,0.12)]">
             <h2 id="mic-permission-title" className="mb-3 text-lg font-bold text-[#3D2010]">
-              🎤 {language === "ko" ? "마이크 권한이 필요해요" : "Microphone Access Required"}
+              🎤 {language === "ko" ? "마이크 권한이 필요해요" : language === "id" ? "Akses mikrofon diperlukan" : "Microphone Access Required"}
             </h2>
             <p className="mb-5 text-sm leading-relaxed text-[#3D2010]">
               {language === "ko"
                 ? "음성 대화를 사용하려면 마이크 접근을 허용해주세요. 브라우저 주소창 왼쪽 🔒 아이콘을 클릭하고 마이크를 '허용'으로 변경해주세요."
+                : language === "id"
+                ? "Untuk menggunakan obrolan suara, izinkan akses mikrofon. Klik ikon 🔒 di bilah alamat browser dan setel mikrofon ke 'Izinkan'."
                 : "To use voice chat, please allow microphone access. Click the 🔒 icon in your browser's address bar and set microphone to 'Allow'."}
             </p>
             <button
@@ -390,7 +388,7 @@ function ChatContent() {
               onClick={() => setShowMicPermissionModal(false)}
               className="w-full rounded-2xl bg-[#FF6B4A] py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(255,107,74,0.35)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
             >
-              {language === "ko" ? "알겠어요!" : "Got it!"}
+              {language === "ko" ? "알겠어요!" : language === "id" ? "Mengerti!" : "Got it!"}
             </button>
           </div>
         </div>
@@ -421,7 +419,7 @@ function ChatContent() {
                   ? "border-[#FFE0D0] bg-[#FFFFFF] text-[#9A7060] hover:border-[#FF6B4A]/60"
                   : "border-[#FF6B4A] bg-[#FFF0E8] text-[#3D2010]"
               }`}
-              title={isMuted ? (language === "ko" ? "음성 켜기" : "Turn on voice") : (language === "ko" ? "음성 끄기" : "Mute voice")}
+              title={isMuted ? (language === "ko" ? "음성 켜기" : language === "id" ? "Nyalakan suara" : "Turn on voice") : (language === "ko" ? "음성 끄기" : language === "id" ? "Matikan suara" : "Mute voice")}
             >
               {isMuted ? "🔇" : "🔊"}
             </button>
@@ -434,14 +432,14 @@ function ChatContent() {
                   : "border-[#FFE0D0] bg-[#FFFFFF] text-[#9A7060] hover:border-[#FF6B4A]/60"
               }`}
             >
-              {language === "ko" ? "힌트 👀" : "Hints 👀"}
+              {language === "ko" ? (showHints ? "힌트 숨기기 👀" : "힌트 보기 👀") : language === "id" ? (showHints ? "Sembunyikan Petunjuk 👀" : "Tampilkan Petunjuk 👀") : (showHints ? "Hide Hints 👀" : "Show Hints 👀")}
             </button>
             <button
               type="button"
               onClick={handleEndConversation}
               className="rounded-xl bg-[#FF6B4A] px-3 py-2 text-[11px] font-semibold text-white shadow-[0_4px_14px_rgba(255,107,74,0.35)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
             >
-              {language === "ko" ? "끝내기" : "End"}
+              {language === "ko" ? "대화 끝내기" : language === "id" ? "Akhiri Percakapan" : "End Conversation"}
             </button>
           </div>
         </header>
@@ -489,6 +487,8 @@ function ChatContent() {
                       <p className="mt-2 text-[11px] font-medium opacity-90">
                         {language === "ko"
                           ? `${level3Countdown}초 후 대화가 종료됩니다...`
+                          : language === "id"
+                          ? `Percakapan berakhir dalam ${level3Countdown} detik...`
                           : `Ending in ${level3Countdown} seconds...`}
                       </p>
                     )}
@@ -519,7 +519,7 @@ function ChatContent() {
           {isRecording && (
             <div className="mb-2 flex items-center justify-center gap-1.5 text-[11px] text-[#C53030]">
               <span className="h-2 w-2 animate-pulse rounded-full bg-[#C53030]" />
-              {language === "ko" ? "녹음 중..." : "Recording..."}
+              {language === "ko" ? "녹음 중..." : language === "id" ? "Merekam..." : "Recording..."}
             </div>
           )}
           <div className="flex items-center gap-2">
@@ -534,7 +534,7 @@ function ChatContent() {
                   ? "bg-[#C53030] text-white shadow-[0_0_0_3px_rgba(197,48,48,0.3)] animate-pulse"
                   : "border border-[#FFE0D0] bg-[#FFFFFF] text-[#3D2010] hover:border-[#FF6B4A]/60 hover:bg-[#FFF0E8]"
               }`}
-              title={language === "ko" ? (isRecording ? "녹음 중지" : isRequestingPermission ? "권한 요청 중..." : "음성 입력") : (isRecording ? "Stop recording" : isRequestingPermission ? "Requesting permission..." : "Voice input")}
+              title={language === "ko" ? (isRecording ? "녹음 중지" : isRequestingPermission ? "권한 요청 중..." : "음성 입력") : language === "id" ? (isRecording ? "Stop rekam" : isRequestingPermission ? "Meminta izin..." : "Input suara") : (isRecording ? "Stop recording" : isRequestingPermission ? "Requesting permission..." : "Voice input")}
             >
               {isRequestingPermission ? (
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#FF6B4A] border-t-transparent" />
@@ -548,7 +548,7 @@ function ChatContent() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                language === "ko" ? "한국어로 말해보세요..." : "Type in Korean..."
+                language === "ko" ? "한국어로 말해보세요..." : language === "id" ? "Ketik dalam bahasa Korea..." : "Type in Korean..."
               }
               className="h-12 flex-1 rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] px-4 text-sm text-[#3D2010] placeholder:text-[#C09A8A] shadow-sm transition focus:border-[#FF6B4A] focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/20"
             />
@@ -558,7 +558,7 @@ function ChatContent() {
               onClick={handleSend}
               className="flex h-12 items-center justify-center rounded-2xl bg-[#FF6B4A] px-5 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(255,107,74,0.35)] transition disabled:cursor-not-allowed disabled:bg-[#E8D5CF] disabled:shadow-none hover:bg-[#ff5a33] active:scale-[0.98]"
             >
-              {language === "ko" ? "전송" : "Send"}
+              {language === "ko" ? "전송" : language === "id" ? "Kirim" : "Send"}
             </button>
           </div>
         </div>
