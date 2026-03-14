@@ -65,6 +65,8 @@ function ChatContent() {
   const [showHints, setShowHints] = useState(language === "en");
   const [isRecording, setIsRecording] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [showMicPermissionModal, setShowMicPermissionModal] = useState(false);
+  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 
   const recognitionRef = useRef(null);
   const synthesisRef = useRef(getSpeechSynthesis());
@@ -103,8 +105,18 @@ function ChatContent() {
       }
     };
 
+    recognition.onstart = () => {
+      setIsRequestingPermission(false);
+      setIsRecording(true);
+      setShowMicPermissionModal(false);
+    };
+
     recognition.onerror = (event) => {
-      if (event.error === "not-allowed" || event.error === "aborted") {
+      setIsRequestingPermission(false);
+      if (event.error === "not-allowed" || event.error === "denied") {
+        setIsRecording(false);
+        setShowMicPermissionModal(true);
+      } else if (event.error === "aborted") {
         setIsRecording(false);
       }
     };
@@ -123,7 +135,7 @@ function ChatContent() {
     };
   }, []);
 
-  const toggleRecording = useCallback(() => {
+  const toggleRecording = useCallback(async () => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
 
@@ -132,13 +144,27 @@ function ChatContent() {
         recognition.stop();
       } catch (_) {}
       setIsRecording(false);
-    } else {
-      try {
-        recognition.start();
-        setIsRecording(true);
-      } catch (e) {
-        console.warn("SpeechRecognition start failed", e);
+      return;
+    }
+
+    // 권한이 이미 거부된 경우 모달 표시 (Permissions API 지원 시)
+    try {
+      if (navigator.permissions?.query) {
+        const result = await navigator.permissions.query({ name: "microphone" });
+        if (result.state === "denied") {
+          setShowMicPermissionModal(true);
+          return;
+        }
       }
+    } catch (_) {}
+
+    setIsRequestingPermission(true);
+    try {
+      recognition.start();
+    } catch (e) {
+      console.warn("SpeechRecognition start failed", e);
+      setIsRequestingPermission(false);
+      setShowMicPermissionModal(true);
     }
   }, [isRecording]);
 
@@ -277,6 +303,35 @@ function ChatContent() {
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-3 py-4 sm:px-4 sm:py-6 text-[#3D2010]">
+      {/* 마이크 권한 안내 모달 */}
+      {showMicPermissionModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mic-permission-title"
+        >
+          <div className="w-full max-w-md rounded-3xl border border-[#FFE0D0] bg-[#FFF8F0] p-6 shadow-[0_24px_48px_rgba(0,0,0,0.12)]">
+            <h2 id="mic-permission-title" className="mb-3 text-lg font-bold text-[#3D2010]">
+              🎤 {language === "ko" ? "마이크 권한이 필요해요" : "Microphone Access Required"}
+            </h2>
+            <p className="mb-5 text-sm leading-relaxed text-[#3D2010]">
+              {language === "ko"
+                ? "음성 대화를 사용하려면 마이크 접근을 허용해주세요. 브라우저 주소창 왼쪽 🔒 아이콘을 클릭하고 마이크를 '허용'으로 변경해주세요."
+                : "To use voice chat, please allow microphone access. Click the 🔒 icon in your browser's address bar and set microphone to 'Allow'."}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowMicPermissionModal(false)}
+              className="w-full rounded-2xl bg-[#FF6B4A] py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(255,107,74,0.35)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
+            >
+              {language === "ko" ? "알겠어요!" : "Got it!"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex w-full max-w-2xl flex-1 flex-col rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] shadow-[0_20px_50px_rgba(0,0,0,0.06)] overflow-hidden">
         {/* 헤더 */}
         <header className="flex items-center justify-between gap-3 border-b border-[#FFE0D0] bg-[#FFF8F0] px-4 py-3">
@@ -390,15 +445,21 @@ function ChatContent() {
             <button
               type="button"
               onClick={toggleRecording}
-              disabled={!getSpeechRecognition()}
+              disabled={!getSpeechRecognition() || isRequestingPermission}
               className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition active:scale-[0.98] ${
-                isRecording
+                isRequestingPermission
+                  ? "border border-[#FFE0D0] bg-[#FFF0E8] text-[#9A7060]"
+                  : isRecording
                   ? "bg-[#C53030] text-white shadow-[0_0_0_3px_rgba(197,48,48,0.3)] animate-pulse"
                   : "border border-[#FFE0D0] bg-[#FFFFFF] text-[#3D2010] hover:border-[#FF6B4A]/60 hover:bg-[#FFF0E8]"
               }`}
-              title={language === "ko" ? (isRecording ? "녹음 중지" : "음성 입력") : (isRecording ? "Stop recording" : "Voice input")}
+              title={language === "ko" ? (isRecording ? "녹음 중지" : isRequestingPermission ? "권한 요청 중..." : "음성 입력") : (isRecording ? "Stop recording" : isRequestingPermission ? "Requesting permission..." : "Voice input")}
             >
-              🎤
+              {isRequestingPermission ? (
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#FF6B4A] border-t-transparent" />
+              ) : (
+                "🎤"
+              )}
             </button>
             <input
               type="text"
