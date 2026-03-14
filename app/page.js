@@ -49,6 +49,14 @@ const PERSONAS = [
     title: "드라마오구",
     subtitleKo: "K-드라마 주인공",
     subtitleEn: "K-drama lead character"
+  },
+  {
+    id: "free",
+    emoji: "🌟",
+    title: "자유대화오구",
+    titleEn: "Free Talk Ogu",
+    subtitleKo: "어떤 주제든 OK!",
+    subtitleEn: "Any topic, anytime!"
   }
 ];
 
@@ -230,24 +238,39 @@ export default function HomePage() {
               {language === "ko" ? "어떤 상황에서 연습할까요?" : "Who do you want to practice with?"}
             </p>
           </div>
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
             {PERSONAS.map((persona, idx) => {
               const isActive = selectedPersona === persona.id;
+              const isFree = persona.id === "free";
+              const titleText = persona.titleEn && language === "en" ? persona.titleEn : persona.title;
               return (
                 <button
                   key={persona.id}
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setSelectedPersona(persona.id); }}
-                  className={`opacity-0 animate-fade-in-up group flex w-full items-center gap-3 rounded-2xl border-2 bg-[#FFFFFF] px-4 py-3 text-left transition-all duration-300 hover:shadow-[0_8px_24px_rgba(255,107,74,0.15)] active:scale-[0.98] md:flex-col md:items-start md:py-4 ${
+                  className={`opacity-0 animate-fade-in-up group relative flex w-full items-center gap-3 rounded-2xl border-2 bg-[#FFFFFF] px-4 py-3 text-left transition-all duration-300 hover:shadow-[0_8px_24px_rgba(255,107,74,0.15)] active:scale-[0.98] md:flex-col md:items-start md:py-4 ${
+                    isFree
+                      ? "border-[#FFD93D] hover:border-[#FFD93D] hover:shadow-[0_8px_24px_rgba(255,217,61,0.25)]"
+                      : ""
+                  } ${
                     isActive
-                      ? "border-[#FF6B4A] bg-[#FFF0E8] shadow-[0_8px_24px_rgba(255,107,74,0.2)]"
-                      : "border-[#FFE0D0] hover:border-[#FF6B4A]/60"
+                      ? isFree
+                        ? "border-[#FFD93D] bg-[#FFFEF5] shadow-[0_8px_24px_rgba(255,217,61,0.25)]"
+                        : "border-[#FF6B4A] bg-[#FFF0E8] shadow-[0_8px_24px_rgba(255,107,74,0.2)]"
+                      : !isFree
+                      ? "border-[#FFE0D0] hover:border-[#FF6B4A]/60"
+                      : ""
                   }`}
                   style={{ animationDelay: `${480 + idx * 80}ms`, animationFillMode: "forwards" }}
                 >
+                  {isFree && (
+                    <span className="absolute right-2 top-2 rounded bg-[#FFD93D] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#3D2010]">
+                      {language === "ko" ? "NEW" : "NEW"}
+                    </span>
+                  )}
                   <span className="text-2xl md:text-3xl">{persona.emoji}</span>
-                  <div className="flex-1 space-y-0.5">
-                    <p className="text-sm font-semibold text-[#3D2010]">{persona.title}</p>
+                  <div className="flex-1 space-y-0.5 pr-6">
+                    <p className="text-sm font-semibold text-[#3D2010]">{titleText}</p>
                     <p className="text-[11px] text-[#9A7060]">
                       {language === "ko" ? persona.subtitleKo : persona.subtitleEn}
                     </p>
@@ -273,7 +296,12 @@ export default function HomePage() {
             <div className="flex items-center justify-between text-[12px]">
               <span className="text-[#9A7060]">{language === "ko" ? "페르소나" : "Persona"}</span>
               <span className="font-medium text-[#3D2010]">
-                {selectedPersona ? PERSONAS.find((p) => p.id === selectedPersona)?.title : (language === "ko" ? "선택 안 함" : "Not selected")}
+                {selectedPersona
+                  ? (() => {
+                      const p = PERSONAS.find((x) => x.id === selectedPersona);
+                      return p && p.titleEn && language === "en" ? p.titleEn : p?.title ?? (language === "ko" ? "선택 안 함" : "Not selected");
+                    })()
+                  : (language === "ko" ? "선택 안 함" : "Not selected")}
               </span>
             </div>
           </div>
