@@ -38,6 +38,7 @@ function ReportContent() {
   const [cardSaving, setCardSaving] = useState(false);
   const [streakData, setStreakData] = useState(null);
   const [milestoneModal, setMilestoneModal] = useState(null);
+  const [reportCorrections, setReportCorrections] = useState([]);
   const shareCardRef = useRef(null);
 
   const level = searchParams.get("level") || "beginner";
@@ -51,6 +52,14 @@ function ReportContent() {
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) setHistory(parsed);
+
+      const correctionsRaw = window.localStorage.getItem("ogu_corrections");
+      if (correctionsRaw) {
+        try {
+          const arr = JSON.parse(correctionsRaw);
+          if (Array.isArray(arr)) setReportCorrections(arr.slice(0, 10));
+        } catch (_) {}
+      }
 
       const startRaw = window.sessionStorage.getItem("ogu-chat-start");
       const endRaw = window.sessionStorage.getItem("ogu-chat-end");
@@ -345,6 +354,36 @@ function ReportContent() {
           )}
         </section>
 
+        {/* 교정 포인트 */}
+        {reportCorrections.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-[#3D2010]">
+              {language === "ko" ? "📝 이번 대화 교정 포인트" : language === "id" ? "📝 Poin Koreksi" : "📝 Correction Points"}
+            </h2>
+            <div className="space-y-3">
+              {reportCorrections.map((c, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-2xl border-2 px-4 py-3"
+                  style={{ backgroundColor: "#FFF8E1", borderColor: "#FFB300" }}
+                >
+                  <p className="text-[13px]">
+                    <span className="text-red-600 line-through">{c.original ?? ""}</span>
+                    <span className="mx-1.5 font-medium text-[#FFB300]">→</span>
+                    <span className="font-semibold text-green-700">{c.corrected ?? ""}</span>
+                  </p>
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-[#6D4C41]">
+                    {language === "ko" ? (c.explanation_ko ?? c.explanation_en) : language === "id" ? (c.explanation_id ?? c.explanation_en) : (c.explanation_en ?? c.explanation_ko)}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="text-center text-[12px] font-medium text-[#FFB300]">
+              {language === "ko" ? "이 표현들을 기억해두세요! 🐥" : language === "id" ? "Ingat ini! 🐥" : "Remember these! 🐥"}
+            </p>
+          </section>
+        )}
+
         {/* ③ 레벨 진행도 */}
         <section className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-5 shadow-[0_16px_48px_rgba(0,0,0,0.06)]">
           <div className="flex items-center justify-between gap-3">
@@ -432,6 +471,11 @@ function ReportContent() {
                 <p className="mt-2 text-center text-[11px] font-semibold text-[#FF6B4A]">
                   {personaLabel} · {levelLabel}
                 </p>
+                {reportCorrections.length > 0 && (
+                  <p className="mt-1.5 text-center text-[10px] font-bold" style={{ color: "#FFB300" }}>
+                    {language === "ko" ? `교정 ${reportCorrections.length}개 완료!` : language === "id" ? `${reportCorrections.length} koreksi selesai!` : `${reportCorrections.length} corrections!`}
+                  </p>
+                )}
                 <div className="mt-3 space-y-0.5 rounded-xl border border-[#FFE0D0] bg-[#FFFFFF] px-3 py-2">
                   {(expressions.length ? expressions : []).slice(0, 3).map((e, i) => (
                     <p key={i} className="line-clamp-2 text-[10px] leading-tight text-[#3D2010]">
