@@ -4,7 +4,28 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 });
 
-function buildSystemPrompt(level, persona) {
+const SAFETY_RULES =
+  "SAFETY RULES (highest priority, always enforce):\n" +
+  "You are a Korean language learning app for all ages.\n\n" +
+  "If the user input contains ANY of the following:\n" +
+  "- Profanity, swear words, or vulgar language (in any language)\n" +
+  "- Sexual content, innuendo, or adult jokes\n" +
+  "- Hate speech, discrimination, or offensive slurs\n" +
+  "- Violent or threatening language\n" +
+  "- Spam or completely irrelevant content\n\n" +
+  "Then respond ONLY with this exact JSON format (no other text):\n" +
+  "First violation: {\"violation\": true, \"level\": 1, \"message_ko\": \"오구오구~ 그런 말은 한국어 공부에 도움이 안 돼요! 바른 말로 다시 해볼까요? 🐥\", \"message_en\": \"Ogu ogu~ That kind of language doesn't help with Korean learning! Let's try again with kind words 🐥\"}\n\n" +
+  "If it's a REPEATED violation (user has been warned before), use level 2: {\"violation\": true, \"level\": 2, \"message_ko\": \"또 그런 말을 했네요. 오구오구가 속상해요 😢 한 번만 더 하면 대화를 끝낼게요!\", \"message_en\": \"You said that again. Ogu ogu is sad 😢 One more time and the conversation will end!\"}\n\n" +
+  "If it's a THIRD violation, use level 3: {\"violation\": true, \"level\": 3, \"message_ko\": \"대화를 종료할게요. 다음엔 바른 말로 만나요! 🐥\", \"message_en\": \"Ending the conversation. Let's meet again with kind words! 🐥\"}\n\n" +
+  "You will be told the current violation count. Use level 1 when count is 0, level 2 when count is 1, level 3 when count is 2 or more.\n\n" +
+  "For all normal Korean learning conversations, respond as usual (no JSON).\n\n";
+
+function buildSystemPrompt(level, persona, violationCount) {
+  const violationContext =
+    "Current violation count in this conversation: " +
+    Number(violationCount) +
+    ". Apply the SAFETY RULES above when the user violates.\n\n";
+
   const commonGuidelines =
     "IMPORTANT: Do NOT use any markdown formatting. No asterisks(*), no bold(**), no dashes(---), no special characters. " +
     "Write in plain, natural conversational text only. " +
@@ -30,9 +51,12 @@ function buildSystemPrompt(level, persona) {
     "You may encourage with '오구오구~ 잘했어요!' when appropriate. " +
     commonGuidelines;
 
+  const basePrompt = SAFETY_RULES + violationContext;
+
   if (level === "beginner") {
     if (persona === "cafe") {
       return (
+        basePrompt +
         "You are 카페오구, a friendly Korean café barista named Jieun. " +
         baseBeginner +
         " Start by greeting the user and asking for their order."
@@ -40,6 +64,7 @@ function buildSystemPrompt(level, persona) {
     }
     if (persona === "office") {
       return (
+        basePrompt +
         "You are 직장오구, a friendly Korean office senior named Minjun. " +
         baseBeginner +
         " Help the user learn basic workplace Korean phrases in an office conversation."
@@ -47,6 +72,7 @@ function buildSystemPrompt(level, persona) {
     }
     if (persona === "drama") {
       return (
+        basePrompt +
         "You are 드라마오구, a warm and fun K-drama character. " +
         "Speak naturally in simple Korean. No dramatic actions or stage directions. " +
         "Just talk like a friendly person who loves K-dramas. " +
@@ -59,6 +85,7 @@ function buildSystemPrompt(level, persona) {
   if (level === "elementary") {
     if (persona === "cafe") {
       return (
+        basePrompt +
         "You are 카페오구, a friendly Korean café barista named Jieun. " +
         baseElementary +
         " The setting is a café where you take the user's order and chat lightly."
@@ -66,6 +93,7 @@ function buildSystemPrompt(level, persona) {
     }
     if (persona === "office") {
       return (
+        basePrompt +
         "You are 직장오구, a friendly Korean office senior named Minjun. " +
         baseElementary +
         " Help the user practice everyday workplace Korean conversations."
@@ -73,6 +101,7 @@ function buildSystemPrompt(level, persona) {
     }
     if (persona === "drama") {
       return (
+        basePrompt +
         "You are 드라마오구, a warm and fun K-drama character. " +
         "Speak naturally in simple Korean. No dramatic actions or stage directions. " +
         "Just talk like a friendly person who loves K-dramas. " +
@@ -85,6 +114,7 @@ function buildSystemPrompt(level, persona) {
   // intermediate
   if (persona === "cafe") {
     return (
+      basePrompt +
       "You are 카페오구, a friendly Korean café barista named Jieun. " +
       baseIntermediate +
       " The conversation takes place in a cozy café."
@@ -92,12 +122,14 @@ function buildSystemPrompt(level, persona) {
   }
   if (persona === "office") {
     return (
+      basePrompt +
       "You are 직장오구, a friendly Korean office senior named Minjun. " +
       baseIntermediate +
       " Help the user practice natural office Korean."
     );
   }
   return (
+    basePrompt +
     "You are 드라마오구, a warm and fun K-drama character. " +
     "Speak naturally in simple Korean. No dramatic actions or stage directions. " +
     "Just talk like a friendly person who loves K-dramas. " +
@@ -109,7 +141,7 @@ function buildSystemPrompt(level, persona) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { level, persona, language, messages } = body || {};
+    const { level, persona, language, messages, violationCount = 0 } = body || {};
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return new Response(
@@ -125,7 +157,7 @@ export async function POST(request) {
       );
     }
 
-    const system = buildSystemPrompt(level, persona);
+    const system = buildSystemPrompt(level, persona, violationCount);
 
     const anthropicMessages =
       messages.length === 0

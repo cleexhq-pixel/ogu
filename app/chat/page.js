@@ -19,6 +19,19 @@ function getSpeechSynthesis() {
   return window.speechSynthesis;
 }
 
+function parseViolationReply(reply) {
+  if (!reply || typeof reply !== "string") return null;
+  let raw = reply.trim();
+  if (raw.startsWith("```")) {
+    raw = raw.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
+  }
+  try {
+    const data = JSON.parse(raw);
+    if (data && data.violation === true && typeof data.level === "number") return data;
+  } catch (_) {}
+  return null;
+}
+
 function renderAssistantContent(text, showHints) {
   if (!text) return null;
   if (!showHints) {
@@ -67,9 +80,12 @@ function ChatContent() {
   const [isMuted, setIsMuted] = useState(false);
   const [showMicPermissionModal, setShowMicPermissionModal] = useState(false);
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+  const [violationCount, setViolationCount] = useState(0);
+  const [level3Countdown, setLevel3Countdown] = useState(null);
 
   const recognitionRef = useRef(null);
   const synthesisRef = useRef(getSpeechSynthesis());
+  const level3CountdownStartedRef = useRef(false);
 
   const personaMeta = useMemo(() => {
     if (persona === "office") return { emoji: "💼", name: "직장오구" };
@@ -170,11 +186,11 @@ function ChatContent() {
 
   const lastSpokenRef = useRef(null);
 
-  // TTS: 마지막 AI 응답이 바뀌었을 때만 한국어로 읽기 (힌트 제외)
+  // TTS: 마지막 AI 응답이 바뀌었을 때만 한국어로 읽기 (힌트 제외, 위반 메시지는 읽지 않음)
   useEffect(() => {
     if (isMuted || messages.length === 0) return;
     const last = messages[messages.length - 1];
-    if (last?.role !== "assistant" || !last?.content) return;
+    if (last?.role !== "assistant" || !last?.content || last?.violationLevel) return;
 
     const toSpeak = stripHints(String(last.content), false).trim();
     if (!toSpeak || lastSpokenRef.current === toSpeak) return;
@@ -229,11 +245,20 @@ function ChatContent() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ level, persona, language, messages: [] })
+          body: JSON.stringify({ level, persona, language, messages: [], violationCount: 0 })
         });
         if (!res.ok) throw new Error("Failed to start chat");
         const data = await res.json();
-        setMessages([{ role: "assistant", content: data.reply ?? "" }]);
+        const reply = data.reply ?? "";
+        const violation = parseViolationReply(reply);
+        if (violation) {
+          const content = language === "ko" ? violation.message_ko : violation.message_en;
+          setMessages([{ role: "assistant", content, violationLevel: violation.level }]);
+          setViolationCount(violation.level);
+          if (violation.level === 3) setLevel3Countdown(3);
+        } else {
+          setMessages([{ role: "assistant", content: reply }]);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -257,11 +282,26 @@ function ChatContent() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ level, persona, language, messages: nextMessages })
+        body: JSON.stringify({
+          level,
+          persona,
+          language,
+          messages: nextMessages,
+          violationCount
+        })
       });
       if (!res.ok) throw new Error("Failed to send message");
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply ?? "" }]);
+      const reply = data.reply ?? "";
+      const violation = parseViolationReply(reply);
+      if (violation) {
+        const content = language === "ko" ? violation.message_ko : violation.message_en;
+        setMessages((prev) => [...prev, { role: "assistant", content, violationLevel: violation.level }]);
+        setViolationCount(violation.level);
+        if (violation.level === 3) setLevel3Countdown(3);
+      } else {
+        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -293,6 +333,23 @@ function ChatContent() {
       handleSend();
     }
   };
+
+  // level 3: 3초 후 메인(/)으로 이동 (한 번만 시작)
+  useEffect(() => {
+    if (level3Countdown !== 3 || level3CountdownStartedRef.current) return;
+    level3CountdownStartedRef.current = true;
+    const id = setInterval(() => {
+      setLevel3Countdown((c) => {
+        if (c == null || c <= 1) {
+          clearInterval(id);
+          router.push("/");
+          return null;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [level3Countdown, router]);
 
   const levelLabel =
     level === "beginner"
@@ -385,6 +442,18 @@ function ChatContent() {
           {messages.map((m, idx) => {
             const isUser = m.role === "user";
             const content = m.content || "";
+            const violationLevel = m.violationLevel;
+
+            const isViolationBubble = !isUser && violationLevel != null;
+            const bubbleStyle = isUser
+              ? "bg-[#FF6B4A] text-white shadow-[0_4px_14px_rgba(255,107,74,0.25)]"
+              : isViolationBubble
+              ? violationLevel === 1
+                ? "border-2 border-[#FF9800] bg-[#FFF3E0] text-[#E65100]"
+                : violationLevel === 2
+                ? "border-2 border-[#F44336] bg-[#FFEBEE] text-[#B71C1C]"
+                : "border-2 border-[#F44336] bg-[#FFEBEE] text-[#B71C1C]"
+              : "bg-[#FFF0E8] text-[#3D2010] shadow-[0_2px_12px_rgba(0,0,0,0.04)]";
 
             return (
               <div
@@ -404,13 +473,16 @@ function ChatContent() {
                     {isUser ? "👤" : "🐥"}
                   </div>
                   <div
-                    className={`rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${
-                      isUser
-                        ? "bg-[#FF6B4A] text-white shadow-[0_4px_14px_rgba(255,107,74,0.25)]"
-                        : "bg-[#FFF0E8] text-[#3D2010] shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
-                    }`}
+                    className={`rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${bubbleStyle}`}
                   >
-                    {isUser ? content : renderAssistantContent(content, showHints)}
+                    {isUser ? content : isViolationBubble ? content : renderAssistantContent(content, showHints)}
+                    {isViolationBubble && violationLevel === 3 && level3Countdown != null && (
+                      <p className="mt-2 text-[11px] font-medium opacity-90">
+                        {language === "ko"
+                          ? `${level3Countdown}초 후 대화가 종료됩니다...`
+                          : `Ending in ${level3Countdown} seconds...`}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
