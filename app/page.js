@@ -119,6 +119,38 @@ export default function HomePage() {
         setUsageToday({ mission: 0, conversation: 0 });
       }
     }
+    // 서버 기준 사용량 동기화
+    try {
+      let userId = window.localStorage.getItem("ogu_user_id");
+      if (!userId) {
+        userId =
+          crypto.randomUUID?.() ??
+          `ogu-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        window.localStorage.setItem("ogu_user_id", userId);
+      }
+      const params = new URLSearchParams();
+      params.set("userId", userId);
+      params.set("date", todayKey);
+      fetch(`/api/usage?${params.toString()}`)
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (!data) return;
+          if (
+            typeof data.mission === "number" &&
+            typeof data.conversation === "number"
+          ) {
+            setUsageToday({
+              mission: data.mission,
+              conversation: data.conversation
+            });
+          }
+        })
+        .catch(() => {
+          // 폴백: localStorage 값 유지
+        });
+    } catch {
+      // ignore
+    }
     const progressRaw = window.localStorage.getItem("ogu_challenge_progress");
     if (progressRaw) {
       try {
