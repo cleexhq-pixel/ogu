@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
+import { pageview, event as gaEvent } from "@/app/lib/gtag";
 
 const LEVELS = [
   { id: "beginner", emoji: "🐣", title: "왕초보 오구", titleEn: "Beginner", titleId: "Pemula", subtitleKo: "한국어 처음이에요!", subtitleEn: "Total beginner!", subtitleId: "Pemula total!" },
@@ -29,6 +30,13 @@ export default function HomePage() {
   const channelRef = useRef(null);
 
   const canStart = !!selectedLevel && !!selectedPersona;
+
+  // GA4: 첫 진입 시 페이지뷰 + app_open 이벤트
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    pageview(window.location.pathname + window.location.search);
+    gaEvent("app_open");
+  }, []);
 
   useEffect(() => {
     const supabase = getSupabase();
