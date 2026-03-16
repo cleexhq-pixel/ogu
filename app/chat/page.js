@@ -3,7 +3,14 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
-import { pageview, event as gaEvent } from "@/app/lib/gtag";
+import {
+  pageview,
+  trackStartFreeChat,
+  trackMissionComplete,
+  trackReachDailyLimit,
+  trackUseHint,
+  trackSendVoice
+} from "@/app/lib/gtag";
 import { MISSIONS } from "@/app/data/missions";
 
 function stripHints(text, enabled) {
@@ -179,6 +186,13 @@ function ChatContent() {
     pageview(window.location.pathname + window.location.search);
   }, [level, persona, language]);
 
+  // GA4: 자유 대화 시작 (미션이 없을 때)
+  useEffect(() => {
+    if (!missionId) {
+      trackStartFreeChat();
+    }
+  }, [missionId]);
+
   const activeUserIdRef = useRef(null);
 
   const todayKey = useMemo(() => {
@@ -271,6 +285,7 @@ function ChatContent() {
     setIsRequestingPermission(true);
     try {
       recognition.start();
+      trackSendVoice();
     } catch (e) {
       console.warn("SpeechRecognition start failed", e);
       setIsRequestingPermission(false);
@@ -393,6 +408,7 @@ function ChatContent() {
           const total = missionCount + convoCount;
           if (total >= 5) {
             setUsageLimited(true);
+            trackReachDailyLimit();
             const blockMessage =
               language === "ko"
                 ? "오늘의 무료 연습 5회를 모두 사용했어요 🐥\n내일 다시 만나요!"
@@ -446,6 +462,7 @@ function ChatContent() {
         if (missionMeta && includesMissionComplete && !missionCompleteRef.current) {
           missionCompleteRef.current = true;
           setShowMissionCompleteModal(true);
+          trackMissionComplete(missionId);
 
           if (typeof window !== "undefined") {
             try {
@@ -627,7 +644,7 @@ function ChatContent() {
               type="button"
               onClick={() => {
                 setShowHints((v) => !v);
-                gaEvent("use_hint");
+                trackUseHint();
               }}
               className={`rounded-xl border px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
                 showHints

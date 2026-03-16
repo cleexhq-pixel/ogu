@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MISSIONS } from "@/app/data/missions";
-import { pageview, event as gaEvent } from "@/app/lib/gtag";
+import { pageview, trackStartMission } from "@/app/lib/gtag";
 
 const CATEGORY_TABS = [
   { id: "all", category: null },
@@ -83,7 +83,7 @@ export default function MissionPage() {
   }, [categoryFilter]);
 
   const handleStartMission = (missionId) => {
-    gaEvent("start_mission", { mission_id: missionId });
+    trackStartMission(missionId);
     const params = new URLSearchParams();
     params.set("mission", missionId);
     params.set("lang", language);

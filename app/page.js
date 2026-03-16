@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
-import { pageview, event as gaEvent } from "@/app/lib/gtag";
+import {
+  pageview,
+  trackAppOpen,
+  trackStartDailyPhrase,
+  trackChallengeStart
+} from "@/app/lib/gtag";
 import { DAILY_PHRASES } from "@/app/data/daily_phrases";
 import { CHALLENGE_DAYS } from "@/app/data/missions";
 
@@ -27,7 +32,7 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     pageview(window.location.pathname + window.location.search);
-    gaEvent("app_open");
+    trackAppOpen();
   }, []);
 
   // Supabase 실시간 접속자
@@ -145,7 +150,7 @@ export default function HomePage() {
 
   const handleStartTodayPhrase = () => {
     if (!todayPhrase) return;
-    gaEvent("start_daily_phrase");
+    trackStartDailyPhrase();
     const params = new URLSearchParams();
     params.set("seed", encodeURIComponent(todayPhrase.korean));
     params.set("lang", language);
@@ -155,7 +160,7 @@ export default function HomePage() {
 
   const handleStartTodayMission = () => {
     if (!currentChallenge) return;
-    gaEvent("start_challenge_day", { day: currentChallenge.day });
+    trackChallengeStart(currentChallenge.day);
     const params = new URLSearchParams({
       mission: currentChallenge.mission_id,
       lang: language,

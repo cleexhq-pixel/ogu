@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { trackStartFreeChat } from "@/app/lib/gtag";
 
 function getLangFromSearch(searchParams) {
   const lang = searchParams.get("lang");
@@ -86,6 +87,7 @@ function PhrasesContent() {
     const params = new URLSearchParams();
     params.set("seed", korean);
     params.set("lang", language);
+    trackStartFreeChat();
     router.push(`/chat?${params.toString()}`);
   };
 
