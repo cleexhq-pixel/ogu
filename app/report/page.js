@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { pageview, event as gaEvent } from "@/app/lib/gtag";
+import { CHALLENGE_DAYS } from "@/app/data/missions";
 
 function getTodayLocal() {
   const d = new Date();
@@ -41,6 +42,7 @@ function ReportContent() {
   const [milestoneModal, setMilestoneModal] = useState(null);
   const [reportCorrections, setReportCorrections] = useState([]);
   const shareCardRef = useRef(null);
+  const [saveToast, setSaveToast] = useState("");
 
   const level = searchParams.get("level") || "beginner";
   const persona = searchParams.get("persona") || "cafe";
@@ -258,6 +260,52 @@ function ReportContent() {
     }
   };
 
+  const handleSaveExpression = (expr) => {
+    if (!expr) return;
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("ogu_saved_phrases");
+      let list = [];
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) list = parsed;
+        } catch {
+          list = [];
+        }
+      }
+      const exists = list.some((item) => item && item.korean === expr.korean);
+      if (exists) {
+        setSaveToast(
+          language === "ko"
+            ? "이미 저장됐어요!"
+            : language === "id"
+            ? "Sudah tersimpan!"
+            : "Already saved!"
+        );
+        setTimeout(() => setSaveToast(""), 2000);
+        return;
+      }
+      list.push({
+        korean: expr.korean,
+        translation: expr.english,
+        saved_at: new Date().toISOString(),
+        source: "report"
+      });
+      window.localStorage.setItem("ogu_saved_phrases", JSON.stringify(list));
+      setSaveToast(
+        language === "ko"
+          ? "표현장에 저장됐어요! 📚"
+          : language === "id"
+          ? "Tersimpan di Frasaku! 📚"
+          : "Saved to My Phrases! 📚"
+      );
+      setTimeout(() => setSaveToast(""), 2000);
+    } catch {
+      // ignore errors
+    }
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-4 py-8 text-[#3D2010]">
       {/* 마일스톤 축하 모달 */}
@@ -343,6 +391,7 @@ function ReportContent() {
                 const korean = expr?.korean ?? "…";
                 const english = expr?.english ?? "…";
                 const example = expr?.example ?? "…";
+                const realExpr = expr && expr.korean;
                 return (
                   <div
                     key={idx}
@@ -356,6 +405,20 @@ function ReportContent() {
                     <p className="mt-2 text-[11px] leading-relaxed text-[#C09A8A]">
                       {example}
                     </p>
+                    {realExpr && (
+                      <button
+                        type="button"
+                        onClick={() => handleSaveExpression(expr)}
+                        className="mt-3 inline-flex items-center justify-center rounded-2xl bg-[#FFF8F0] px-3 py-1.5 text-[11px] font-semibold text-[#FF6B4A] shadow-sm transition hover:bg-[#FFE0D0]"
+                      >
+                        💾{" "}
+                        {language === "ko"
+                          ? "저장"
+                          : language === "id"
+                          ? "Simpan"
+                          : "Save"}
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -516,7 +579,63 @@ function ReportContent() {
               : "📸 Save & Share Card"}
           </button>
         </section>
+
+        {/* 내일 챌린지 카드 */}
+        {(() => {
+          let nextDay = 1;
+          if (typeof window !== "undefined") {
+            try {
+              const raw = window.localStorage.getItem("ogu_challenge_progress");
+              if (raw) {
+                const arr = JSON.parse(raw);
+                if (Array.isArray(arr)) {
+                  const completed = arr.length;
+                  nextDay = Math.min(7, completed + 1);
+                }
+              }
+            } catch {
+              nextDay = 1;
+            }
+          }
+          const challenge = CHALLENGE_DAYS.find((d) => d.day === nextDay);
+          if (!challenge) return null;
+          const title =
+            language === "ko"
+              ? challenge.title.ko
+              : language === "id"
+              ? challenge.title.id
+              : challenge.title.en;
+          const label =
+            language === "ko"
+              ? `내일 챌린지: Day ${nextDay} - ${title}`
+              : language === "id"
+              ? `Tantangan Besok: Hari ${nextDay} - ${title}`
+              : `Tomorrow's Challenge: Day ${nextDay} - ${title}`;
+          const backLabel =
+            language === "ko"
+              ? "홈으로 돌아가기"
+              : language === "id"
+              ? "Kembali ke Beranda"
+              : "Back to Home";
+          return (
+            <section className="mt-4 space-y-3 rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
+              <h2 className="text-sm font-semibold text-[#3D2010]">🔥 {label}</h2>
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-[#FF6B4A] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(255,107,74,0.4)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
+              >
+                {backLabel}
+              </button>
+            </section>
+          );
+        })()}
       </div>
+      {saveToast && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-[#3D2010] px-4 py-2 text-[12px] font-medium text-white shadow-lg">
+          {saveToast}
+        </div>
+      )}
     </main>
   );
 }
