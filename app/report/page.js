@@ -3,7 +3,11 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
-import { pageview, event as gaEvent } from "@/app/lib/gtag";
+import {
+  pageview,
+  trackSavePhrase,
+  trackShareCard
+} from "@/app/lib/gtag";
 import { CHALLENGE_DAYS } from "@/app/data/missions";
 
 function getTodayLocal() {
@@ -207,7 +211,7 @@ function ReportContent() {
       link.download = "oguogu-card.png";
       link.href = canvas.toDataURL("image/png");
       link.click();
-      gaEvent("share_card");
+      trackShareCard();
     } catch (e) {
       console.error("Share card save failed:", e);
     } finally {
@@ -252,7 +256,7 @@ function ReportContent() {
       } else if (typeof window !== "undefined") {
         window.prompt("Copy this report:", text);
       }
-      gaEvent("save_phrase");
+      trackSavePhrase();
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     } catch (e) {
@@ -293,6 +297,7 @@ function ReportContent() {
         source: "report"
       });
       window.localStorage.setItem("ogu_saved_phrases", JSON.stringify(list));
+      trackSavePhrase();
       setSaveToast(
         language === "ko"
           ? "표현장에 저장됐어요! 📚"
