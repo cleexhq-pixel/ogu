@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
+import { pageview, event as gaEvent } from "@/app/lib/gtag";
 
 function getTodayLocal() {
   const d = new Date();
@@ -73,6 +74,12 @@ function ReportContent() {
       }
     } catch {}
   }, []);
+
+  // GA4: 리포트 페이지 진입 시 페이지뷰 전송
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    pageview(window.location.pathname + window.location.search);
+  }, [level, persona, language]);
 
   useEffect(() => {
     const fetchExpressions = async () => {
@@ -198,6 +205,7 @@ function ReportContent() {
       link.download = "oguogu-card.png";
       link.href = canvas.toDataURL("image/png");
       link.click();
+      gaEvent("share_card");
     } catch (e) {
       console.error("Share card save failed:", e);
     } finally {
@@ -242,6 +250,7 @@ function ReportContent() {
       } else if (typeof window !== "undefined") {
         window.prompt("Copy this report:", text);
       }
+      gaEvent("save_phrase");
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     } catch (e) {

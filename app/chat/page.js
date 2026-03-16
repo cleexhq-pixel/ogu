@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
+import { pageview, event as gaEvent } from "@/app/lib/gtag";
 
 function stripHints(text, enabled) {
   if (enabled) return text;
@@ -138,6 +139,12 @@ function ChatContent() {
   useEffect(() => {
     setShowHints(language === "en" || language === "id");
   }, [language]);
+
+  // GA4: 채팅 페이지 진입 시 페이지뷰 전송
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    pageview(window.location.pathname + window.location.search);
+  }, [level, persona, language]);
 
   const activeUserIdRef = useRef(null);
 
@@ -469,7 +476,10 @@ function ChatContent() {
             </button>
             <button
               type="button"
-              onClick={() => setShowHints((v) => !v)}
+              onClick={() => {
+                setShowHints((v) => !v);
+                gaEvent("use_hint");
+              }}
               className={`rounded-xl border px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
                 showHints
                   ? "border-[#FF6B4A] bg-[#FFF0E8] text-[#3D2010]"
