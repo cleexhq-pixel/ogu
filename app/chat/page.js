@@ -397,6 +397,7 @@ function ChatContent() {
       firstUserSentRef.current = true;
       if (typeof window !== "undefined") {
         try {
+          // localStorage 빠른 체크
           const raw = window.localStorage.getItem(`ogu_usage_${todayKey}`);
           let missionCount = 0;
           let convoCount = 0;
@@ -419,8 +420,52 @@ function ChatContent() {
             setInput("");
             return;
           }
+
+          // 서버 측 사용량 체크
+          let userId = window.localStorage.getItem("ogu_user_id");
+          if (!userId) {
+            userId =
+              crypto.randomUUID?.() ??
+              `ogu-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            window.localStorage.setItem("ogu_user_id", userId);
+          }
+          const usageType = missionId ? "mission" : "conversation";
+          const res = await fetch("/api/usage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, type: usageType })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.allowed === false) {
+              setUsageLimited(true);
+              trackReachDailyLimit();
+              const blockMessage =
+                language === "ko"
+                  ? "오늘의 무료 연습 5회를 모두 사용했어요 🐥\n내일 다시 만나요!"
+                  : language === "id"
+                  ? "Sesi gratis hari ini sudah habis 🐥\nSampai jumpa besok!"
+                  : "You've used all 5 free sessions today 🐥\nSee you tomorrow!";
+              setMessages((prev) => [
+                ...prev,
+                { role: "assistant", content: blockMessage }
+              ]);
+              setInput("");
+              return;
+            }
+            // allowed인 경우 localStorage도 동기화 증가
+            const serverMission = data?.mission ?? missionCount;
+            const serverConvo = data?.conversation ?? convoCount;
+            window.localStorage.setItem(
+              `ogu_usage_${todayKey}`,
+              JSON.stringify({
+                mission: serverMission,
+                conversation: serverConvo
+              })
+            );
+          }
         } catch {
-          // ignore usage errors, allow chat
+          // 서버 오류 시 localStorage 기준으로만 동작
         }
       }
     }
