@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function getLangFromSearch(searchParams) {
@@ -9,7 +9,7 @@ function getLangFromSearch(searchParams) {
   return "en";
 }
 
-export default function PhrasesPage() {
+function PhrasesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [language, setLanguage] = useState("en");
@@ -189,4 +189,19 @@ export default function PhrasesPage() {
     </main>
   );
 }
+
+export default function PhrasesPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[#FFF8F0] px-4 py-6 text-[#3D2010]">
+          <span className="animate-pulse-soft">🐥</span>
+        </main>
+      }
+    >
+      <PhrasesContent />
+    </Suspense>
+  );
+}
+
 
