@@ -146,10 +146,10 @@ export default function HomePage() {
   const handleStartTodayPhrase = () => {
     if (!todayPhrase) return;
     gaEvent("start_daily_phrase");
-    const params = new URLSearchParams({
-      seed: todayPhrase.korean,
-      lang: language
-    });
+    const params = new URLSearchParams();
+    params.set("seed", encodeURIComponent(todayPhrase.korean));
+    params.set("lang", language);
+    params.set("mode", "phrase");
     router.push(`/chat?${params.toString()}`);
   };
 

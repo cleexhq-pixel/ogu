@@ -32,7 +32,7 @@ const CORRECTION_RULES =
   "Maximum 2 corrections per response to avoid overwhelming the learner.\n" +
   "Focus on the most important mistakes only.\n\n";
 
-function buildSystemPrompt(level, persona, violationCount, language) {
+function buildSystemPrompt(level, persona, violationCount, language, seed) {
   const violationContext =
     "Current violation count in this conversation: " +
     Number(violationCount) +
@@ -75,7 +75,31 @@ function buildSystemPrompt(level, persona, violationCount, language) {
     "You may encourage with '오구오구~ 잘했어요!' when appropriate. " +
     commonGuidelines;
 
-  const basePrompt = SAFETY_RULES + CORRECTION_RULES + violationContext;
+  let basePrompt = SAFETY_RULES + CORRECTION_RULES + violationContext;
+
+  if (seed) {
+    const hintLangText =
+      language === "ko"
+        ? "Korean"
+        : language === "id"
+        ? "Bahasa Indonesia"
+        : "English";
+    basePrompt +=
+      "You are OguOgu 🐥, a warm Korean learning companion.\n\n" +
+      "The user wants to practice this Korean phrase: " +
+      String(seed) +
+      "\n\n" +
+      "Start by naturally introducing this phrase in conversation.\n" +
+      "First message: Use the phrase naturally and invite the user to try it.\n" +
+      "Then have a short friendly conversation (3-5 turns) using this phrase.\n\n" +
+      "Rules:\n" +
+      "- Keep responses to 1-2 sentences\n" +
+      "- Praise every attempt warmly\n" +
+      "- Give hints in parentheses if stuck\n" +
+      "- Language for hints: " +
+      hintLangText +
+      "\n\n";
+  }
 
   const freePersonaIntro =
     "You are 자유오구 (Free Talk Ogu), a friendly Korean-speaking companion who can talk about ANYTHING the user wants. " +
@@ -184,7 +208,7 @@ function buildSystemPrompt(level, persona, violationCount, language) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { level, persona, language, messages, violationCount = 0 } = body || {};
+    const { level, persona, language, messages, violationCount = 0, seed } = body || {};
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return new Response(
@@ -200,7 +224,7 @@ export async function POST(request) {
       );
     }
 
-    const system = buildSystemPrompt(level, persona, violationCount, language || "en");
+    const system = buildSystemPrompt(level, persona, violationCount, language || "en", seed);
 
     const anthropicMessages =
       messages.length === 0

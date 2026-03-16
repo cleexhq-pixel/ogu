@@ -106,13 +106,18 @@ function ChatContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const level = searchParams.get("level") || "beginner";
-  const persona = searchParams.get("persona") || "cafe";
+  const levelParam = searchParams.get("level") || "beginner";
+  const personaParam = searchParams.get("persona") || "cafe";
   const language = searchParams.get("lang") || "en";
   const userIdFromUrl = searchParams.get("userId");
   const missionId = searchParams.get("mission");
   const seed = searchParams.get("seed");
   const challengeDayParam = searchParams.get("challenge_day");
+  const mode = searchParams.get("mode");
+
+  const isPhraseMode = !!seed && mode === "phrase";
+  const level = isPhraseMode ? "elementary" : levelParam;
+  const persona = isPhraseMode ? "free" : personaParam;
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -136,13 +141,33 @@ function ChatContent() {
   const firstUserSentRef = useRef(false);
 
   const personaMeta = useMemo(() => {
-    const names = { cafe: { ko: "카페오구", en: "Café Ogu", id: "Kafe Ogu" }, office: { ko: "직장오구", en: "Office Ogu", id: "Kantor Ogu" }, drama: { ko: "드라마오구", en: "Drama Ogu", id: "Drama Ogu" }, free: { ko: "자유대화오구", en: "Free Talk Ogu", id: "Obrolan Bebas Ogu" } };
-    const subs = { free: { ko: "어떤 주제든 OK!", en: "Any topic OK!", id: "Topik apa saja!" } };
+    const names = {
+      cafe: { ko: "카페오구", en: "Café Ogu", id: "Kafe Ogu" },
+      office: { ko: "직장오구", en: "Office Ogu", id: "Kantor Ogu" },
+      drama: { ko: "드라마오구", en: "Drama Ogu", id: "Drama Ogu" },
+      free: { ko: "자유대화오구", en: "Free Talk Ogu", id: "Obrolan Bebas Ogu" }
+    };
+    const subs = {
+      free: { ko: "어떤 주제든 OK!", en: "Any topic OK!", id: "Topik apa saja!" }
+    };
     const n = names[persona] || names.cafe;
-    const name = language === "ko" ? n.ko : language === "id" ? n.id : n.en;
-    const sub = persona === "free" ? (language === "ko" ? subs.free.ko : language === "id" ? subs.free.id : subs.free.en) : null;
-    return { emoji: persona === "office" ? "💼" : persona === "drama" ? "📺" : persona === "free" ? "🌟" : "☕", name, subtitle: sub };
-  }, [persona, language]);
+    const baseName = language === "ko" ? n.ko : language === "id" ? n.id : n.en;
+    const name = isPhraseMode
+      ? language === "ko"
+        ? "오늘의 표현 연습"
+        : language === "id"
+        ? "Latihan Frasa Hari Ini"
+        : "Today's Phrase Practice"
+      : baseName;
+    const sub = !isPhraseMode && persona === "free"
+      ? (language === "ko" ? subs.free.ko : language === "id" ? subs.free.id : subs.free.en)
+      : null;
+    return {
+      emoji: persona === "office" ? "💼" : persona === "drama" ? "📺" : persona === "free" ? "🌟" : "☕",
+      name,
+      subtitle: sub
+    };
+  }, [persona, language, isPhraseMode]);
 
   useEffect(() => {
     setShowHints(language === "en" || language === "id");
