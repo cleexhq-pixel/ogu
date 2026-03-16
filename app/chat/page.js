@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { pageview, event as gaEvent } from "@/app/lib/gtag";
+import { MISSIONS } from "@/app/data/missions";
 
 function stripHints(text, enabled) {
   if (enabled) return text;
@@ -109,6 +110,9 @@ function ChatContent() {
   const persona = searchParams.get("persona") || "cafe";
   const language = searchParams.get("lang") || "en";
   const userIdFromUrl = searchParams.get("userId");
+  const missionId = searchParams.get("mission");
+  const seed = searchParams.get("seed");
+  const challengeDayParam = searchParams.get("challenge_day");
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -122,10 +126,14 @@ function ChatContent() {
   const [level3Countdown, setLevel3Countdown] = useState(null);
   const [allCorrections, setAllCorrections] = useState([]);
   const [correctionCollapsed, setCorrectionCollapsed] = useState({});
+  const [usageLimited, setUsageLimited] = useState(false);
+  const [showMissionCompleteModal, setShowMissionCompleteModal] = useState(false);
 
   const recognitionRef = useRef(null);
   const synthesisRef = useRef(getSpeechSynthesis());
   const level3CountdownStartedRef = useRef(false);
+  const missionCompleteRef = useRef(false);
+  const firstUserSentRef = useRef(false);
 
   const personaMeta = useMemo(() => {
     const names = { cafe: { ko: "카페오구", en: "Café Ogu", id: "Kafe Ogu" }, office: { ko: "직장오구", en: "Office Ogu", id: "Kantor Ogu" }, drama: { ko: "드라마오구", en: "Drama Ogu", id: "Drama Ogu" }, free: { ko: "자유대화오구", en: "Free Talk Ogu", id: "Obrolan Bebas Ogu" } };
@@ -147,6 +155,18 @@ function ChatContent() {
   }, [level, persona, language]);
 
   const activeUserIdRef = useRef(null);
+
+  const todayKey = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+
+  const missionMeta = useMemo(() => {
+    if (!missionId) return null;
+    return MISSIONS.find((m) => m.id === missionId) || null;
+  }, [missionId]);
+
+  const missionSteps = missionMeta ? missionMeta.steps[language] || missionMeta.steps.en : [];
 
   // STT: SpeechRecognition 초기화 및 이벤트
   useEffect(() => {
@@ -294,7 +314,15 @@ function ChatContent() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ level, persona, language, messages: [], violationCount: 0 })
+          body: JSON.stringify({
+            level,
+            persona,
+            language,
+            messages: [],
+            violationCount: 0,
+            mission: missionId || null,
+            seed: seed || null
+          })
         });
         if (!res.ok) throw new Error("Failed to start chat");
         const data = await res.json();
@@ -324,6 +352,38 @@ function ChatContent() {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
 
+    // 하루 사용량 제한 체크 (첫 유저 발화 시)
+    if (!firstUserSentRef.current) {
+      firstUserSentRef.current = true;
+      if (typeof window !== "undefined") {
+        try {
+          const raw = window.localStorage.getItem(`ogu_usage_${todayKey}`);
+          let missionCount = 0;
+          let convoCount = 0;
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            missionCount = parsed.mission || 0;
+            convoCount = parsed.conversation || 0;
+          }
+          const total = missionCount + convoCount;
+          if (total >= 5) {
+            setUsageLimited(true);
+            const blockMessage =
+              language === "ko"
+                ? "오늘의 무료 연습 5회를 모두 사용했어요 🐥\n내일 다시 만나요!"
+                : language === "id"
+                ? "Sesi gratis hari ini sudah habis 🐥\nSampai jumpa besok!"
+                : "You've used all 5 free sessions today 🐥\nSee you tomorrow!";
+            setMessages((prev) => [...prev, { role: "assistant", content: blockMessage }]);
+            setInput("");
+            return;
+          }
+        } catch {
+          // ignore usage errors, allow chat
+        }
+      }
+    }
+
     const nextMessages = [...messages, { role: "user", content: trimmed }];
     setMessages(nextMessages);
     setInput("");
@@ -338,7 +398,9 @@ function ChatContent() {
           persona,
           language,
           messages: nextMessages,
-          violationCount
+          violationCount,
+          mission: missionId || null,
+          seed: seed || null
         })
       });
       if (!res.ok) throw new Error("Failed to send message");
@@ -353,7 +415,65 @@ function ChatContent() {
       } else {
         const { displayText, corrections } = parseAIResponse(reply);
         if (corrections.length) setAllCorrections((prev) => [...prev, ...corrections]);
-        setMessages((prev) => [...prev, { role: "assistant", content: displayText, corrections: corrections.length ? corrections : undefined }]);
+        const includesMissionComplete = displayText.includes("[MISSION_COMPLETE]");
+        setMessages((prev) => [...prev, { role: "assistant", content: displayText.replace("[MISSION_COMPLETE]", "").trim(), corrections: corrections.length ? corrections : undefined }]);
+
+        if (missionMeta && includesMissionComplete && !missionCompleteRef.current) {
+          missionCompleteRef.current = true;
+          setShowMissionCompleteModal(true);
+
+          if (typeof window !== "undefined") {
+            try {
+              const raw = window.localStorage.getItem(`ogu_usage_${todayKey}`);
+              let missionCount = 0;
+              let convoCount = 0;
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                missionCount = parsed.mission || 0;
+                convoCount = parsed.conversation || 0;
+              }
+              missionCount += 1;
+              window.localStorage.setItem(
+                `ogu_usage_${todayKey}`,
+                JSON.stringify({ mission: missionCount, conversation: convoCount })
+              );
+
+              if (challengeDayParam) {
+                const dayNum = Number(challengeDayParam);
+                if (!Number.isNaN(dayNum)) {
+                  const progressRaw = window.localStorage.getItem("ogu_challenge_progress");
+                  let arr = [];
+                  if (progressRaw) {
+                    try {
+                      const parsed = JSON.parse(progressRaw);
+                      if (Array.isArray(parsed)) arr = parsed;
+                    } catch {
+                      arr = [];
+                    }
+                  }
+                  if (!arr.includes(dayNum)) {
+                    arr.push(dayNum);
+                    arr.sort((a, b) => a - b);
+                    window.localStorage.setItem("ogu_challenge_progress", JSON.stringify(arr));
+                  }
+                }
+              }
+            } catch {
+              // ignore localStorage errors
+            }
+          }
+
+          setTimeout(() => {
+            try {
+              if (typeof window !== "undefined") {
+                window.sessionStorage.setItem("ogu-chat-history", JSON.stringify([...nextMessages, { role: "assistant", content: displayText }]));
+                window.sessionStorage.setItem("ogu-chat-end", String(Date.now()));
+                window.localStorage.setItem("ogu_corrections", JSON.stringify(allCorrections));
+              }
+            } catch {}
+            router.push(`/report?level=${level}&persona=${persona}&lang=${language}`);
+          }, 2000);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -411,6 +531,10 @@ function ChatContent() {
       : level === "elementary"
       ? language === "ko" ? "초급" : language === "id" ? "Dasar" : "Elementary"
       : language === "ko" ? "중급" : language === "id" ? "Menengah" : "Intermediate";
+
+  const userTurns = messages.filter((m) => m.role === "user").length;
+  const currentStep =
+    userTurns <= 2 ? 1 : userTurns <= 5 ? 2 : 3;
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-3 py-4 sm:px-4 sm:py-6 text-[#3D2010]">
@@ -497,6 +621,41 @@ function ChatContent() {
             </button>
           </div>
         </header>
+
+        {/* 미션 진행바 */}
+        {missionMeta && (
+          <div className="border-b border-[#FFE0D0] bg-[#FFFFFF] px-4 py-2">
+            <p className="text-[11px] font-semibold text-[#9A7060]">
+              {language === "ko"
+                ? `미션: ${missionMeta.title.ko}`
+                : language === "id"
+                ? `Misi: ${missionMeta.title.id}`
+                : `Mission: ${missionMeta.title.en}`}
+            </p>
+            <div className="mt-1 flex items-center gap-2 text-[11px]">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center gap-1">
+                  <div
+                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold ${
+                      step < currentStep
+                        ? "bg-[#6BCB77] text-white"
+                        : step === currentStep
+                        ? "bg-[#FF6B4A] text-white"
+                        : "bg-[#FFF0E8] text-[#9A7060]"
+                    }`}
+                  >
+                    {step}
+                  </div>
+                  {missionSteps && missionSteps[step - 1] && (
+                    <span className="hidden text-[10px] text-[#9A7060] sm:inline">
+                      {missionSteps[step - 1]}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 채팅 영역 */}
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5">
@@ -611,6 +770,24 @@ function ChatContent() {
 
         {/* 입력창 */}
         <div className="border-t border-[#FFE0D0] bg-[#FFF8F0] px-4 py-3">
+          {usageLimited && (
+            <div className="mb-2 rounded-2xl bg-[#FFEBEE] px-3 py-2 text-center text-[12px] text-[#B71C1C]">
+              {language === "ko"
+                ? "오늘의 무료 연습 5회를 모두 사용했어요 🐥 내일 다시 만나요!"
+                : language === "id"
+                ? "Sesi gratis hari ini sudah habis 🐥 Sampai jumpa besok!"
+                : "You've used all 5 free sessions today 🐥 See you tomorrow!"}
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => router.push("/")}
+                  className="rounded-xl bg-[#FF6B4A] px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-[#ff5a33]"
+                >
+                  {language === "ko" ? "홈으로 돌아가기" : language === "id" ? "Kembali ke Beranda" : "Back to Home"}
+                </button>
+              </div>
+            </div>
+          )}
           {isRecording && (
             <div className="mb-2 flex items-center justify-center gap-1.5 text-[11px] text-[#C53030]">
               <span className="h-2 w-2 animate-pulse rounded-full bg-[#C53030]" />
@@ -649,7 +826,7 @@ function ChatContent() {
             />
             <button
               type="button"
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || usageLimited}
               onClick={handleSend}
               className="flex h-12 items-center justify-center rounded-2xl bg-[#FF6B4A] px-5 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(255,107,74,0.35)] transition disabled:cursor-not-allowed disabled:bg-[#E8D5CF] disabled:shadow-none hover:bg-[#ff5a33] active:scale-[0.98]"
             >
