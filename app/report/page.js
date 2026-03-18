@@ -127,7 +127,15 @@ function ReportContent() {
     if (!supabase) return;
 
     (async () => {
-      const { data: row } = await supabase.from("streaks").select("current_streak, best_streak, total_sessions").eq("user_id", userId).single();
+      const { data: row, error } = await supabase
+        .from("streaks")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.log("Streak not found, creating new");
+      }
 
       let current = row?.current_streak ?? 0;
       let best = row?.best_streak ?? 0;
