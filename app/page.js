@@ -9,6 +9,7 @@ import {
   trackStartDailyPhrase,
   trackChallengeStart
 } from "@/app/lib/gtag";
+import Analytics from "../components/Analytics";
 import { DAILY_PHRASES } from "@/app/data/daily_phrases";
 import { CHALLENGE_DAYS } from "@/app/data/missions";
 
@@ -286,8 +287,10 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FFF8F0] px-4 py-6 sm:py-10 text-[#3D2010]">
-      <div className="mx-auto flex max-w-lg flex-col gap-8 sm:gap-10">
+    <>
+      <Analytics />
+      <main className="min-h-screen bg-[#FFF8F0] px-4 py-6 sm:py-10 text-[#3D2010]">
+        <div className="mx-auto flex max-w-lg flex-col gap-8 sm:gap-10">
         {/* 헤더 */}
         <header className="flex flex-col gap-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "0ms", animationFillMode: "forwards" }}>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -576,8 +579,9 @@ export default function HomePage() {
             {language === "ko" ? " 로 보내주세요." : "."}
           </p>
         </footer>
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   );
 }
 
