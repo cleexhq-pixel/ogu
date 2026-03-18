@@ -27,9 +27,6 @@ export default function HomePage() {
   const [usageToday, setUsageToday] = useState({ mission: 0, conversation: 0 });
   const [challengeProgress, setChallengeProgress] = useState([]);
   const activeUserIdRef = useRef(null);
-  const channelRef = useRef(null);
-  const realtimeRetryRef = useRef(0);
-  const realtimeRetryTimerRef = useRef(null);
 
   // GA4: 첫 진입 시 페이지뷰 + app_open 이벤트
   useEffect(() => {
@@ -38,7 +35,7 @@ export default function HomePage() {
     trackAppOpen();
   }, []);
 
-  // Supabase 실시간 접속자
+  // Supabase 접속자 폴링 (5초)
   useEffect(() => {
     const supabase = getSupabase();
     if (!supabase) return;
@@ -47,11 +44,21 @@ export default function HomePage() {
     activeUserIdRef.current = id;
 
     const fetchCounts = async () => {
-      const { data, error } = await supabase.from("active_users").select("id, status");
-      if (error) return;
-      const list = data ?? [];
-      setOnlineCount(list.length);
-      setLearningCount(list.filter((r) => r.status === "chatting").length);
+      try {
+        const { count: totalCount } = await supabase
+          .from("active_users")
+          .select("*", { count: "exact", head: true });
+
+        const { count: chattingCount } = await supabase
+          .from("active_users")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "chatting");
+
+        setOnlineCount(totalCount || 0);
+        setLearningCount(chattingCount || 0);
+      } catch (err) {
+        console.log("Count fetch failed silently");
+      }
     };
 
     (async () => {
@@ -63,49 +70,10 @@ export default function HomePage() {
       await fetchCounts();
     })();
 
-    const MAX_RETRY = 3;
-    const subscribeRealtime = () => {
-      const channel = supabase
-        .channel("active_users")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "active_users" },
-          () => {
-            fetchCounts();
-          }
-        )
-        .subscribe((status, err) => {
-          if (err) console.error("Realtime error:", err);
-          if (
-            (status === "CHANNEL_ERROR" || status === "TIMED_OUT") &&
-            realtimeRetryRef.current < MAX_RETRY
-          ) {
-            realtimeRetryRef.current += 1;
-            try {
-              supabase.removeChannel(channel);
-            } catch (_) {}
-            if (realtimeRetryTimerRef.current) {
-              clearTimeout(realtimeRetryTimerRef.current);
-            }
-            realtimeRetryTimerRef.current = setTimeout(() => {
-              subscribeRealtime();
-            }, 800 * realtimeRetryRef.current);
-          }
-        });
-      channelRef.current = channel;
-    };
-
-    subscribeRealtime();
+    const interval = setInterval(fetchCounts, 5000);
 
     return () => {
-      if (realtimeRetryTimerRef.current) {
-        clearTimeout(realtimeRetryTimerRef.current);
-        realtimeRetryTimerRef.current = null;
-      }
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      clearInterval(interval);
       const toDelete = activeUserIdRef.current;
       if (toDelete) {
         supabase.from("active_users").delete().eq("id", toDelete).then(() => {});
