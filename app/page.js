@@ -9,7 +9,7 @@ import {
   trackStartDailyPhrase,
   trackChallengeStart
 } from "@/app/lib/gtag";
-import Analytics from "../components/Analytics";
+import Analytics from "@/app/components/Analytics";
 import { DAILY_PHRASES } from "@/app/data/daily_phrases";
 import { CHALLENGE_DAYS } from "@/app/data/missions";
 
