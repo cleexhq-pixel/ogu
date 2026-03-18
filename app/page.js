@@ -27,6 +27,8 @@ export default function HomePage() {
   const [challengeProgress, setChallengeProgress] = useState([]);
   const activeUserIdRef = useRef(null);
   const channelRef = useRef(null);
+  const realtimeRetryRef = useRef(0);
+  const realtimeRetryTimerRef = useRef(null);
 
   // GA4: 첫 진입 시 페이지뷰 + app_open 이벤트
   useEffect(() => {
@@ -60,19 +62,45 @@ export default function HomePage() {
       await fetchCounts();
     })();
 
-    const channel = supabase
-      .channel("active_users_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "active_users" },
-        () => {
-          fetchCounts();
-        }
-      )
-      .subscribe();
-    channelRef.current = channel;
+    const MAX_RETRY = 3;
+    const subscribeRealtime = () => {
+      const channel = supabase
+        .channel("active_users")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "active_users" },
+          () => {
+            fetchCounts();
+          }
+        )
+        .subscribe((status, err) => {
+          if (err) console.error("Realtime error:", err);
+          if (
+            (status === "CHANNEL_ERROR" || status === "TIMED_OUT") &&
+            realtimeRetryRef.current < MAX_RETRY
+          ) {
+            realtimeRetryRef.current += 1;
+            try {
+              supabase.removeChannel(channel);
+            } catch (_) {}
+            if (realtimeRetryTimerRef.current) {
+              clearTimeout(realtimeRetryTimerRef.current);
+            }
+            realtimeRetryTimerRef.current = setTimeout(() => {
+              subscribeRealtime();
+            }, 800 * realtimeRetryRef.current);
+          }
+        });
+      channelRef.current = channel;
+    };
+
+    subscribeRealtime();
 
     return () => {
+      if (realtimeRetryTimerRef.current) {
+        clearTimeout(realtimeRetryTimerRef.current);
+        realtimeRetryTimerRef.current = null;
+      }
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
@@ -94,10 +122,14 @@ export default function HomePage() {
     if (!supabase) return;
     supabase
       .from("streaks")
-      .select("current_streak")
+      .select("*")
       .eq("user_id", userId)
-      .single()
-      .then(({ data }) => {
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          console.log("Streak not found, creating new");
+          return;
+        }
         if (data?.current_streak >= 2) setStreakBadge(data.current_streak);
       })
       .catch(() => {});

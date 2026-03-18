@@ -1,5 +1,4 @@
 import "./globals.css";
-import Script from "next/script";
 
 export const metadata = {
   title: "오구오구 (OguOgu)",
@@ -7,21 +6,19 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-  const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+  const GA_ID = process.env.NEXT_PUBLIC_GA_ID || "";
 
   return (
     <html lang="ko">
       <head>
         {GA_ID && (
-          <Script
+          <script
+            async
             src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-            strategy="afterInteractive"
           />
         )}
         {GA_ID && (
-          <Script
-            id="google-analytics"
-            strategy="afterInteractive"
+          <script
             dangerouslySetInnerHTML={{
               __html: `
                 window.dataLayer = window.dataLayer || [];
