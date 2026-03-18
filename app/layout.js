@@ -1,5 +1,6 @@
 import "./globals.css";
 import Script from "next/script";
+import GoogleAnalytics from "@/app/components/GoogleAnalytics";
 
 export const metadata = {
   title: "오구오구 (OguOgu)",
@@ -18,24 +19,20 @@ export default function RootLayout({ children }) {
               src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
               strategy="afterInteractive"
             />
-            <Script
-              id="google-analytics"
-              strategy="afterInteractive"
-              dangerouslySetInnerHTML={{
-                __html: `
-                  window.dataLayer = window.dataLayer || [];
-                  function gtag(){dataLayer.push(arguments);}
-                  gtag('js', new Date());
-                  gtag('config', '${GA_ID}', {
-                    page_path: window.location.pathname,
-                  });
-                `
-              }}
-            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                window.gtag = gtag;
+                gtag('js', new Date());
+                gtag('config', '${GA_ID}');
+              `}
+            </Script>
           </>
         )}
       </head>
       <body className="min-h-screen">
+        {GA_ID && <GoogleAnalytics GA_ID={GA_ID} />}
         {children}
       </body>
     </html>
