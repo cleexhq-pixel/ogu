@@ -55,19 +55,31 @@ export default function HomePage() {
     const supabase = getSupabase();
     if (!supabase) return;
 
-    const id = crypto.randomUUID?.() ?? `ogu-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    let id = null;
+    if (typeof window !== "undefined") {
+      id =
+        window.localStorage.getItem("ogu_user_id") ||
+        crypto.randomUUID?.() ||
+        `ogu-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      window.localStorage.setItem("ogu_user_id", id);
+    } else {
+      id = crypto.randomUUID?.() ?? `ogu-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
     activeUserIdRef.current = id;
 
     const fetchCounts = async () => {
       try {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
         const { count: totalCount } = await supabase
           .from("active_users")
-          .select("*", { count: "exact", head: true });
+          .select("*", { count: "exact", head: true })
+          .gte("last_seen", fiveMinutesAgo);
 
         const { count: chattingCount } = await supabase
           .from("active_users")
           .select("*", { count: "exact", head: true })
-          .eq("status", "chatting");
+          .eq("status", "chatting")
+          .gte("last_seen", fiveMinutesAgo);
 
         setOnlineCount(totalCount || 0);
         setLearningCount(chattingCount || 0);
@@ -86,9 +98,22 @@ export default function HomePage() {
     })();
 
     const interval = setInterval(fetchCounts, 5000);
+    const lastSeenInterval = setInterval(async () => {
+      try {
+        const userId = activeUserIdRef.current;
+        if (!userId) return;
+        await supabase
+          .from("active_users")
+          .update({ last_seen: new Date().toISOString() })
+          .eq("id", userId);
+      } catch {
+        // silent
+      }
+    }, 30000);
 
     return () => {
       clearInterval(interval);
+      clearInterval(lastSeenInterval);
       const toDelete = activeUserIdRef.current;
       if (toDelete) {
         supabase.from("active_users").delete().eq("id", toDelete).then(() => {});
@@ -409,15 +434,26 @@ export default function HomePage() {
             {language === "ko" ? "AI 한국어 회화" : language === "id" ? "Percakapan Korea AI" : "AI Korean Conversation"}
           </p>
           <h1 className="text-3xl font-extrabold tracking-tight text-[#0F172A] sm:text-4xl md:text-[2.5rem]">
-            {language === "ko" ? "오구오구" : "OguOgu"}
+            {language === "ko" ? "오구오구 🐥" : "OguOgu 🐥"}
           </h1>
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-[#64748B] sm:text-base">
-            {language === "ko"
-              ? "따뜻한 오구 친구와 함께, 내 일상에 딱 맞는 한국어 회화를 연습해보세요."
-              : language === "id"
-              ? "Berlatih percakapan Korea yang cocok dengan keseharianmu, bersama teman Ogu yang hangat."
-              : "Practice everyday Korean conversations with your warm Ogu friend—perfectly matched to your life."}
-          </p>
+          <div className="mx-auto max-w-md text-center text-base leading-relaxed text-[#64748B] sm:text-lg">
+            {language === "ko" ? (
+              <>
+                <p>짧고 재미있게,</p>
+                <p>AI 친구와 한국어로 말해보세요!</p>
+              </>
+            ) : language === "id" ? (
+              <>
+                <p>Singkat, seru, dan ramah —</p>
+                <p>Ngobrol bahasa Korea dengan teman AI!</p>
+              </>
+            ) : (
+              <>
+                <p>Short, fun, and friendly —</p>
+                <p>Chat in Korean with your AI friend!</p>
+              </>
+            )}
+          </div>
         </section>}
 
         {/* 오늘의 표현 */}

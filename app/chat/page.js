@@ -709,8 +709,8 @@ function ChatContent() {
 
       <div className="flex w-full max-w-2xl flex-1 flex-col rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] shadow-[0_20px_50px_rgba(0,0,0,0.06)] overflow-hidden">
         {/* 헤더 */}
-        <header className="flex items-center justify-between gap-3 border-b border-[#E5E7EB] bg-[#FFFFFF] px-4 py-3">
-          <div className="flex min-w-0 items-center gap-3">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5E7EB] bg-[#FFFFFF] px-3 py-3">
+          <div className="flex min-w-0 flex-shrink items-center gap-2">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#EEF2FF] text-xl shadow-sm">
               {personaMeta.emoji}
             </div>
@@ -723,7 +723,7 @@ function ChatContent() {
               </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setIsMuted((m) => !m)}
@@ -748,14 +748,24 @@ function ChatContent() {
                   : "border-[#E5E7EB] bg-[#FFFFFF] text-[#64748B] hover:border-[#CBD5E1]"
               }`}
             >
-              {language === "ko" ? (showHints ? "힌트 숨기기 👀" : "힌트 보기 👀") : language === "id" ? (showHints ? "Sembunyikan Petunjuk 👀" : "Tampilkan Petunjuk 👀") : (showHints ? "Hide Hints 👀" : "Show Hints 👀")}
+              <span className="sm:hidden">👀</span>
+              <span className="hidden sm:inline">
+                {language === "ko"
+                  ? (showHints ? "힌트 숨기기 👀" : "힌트 보기 👀")
+                  : language === "id"
+                  ? (showHints ? "Sembunyikan Petunjuk 👀" : "Tampilkan Petunjuk 👀")
+                  : (showHints ? "Hide Hints 👀" : "Show Hints 👀")}
+              </span>
             </button>
             <button
               type="button"
               onClick={handleEndConversation}
               className="rounded-xl border border-[#E5E7EB] bg-[#FFFFFF] px-3 py-2 text-[11px] font-semibold text-[#DC2626] transition hover:bg-[#F8FAFC] active:scale-[0.98]"
             >
-              {language === "ko" ? "대화 끝내기" : language === "id" ? "Akhiri Percakapan" : "End Conversation"}
+              <span className="sm:hidden">End</span>
+              <span className="hidden sm:inline">
+                {language === "ko" ? "대화 끝내기" : language === "id" ? "Akhiri Percakapan" : "End Conversation"}
+              </span>
             </button>
           </div>
         </header>
