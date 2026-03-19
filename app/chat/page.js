@@ -121,6 +121,8 @@ function ChatContent() {
   const seed = searchParams.get("seed");
   const challengeDayParam = searchParams.get("challenge_day");
   const mode = searchParams.get("mode");
+  const onboardingParam = searchParams.get("onboarding");
+  const isOnboarding = onboardingParam === "true";
 
   const isPhraseMode = !!seed && mode === "phrase";
   const level = isPhraseMode ? "elementary" : levelParam;
@@ -140,6 +142,7 @@ function ChatContent() {
   const [correctionCollapsed, setCorrectionCollapsed] = useState({});
   const [usageLimited, setUsageLimited] = useState(false);
   const [showMissionCompleteModal, setShowMissionCompleteModal] = useState(false);
+  const [showStarterButtons, setShowStarterButtons] = useState(isOnboarding);
 
   const recognitionRef = useRef(null);
   const synthesisRef = useRef(getSpeechSynthesis());
@@ -206,6 +209,47 @@ function ChatContent() {
   }, [missionId]);
 
   const missionSteps = missionMeta ? missionMeta.steps[language] || missionMeta.steps.en : [];
+
+  const starterMessages = useMemo(() => {
+    const map = {
+      "greeting-friend": {
+        ko: ["안녕하세요!", "오랜만이에요!", "잘 지냈어요?"],
+        en: ["Hi there!", "Long time no see!", "How are you?"],
+        id: ["Halo!", "Lama tidak jumpa!", "Apa kabar?"]
+      },
+      "cafe-order": {
+        ko: ["아이스 아메리카노 주세요!", "따뜻한 라떼 주세요!", "메뉴 추천해 주세요!"],
+        en: ["Iced Americano please!", "Warm latte please!", "Can you recommend?"],
+        id: ["Es Americano!", "Latte hangat!", "Ada rekomendasi?"]
+      },
+      "self-intro": {
+        ko: ["안녕하세요, 저는 학생이에요!", "반갑습니다!", "한국어 공부 중이에요!"],
+        en: ["Hi, I'm a student!", "Nice to meet you!", "I'm learning Korean!"],
+        id: ["Halo, saya mahasiswa!", "Senang bertemu!", "Saya belajar Korea!"]
+      },
+      default: {
+        ko: ["안녕하세요!", "잘 부탁드려요!", "시작해볼게요!"],
+        en: ["Hello!", "Nice to meet you!", "Let's start!"],
+        id: ["Halo!", "Senang bertemu!", "Ayo mulai!"]
+      }
+    };
+    const key = missionId && map[missionId] ? missionId : "default";
+    return map[key][language] || map[key].en;
+  }, [missionId, language]);
+
+  useEffect(() => {
+    const currentUserTurns = messages.filter((m) => m.role === "user").length;
+    if (!isOnboarding) {
+      setShowStarterButtons(false);
+      return;
+    }
+    if (messages.length > 0 && messages[0]?.role === "assistant" && currentUserTurns === 0 && !input.trim()) {
+      setShowStarterButtons(true);
+    }
+    if (currentUserTurns > 0) {
+      setShowStarterButtons(false);
+    }
+  }, [isOnboarding, messages, input]);
 
   // STT: SpeechRecognition 초기화 및 이벤트
   useEffect(() => {
@@ -388,8 +432,8 @@ function ChatContent() {
     startConversation();
   }, [level, persona, language]);
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
+  const handleSend = async (presetText) => {
+    const trimmed = (presetText ?? input).trim();
     if (!trimmed || isLoading) return;
 
     // 하루 사용량 제한 체크 (첫 유저 발화 시)
@@ -473,6 +517,7 @@ function ChatContent() {
     const nextMessages = [...messages, { role: "user", content: trimmed }];
     setMessages(nextMessages);
     setInput("");
+    setShowStarterButtons(false);
     setIsLoading(true);
 
     try {
@@ -593,6 +638,12 @@ function ChatContent() {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleStarterSelect = (text) => {
+    setInput(text);
+    setShowStarterButtons(false);
+    handleSend(text);
   };
 
   // level 3: 3초 후 메인(/)으로 이동 (한 번만 시작)
@@ -857,6 +908,20 @@ function ChatContent() {
 
         {/* 입력창 */}
         <div className="border-t border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+          {showStarterButtons && !usageLimited && (
+            <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+              {starterMessages.map((starter) => (
+                <button
+                  key={starter}
+                  type="button"
+                  onClick={() => handleStarterSelect(starter)}
+                  className="shrink-0 rounded-full border border-[#4F46E5] bg-[#EEF2FF] px-3 py-1.5 text-[12px] font-medium text-[#4F46E5]"
+                >
+                  {starter}
+                </button>
+              ))}
+            </div>
+          )}
           {usageLimited && (
             <div className="mb-2 rounded-2xl bg-[#FEF2F2] px-3 py-2 text-center text-[12px] text-[#991B1B]">
               {language === "ko"
@@ -904,7 +969,10 @@ function ChatContent() {
             <input
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                if (isOnboarding && e.target.value.trim().length > 0) setShowStarterButtons(false);
+              }}
               onKeyDown={handleKeyDown}
               placeholder={
                 language === "ko" ? "한국어로 말해보세요..." : language === "id" ? "Ketik dalam bahasa Korea..." : "Type in Korean..."
