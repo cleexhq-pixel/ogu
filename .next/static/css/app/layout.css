@@ -660,6 +660,9 @@ video {
 .flex-1 {
   flex: 1 1 0%;
 }
+.flex-shrink {
+  flex-shrink: 1;
+}
 .shrink-0 {
   flex-shrink: 0;
 }
@@ -1512,6 +1515,10 @@ body {
     display: inline;
   }
 
+  .sm\:hidden {
+    display: none;
+  }
+
   .sm\:w-auto {
     width: auto;
   }
@@ -1572,6 +1579,11 @@ body {
   .sm\:text-base {
     font-size: 1rem;
     line-height: 1.5rem;
+  }
+
+  .sm\:text-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
   }
 }
 
