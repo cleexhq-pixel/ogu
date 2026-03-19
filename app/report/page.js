@@ -45,12 +45,51 @@ function ReportContent() {
   const [streakData, setStreakData] = useState(null);
   const [milestoneModal, setMilestoneModal] = useState(null);
   const [reportCorrections, setReportCorrections] = useState([]);
+  const [feedbackRating, setFeedbackRating] = useState(null);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackSubmittedToday, setFeedbackSubmittedToday] = useState(false);
+  const [feedbackThanks, setFeedbackThanks] = useState(false);
   const shareCardRef = useRef(null);
   const [saveToast, setSaveToast] = useState("");
 
   const level = searchParams.get("level") || "beginner";
   const persona = searchParams.get("persona") || "cafe";
   const language = searchParams.get("lang") || "en";
+  const missionId = searchParams.get("mission");
+
+  const feedbackDateKey = `ogu_feedback_${getTodayLocal()}`;
+
+  const feedbackOptions = [
+    {
+      rating: 4,
+      emoji: "😍",
+      ko: "매우 도움됐어요!",
+      en: "Very helpful!",
+      id: "Sangat membantu!"
+    },
+    {
+      rating: 3,
+      emoji: "🙂",
+      ko: "도움됐어요",
+      en: "Helpful",
+      id: "Membantu"
+    },
+    {
+      rating: 2,
+      emoji: "😐",
+      ko: "보통이에요",
+      en: "So-so",
+      id: "Biasa saja"
+    },
+    {
+      rating: 1,
+      emoji: "😕",
+      ko: "내가 찾는 게 아니에요",
+      en: "Not what I needed",
+      id: "Bukan yang saya cari"
+    }
+  ];
 
   useEffect(() => {
     try {
@@ -80,6 +119,14 @@ function ReportContent() {
       }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const submitted = window.localStorage.getItem(feedbackDateKey);
+    if (submitted) {
+      setFeedbackSubmittedToday(true);
+    }
+  }, [feedbackDateKey]);
 
   // GA4: 리포트 페이지 진입 시 페이지뷰 전송
   useEffect(() => {
@@ -319,6 +366,43 @@ function ReportContent() {
     }
   };
 
+  const submitFeedback = async () => {
+    if (!feedbackRating || feedbackSubmitting) return;
+    const selected = feedbackOptions.find((opt) => opt.rating === feedbackRating);
+    if (!selected) return;
+    const ratingLabel = language === "ko" ? selected.ko : language === "id" ? selected.id : selected.en;
+
+    setFeedbackSubmitting(true);
+    try {
+      const supabase = getSupabase();
+      if (!supabase) return;
+      const visitType =
+        typeof window !== "undefined" && !window.localStorage.getItem("ogu_visited")
+          ? "first"
+          : "returning";
+
+      const { error } = await supabase.from("feedback").insert({
+        rating: feedbackRating,
+        rating_label: ratingLabel,
+        comment: feedbackComment.trim(),
+        visit_type: visitType,
+        language,
+        mission_id: missionId || null
+      });
+      if (error) throw error;
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(feedbackDateKey, "submitted");
+      }
+      setFeedbackThanks(true);
+      setFeedbackSubmittedToday(false);
+    } catch (e) {
+      console.error("Feedback submit failed:", e);
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center bg-[#F9FAFB] px-4 py-8 text-[#0F172A]">
       {/* 마일스톤 축하 모달 */}
@@ -530,6 +614,89 @@ function ReportContent() {
               ? "Laporan disalin ke clipboard!"
               : "Report copied to clipboard!"}
           </p>
+        )}
+
+        {!feedbackSubmittedToday && (
+          <section className="rounded-xl border border-[#E5E7EB] bg-[#FFFFFF] p-4 shadow-sm">
+            {feedbackThanks ? (
+              <p className="text-center text-sm font-semibold text-[#4F46E5]">
+                {language === "ko"
+                  ? "소중한 의견 감사해요! 🐥"
+                  : language === "id"
+                  ? "Terima kasih atas masukan Anda! 🐥"
+                  : "Thank you for your feedback! 🐥"}
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-[#0F172A]">
+                  {language === "ko"
+                    ? "이번 학습 어떠셨나요? 🐥"
+                    : language === "id"
+                    ? "Bagaimana latihannya? 🐥"
+                    : "How was your practice? 🐥"}
+                </h3>
+
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {feedbackOptions.map((opt) => {
+                    const selected = feedbackRating === opt.rating;
+                    return (
+                      <button
+                        key={opt.rating}
+                        type="button"
+                        onClick={() => setFeedbackRating(opt.rating)}
+                        className={`rounded-xl border px-2 py-2 text-center transition ${
+                          selected
+                            ? "border-[#4F46E5] bg-[#EEF2FF]"
+                            : "border-[#E5E7EB] bg-[#F9FAFB]"
+                        }`}
+                      >
+                        <div className="text-xl">{opt.emoji}</div>
+                        <div className="mt-1 text-[11px] text-[#0F172A]">
+                          {language === "ko" ? opt.ko : language === "id" ? opt.id : opt.en}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {feedbackRating != null && (
+                  <textarea
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value.slice(0, 200))}
+                    rows={3}
+                    maxLength={200}
+                    placeholder={
+                      language === "ko"
+                        ? "추가 의견이 있으시면 적어주세요. (선택)"
+                        : language === "id"
+                        ? "Ada komentar tambahan? (opsional)"
+                        : "Any additional comments? (optional)"
+                    }
+                    className="w-full resize-none rounded-xl border border-[#E5E7EB] bg-[#FFFFFF] px-3 py-2 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-1 focus:ring-[#4F46E5]"
+                  />
+                )}
+
+                <button
+                  type="button"
+                  disabled={feedbackRating == null || feedbackSubmitting}
+                  onClick={submitFeedback}
+                  className="w-full rounded-xl bg-[#4F46E5] py-2.5 text-sm font-semibold text-white transition hover:bg-[#4338CA] disabled:cursor-not-allowed disabled:bg-[#F1F5F9] disabled:text-[#94A3B8]"
+                >
+                  {feedbackSubmitting
+                    ? language === "ko"
+                      ? "보내는 중..."
+                      : language === "id"
+                      ? "Mengirim..."
+                      : "Submitting..."
+                    : language === "ko"
+                    ? "의견 보내기"
+                    : language === "id"
+                    ? "Kirim Ulasan"
+                    : "Submit Feedback"}
+                </button>
+              </div>
+            )}
+          </section>
         )}
 
         {/* 공유 카드 (1080x1080 캡처용, 화면에는 360px로 표시) */}
