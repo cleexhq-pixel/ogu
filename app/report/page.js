@@ -213,7 +213,7 @@ function ReportContent() {
       const canvas = await html2canvas(shareCardRef.current, {
         scale: 3,
         useCORS: true,
-        backgroundColor: "#FFF8F0"
+        backgroundColor: "#F9FAFB"
       });
       const link = document.createElement("a");
       link.download = "oguogu-card.png";
@@ -320,7 +320,7 @@ function ReportContent() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-4 py-8 text-[#3D2010]">
+    <main className="flex min-h-screen flex-col items-center bg-[#F9FAFB] px-4 py-8 text-[#0F172A]">
       {/* 마일스톤 축하 모달 */}
       {milestoneModal && MILESTONES[milestoneModal] && (
         <div
@@ -329,14 +329,14 @@ function ReportContent() {
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-sm rounded-3xl border border-[#FFE0D0] bg-[#FFF8F0] p-6 shadow-xl">
-            <p className="text-center text-lg font-bold text-[#FF6B4A]">
+          <div className="w-full max-w-sm rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] p-6 shadow-xl">
+            <p className="text-center text-lg font-bold text-[#4F46E5]">
               {language === "ko" ? MILESTONES[milestoneModal].ko : language === "id" ? MILESTONES[milestoneModal].id : MILESTONES[milestoneModal].en}
             </p>
             <button
               type="button"
               onClick={() => setMilestoneModal(null)}
-              className="mt-4 w-full rounded-2xl bg-[#FF6B4A] py-3 text-sm font-semibold text-white transition hover:bg-[#ff5a33]"
+              className="mt-4 w-full rounded-2xl bg-[#4F46E5] py-3 text-sm font-semibold text-white transition hover:bg-[#4338CA]"
             >
               {language === "ko" ? "확인" : language === "id" ? "Oke" : "OK"}
             </button>
@@ -346,19 +346,19 @@ function ReportContent() {
 
       <div className="w-full max-w-2xl space-y-8">
         {/* ① 칭찬 배너 */}
-        <section className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] px-6 py-6 shadow-[0_16px_48px_rgba(0,0,0,0.06)]">
+        <section className="rounded-3xl border border-[#E5E7EB] bg-[#EEF2FF] px-6 py-6 shadow-[0_16px_48px_rgba(0,0,0,0.06)]">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9A7060]">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748B]">
                 {language === "ko" ? "오늘의 오구 리포트" : language === "id" ? "Laporan Ogu Hari Ini" : "Today's Ogu Report"}
               </p>
-              <h1 className="text-2xl font-extrabold text-[#FF6B4A] sm:text-3xl">
+              <h1 className="text-2xl font-extrabold text-[#4F46E5] sm:text-3xl">
                 {language === "ko" ? "오구오구~ 잘했어요! 🎉" : language === "id" ? "Ogu ogu~ Kerja bagus! 🎉" : "Ogu ogu~ Great job! 🎉"}
               </h1>
-              <p className="text-sm text-[#9A7060]">{language === "ko" ? "수고했어요!" : language === "id" ? "Kerja bagus hari ini!" : "Great job today!"}</p>
-              <p className="text-[12px] text-[#9A7060]">{durationText}</p>
+              <p className="text-sm text-[#64748B]">{language === "ko" ? "수고했어요!" : language === "id" ? "Kerja bagus hari ini!" : "Great job today!"}</p>
+              <p className="text-[12px] text-[#64748B]">{durationText}</p>
             </div>
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0E8] text-3xl shadow-[0_8px_24px_rgba(255,107,74,0.2)]">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FFFFFF] text-3xl shadow-[0_8px_24px_rgba(79,70,229,0.12)]">
               🐥
             </div>
           </div>
@@ -366,11 +366,11 @@ function ReportContent() {
 
         {/* 스트릭 카드 */}
         {streakData != null && (
-          <section className="rounded-3xl border border-[#FFE0D0] bg-[#FFF3E0] px-5 py-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
-            <p className="text-center text-base font-bold text-[#FF6B4A]">
+          <section className="rounded-3xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+            <p className="text-center text-base font-bold text-[#16A34A]">
               🔥 {language === "ko" ? `${streakData.current_streak}일 연속 학습 중!` : language === "id" ? `${streakData.current_streak} hari berturut-turut!` : `${streakData.current_streak} day streak!`}
             </p>
-            <div className="mt-2 flex justify-center gap-4 text-[12px] text-[#E65100]">
+            <div className="mt-2 flex justify-center gap-4 text-[12px] text-[#166534]">
               <span>{language === "ko" ? `최장 기록: ${streakData.best_streak}일` : language === "id" ? `Terbaik: ${streakData.best_streak} hari` : `Best: ${streakData.best_streak} days`}</span>
               <span>{language === "ko" ? `총 학습 횟수: ${streakData.total_sessions}회` : language === "id" ? `Total sesi: ${streakData.total_sessions}` : `Total sessions: ${streakData.total_sessions}`}</span>
             </div>
@@ -380,18 +380,18 @@ function ReportContent() {
         {/* ② 오늘 배운 표현 카드 */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-[#3D2010]">
+            <h2 className="text-sm font-semibold text-[#0F172A]">
               {language === "ko" ? "오늘 배운 표현" : language === "id" ? "Ekspresi Kunci Hari Ini" : "Key Expressions Today"}
             </h2>
             {isLoadingExpressions && (
-              <span className="text-[11px] text-[#9A7060]">
+              <span className="text-[11px] text-[#64748B]">
                 {language === "ko" ? "요약 중..." : language === "id" ? "Menganalisis..." : "Analyzing..."}
               </span>
             )}
           </div>
 
           {expressions.length === 0 && !isLoadingExpressions ? (
-            <p className="rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 text-[12px] text-[#9A7060] shadow-sm">
+            <p className="rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] p-4 text-[12px] text-[#64748B] shadow-sm">
               {language === "ko"
                 ? "표현을 아직 불러오지 못했어요. 대화를 조금 더 길게 나눠보면 더 잘 분석할 수 있어요."
                 : language === "id"
@@ -408,21 +408,21 @@ function ReportContent() {
                 return (
                   <div
                     key={idx}
-                    className="flex flex-col rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)]"
+                    className="flex flex-col rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)]"
                   >
-                    <span className="mb-2 text-[10px] font-medium uppercase tracking-wider text-[#FF6B4A]">
+                    <span className="mb-2 text-[10px] font-medium uppercase tracking-wider text-[#4F46E5]">
                       {language === "ko" ? `표현 ${idx + 1}` : language === "id" ? `Ekspresi ${idx + 1}` : `Expression ${idx + 1}`}
                     </span>
-                    <p className="text-sm font-semibold text-[#3D2010]">{korean}</p>
-                    <p className="mt-1 text-[11px] text-[#9A7060]">{english}</p>
-                    <p className="mt-2 text-[11px] leading-relaxed text-[#C09A8A]">
+                    <p className="text-sm font-semibold text-[#0F172A]">{korean}</p>
+                    <p className="mt-1 text-[11px] text-[#64748B]">{english}</p>
+                    <p className="mt-2 text-[11px] leading-relaxed text-[#94A3B8]">
                       {example}
                     </p>
                     {realExpr && (
                       <button
                         type="button"
                         onClick={() => handleSaveExpression(expr)}
-                        className="mt-3 inline-flex items-center justify-center rounded-2xl bg-[#FFF8F0] px-3 py-1.5 text-[11px] font-semibold text-[#FF6B4A] shadow-sm transition hover:bg-[#FFE0D0]"
+                        className="mt-3 inline-flex items-center justify-center rounded-2xl bg-[#EEF2FF] px-3 py-1.5 text-[11px] font-semibold text-[#4F46E5] shadow-sm transition hover:bg-[#E0E7FF]"
                       >
                         💾{" "}
                         {language === "ko"
@@ -442,7 +442,7 @@ function ReportContent() {
         {/* 교정 포인트 */}
         {reportCorrections.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-[#3D2010]">
+            <h2 className="text-sm font-semibold text-[#0F172A]">
               {language === "ko" ? "📝 이번 대화 교정 포인트" : language === "id" ? "📝 Poin Koreksi" : "📝 Correction Points"}
             </h2>
             <div className="space-y-3">
@@ -450,33 +450,33 @@ function ReportContent() {
                 <div
                   key={idx}
                   className="rounded-2xl border-2 px-4 py-3"
-                  style={{ backgroundColor: "#FFF8E1", borderColor: "#FFB300" }}
+                  style={{ backgroundColor: "#FFFBEB", borderColor: "#D97706" }}
                 >
                   <p className="text-[13px]">
-                    <span className="text-red-600 line-through">{c.original ?? ""}</span>
-                    <span className="mx-1.5 font-medium text-[#FFB300]">→</span>
-                    <span className="font-semibold text-green-700">{c.corrected ?? ""}</span>
+                    <span className="text-[#DC2626] line-through">{c.original ?? ""}</span>
+                    <span className="mx-1.5 font-medium text-[#D97706]">→</span>
+                    <span className="font-semibold text-[#16A34A]">{c.corrected ?? ""}</span>
                   </p>
-                  <p className="mt-1.5 text-[12px] leading-relaxed text-[#6D4C41]">
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-[#64748B]">
                     {language === "ko" ? (c.explanation_ko ?? c.explanation_en) : language === "id" ? (c.explanation_id ?? c.explanation_en) : (c.explanation_en ?? c.explanation_ko)}
                   </p>
                 </div>
               ))}
             </div>
-            <p className="text-center text-[12px] font-medium text-[#FFB300]">
+            <p className="text-center text-[12px] font-medium text-[#D97706]">
               {language === "ko" ? "이 표현들을 기억해두세요! 🐥" : language === "id" ? "Ingat ini! 🐥" : "Remember these! 🐥"}
             </p>
           </section>
         )}
 
         {/* ③ 레벨 진행도 */}
-        <section className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-5 shadow-[0_16px_48px_rgba(0,0,0,0.06)]">
+        <section className="rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] p-5 shadow-[0_16px_48px_rgba(0,0,0,0.06)]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-[#3D2010]">
+              <h2 className="text-sm font-semibold text-[#0F172A]">
                 {language === "ko" ? "나의 오구 레벨" : language === "id" ? "Level Ogu Saya" : "My Ogu Level"}
               </h2>
-              <p className="mt-0.5 text-[11px] text-[#9A7060]">
+              <p className="mt-0.5 text-[11px] text-[#64748B]">
                 {language === "ko"
                   ? "다음 레벨까지 한 걸음 더!"
                   : language === "id"
@@ -484,18 +484,18 @@ function ReportContent() {
                   : "One step closer to the next level."}
               </p>
             </div>
-            <span className="rounded-full bg-[#FFF0E8] px-3 py-1.5 text-[11px] font-semibold text-[#FF6B4A]">
+            <span className="rounded-full bg-[#EEF2FF] px-3 py-1.5 text-[11px] font-semibold text-[#4F46E5]">
               {levelLabel}
             </span>
           </div>
           <div className="mt-4 space-y-2">
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#FFE0D0]">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
               <div
-                className="h-full rounded-full bg-[#FF6B4A] transition-[width] duration-500"
+                className="h-full rounded-full bg-[#4F46E5] transition-[width] duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <p className="text-[11px] text-[#9A7060]">
+            <p className="text-[11px] text-[#64748B]">
               {language === "ko"
                 ? "내일도 오구오구와 연습해볼까요?"
                 : language === "id"
@@ -510,20 +510,20 @@ function ReportContent() {
           <button
             type="button"
             onClick={() => router.push("/")}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FF6B4A] px-5 py-3.5 text-[14px] font-semibold text-white shadow-[0_12px_32px_rgba(255,107,74,0.4)] transition hover:bg-[#ff5a33] hover:shadow-[0_16px_40px_rgba(255,107,74,0.45)] active:scale-[0.98] sm:w-auto"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#4F46E5] px-5 py-3.5 text-[14px] font-semibold text-white shadow-[0_12px_32px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] hover:shadow-[0_16px_40px_rgba(79,70,229,0.4)] active:scale-[0.98] sm:w-auto"
           >
             {language === "ko" ? "다시 대화하기 🐥" : language === "id" ? "Mulai Lagi 🐥" : "Talk Again 🐥"}
           </button>
           <button
             type="button"
             onClick={handleShare}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#FFE0D0] bg-[#FFFFFF] px-5 py-3.5 text-[14px] font-semibold text-[#3D2010] transition hover:bg-[#FFF0E8] hover:border-[#FF6B4A]/40 active:scale-[0.98] sm:w-auto"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#E5E7EB] bg-[#FFFFFF] px-5 py-3.5 text-[14px] font-semibold text-[#0F172A] transition hover:bg-[#F8FAFC] hover:border-[#CBD5E1] active:scale-[0.98] sm:w-auto"
           >
             {language === "ko" ? "공유하기 📸" : language === "id" ? "Bagikan Hasil 📸" : "Share Result 📸"}
           </button>
         </section>
         {shareCopied && (
-          <p className="text-center text-[12px] text-[#9A7060]">
+          <p className="text-center text-[12px] text-[#64748B]">
             {language === "ko"
               ? "리포트가 클립보드에 복사되었어요!"
               : language === "id"
@@ -534,44 +534,44 @@ function ReportContent() {
 
         {/* 공유 카드 (1080x1080 캡처용, 화면에는 360px로 표시) */}
         <section className="flex flex-col items-center gap-4 pt-4">
-          <h2 className="text-sm font-semibold text-[#3D2010]">
+          <h2 className="text-sm font-semibold text-[#0F172A]">
             {language === "ko" ? "📸 공유 카드" : language === "id" ? "📸 Kartu Bagikan" : "📸 Share Card"}
           </h2>
           <div className="flex justify-center overflow-x-auto">
             <div
               ref={shareCardRef}
-              className="flex shrink-0 flex-col rounded-3xl border-2 border-[#FFE0D0] bg-[#FFF8F0] shadow-xl"
+              className="flex shrink-0 flex-col rounded-3xl border-2 border-[#E5E7EB] bg-[#F9FAFB] shadow-xl"
               style={{ width: 360, height: 360 }}
             >
               {/* 상단: 로고 + URL */}
-              <div className="flex items-center justify-between border-b border-[#FFE0D0] px-5 py-3">
-                <span className="text-lg font-bold text-[#FF6B4A]">🐥 OguOgu</span>
-                <span className="text-[9px] text-[#9A7060]">ogu-three.vercel.app</span>
+              <div className="flex items-center justify-between border-b border-[#E5E7EB] px-5 py-3">
+                <span className="text-lg font-bold text-[#4F46E5]">🐥 OguOgu</span>
+                <span className="text-[9px] text-[#64748B]">ogu-three.vercel.app</span>
               </div>
               {/* 중앙: 완료 문구 + 페르소나/레벨 + 표현 3개 */}
               <div className="flex flex-1 flex-col justify-center px-5 py-4">
-                <p className="text-center text-sm font-bold leading-snug text-[#3D2010]">
+                <p className="text-center text-sm font-bold leading-snug text-[#0F172A]">
                   {language === "ko" ? "오늘의 한국어 학습 완료!" : language === "id" ? "Latihan Korea hari ini selesai!" : "Korean practice done today!"}
                 </p>
-                <p className="mt-2 text-center text-[11px] font-semibold text-[#FF6B4A]">
+                <p className="mt-2 text-center text-[11px] font-semibold text-[#4F46E5]">
                   {personaLabel} · {levelLabel}
                 </p>
                 {reportCorrections.length > 0 && (
-                  <p className="mt-1.5 text-center text-[10px] font-bold" style={{ color: "#FFB300" }}>
+                  <p className="mt-1.5 text-center text-[10px] font-bold" style={{ color: "#D97706" }}>
                     {language === "ko" ? `교정 ${reportCorrections.length}개 완료!` : language === "id" ? `${reportCorrections.length} koreksi selesai!` : `${reportCorrections.length} corrections!`}
                   </p>
                 )}
-                <div className="mt-3 space-y-0.5 rounded-xl border border-[#FFE0D0] bg-[#FFFFFF] px-3 py-2">
+                <div className="mt-3 space-y-0.5 rounded-xl border border-[#E5E7EB] bg-[#FFFFFF] px-3 py-2">
                   {(expressions.length ? expressions : []).slice(0, 3).map((e, i) => (
-                    <p key={i} className="line-clamp-2 text-[10px] leading-tight text-[#3D2010]">
+                    <p key={i} className="line-clamp-2 text-[10px] leading-tight text-[#0F172A]">
                       {i + 1}. {e.korean} — {e.english}
                     </p>
                   ))}
                 </div>
               </div>
               {/* 하단: CTA */}
-              <div className="border-t border-[#FFE0D0] px-5 py-3 text-center">
-                <p className="text-[10px] font-semibold text-[#FF6B4A]">
+              <div className="border-t border-[#E5E7EB] px-5 py-3 text-center">
+                <p className="text-[10px] font-semibold text-[#4F46E5]">
                   {language === "ko" ? "나도 해보기 →" : language === "id" ? "Coba juga →" : "Try it →"} ogu-three.vercel.app
                 </p>
               </div>
@@ -581,7 +581,7 @@ function ReportContent() {
             type="button"
             onClick={handleSaveShareCard}
             disabled={cardSaving}
-            className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl border-2 border-[#FF6B4A] bg-[#FFF0E8] px-5 py-3 text-[14px] font-semibold text-[#FF6B4A] transition hover:bg-[#FFE0D0] disabled:opacity-60 sm:w-auto"
+            className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-[#4F46E5] px-5 py-3 text-[14px] font-semibold text-white transition hover:bg-[#4338CA] disabled:opacity-60 sm:w-auto"
           >
             {cardSaving
               ? (language === "ko" ? "저장 중..." : language === "id" ? "Menyimpan..." : "Saving...")
@@ -631,12 +631,12 @@ function ReportContent() {
               ? "Kembali ke Beranda"
               : "Back to Home";
           return (
-            <section className="mt-4 space-y-3 rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
-              <h2 className="text-sm font-semibold text-[#3D2010]">🔥 {label}</h2>
+            <section className="mt-4 space-y-3 rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
+              <h2 className="text-sm font-semibold text-[#0F172A]">🔥 {label}</h2>
               <button
                 type="button"
                 onClick={() => router.push("/")}
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-[#FF6B4A] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(255,107,74,0.4)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-[#4F46E5] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] active:scale-[0.98]"
               >
                 {backLabel}
               </button>
@@ -645,7 +645,7 @@ function ReportContent() {
         })()}
       </div>
       {saveToast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-[#3D2010] px-4 py-2 text-[12px] font-medium text-white shadow-lg">
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-[#0F172A] px-4 py-2 text-[12px] font-medium text-white shadow-lg">
           {saveToast}
         </div>
       )}
@@ -657,7 +657,7 @@ export default function ReportPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-[#FFF8F0] px-4 py-8 text-[#3D2010]">
+        <main className="flex min-h-screen items-center justify-center bg-[#F9FAFB] px-4 py-8 text-[#0F172A]">
           <span className="animate-pulse-soft">🐥</span>
         </main>
       }

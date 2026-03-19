@@ -257,7 +257,7 @@ export default function HomePage() {
   return (
     <>
       <Analytics />
-      <main className="min-h-screen bg-[#FFF8F0] px-4 py-6 sm:py-10 text-[#3D2010]">
+      <main className="min-h-screen bg-[#F9FAFB] px-4 py-6 sm:py-10 text-[#0F172A]">
         <div className="mx-auto flex max-w-lg flex-col gap-8 sm:gap-10">
         {/* 헤더 */}
         <header className="flex flex-col gap-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "0ms", animationFillMode: "forwards" }}>
@@ -266,9 +266,9 @@ export default function HomePage() {
               <span className="text-2xl" aria-hidden>
                 🐥
               </span>
-              <span className="text-lg font-bold tracking-tight text-[#3D2010]">OguOgu</span>
+              <span className="text-lg font-bold tracking-tight text-[#0F172A]">OguOgu</span>
             </div>
-            <div className="inline-flex rounded-full border border-[#FFE0D0] bg-[#FFFFFF] p-1 text-[11px] font-medium shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+            <div className="inline-flex rounded-full border border-[#E5E7EB] bg-[#FFFFFF] p-1 text-[11px] font-medium shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
               <button
                 type="button"
                 onClick={(e) => {
@@ -277,7 +277,7 @@ export default function HomePage() {
                   setLanguage("ko");
                 }}
                 className={`rounded-full px-2.5 py-1 transition-all duration-200 ${
-                  language === "ko" ? "bg-[#FF6B4A] text-white" : "bg-transparent text-[#FF6B4A] hover:bg-[#FFF0E8]"
+                  language === "ko" ? "bg-[#4F46E5] text-white" : "bg-[#FFFFFF] text-[#64748B] hover:bg-[#EEF2FF]"
                 }`}
               >
                 🇰🇷 한국어
@@ -290,7 +290,7 @@ export default function HomePage() {
                   setLanguage("en");
                 }}
                 className={`rounded-full px-2.5 py-1 transition-all duration-200 ${
-                  language === "en" ? "bg-[#FF6B4A] text-white" : "bg-transparent text-[#FF6B4A] hover:bg-[#FFF0E8]"
+                  language === "en" ? "bg-[#4F46E5] text-white" : "bg-[#FFFFFF] text-[#64748B] hover:bg-[#EEF2FF]"
                 }`}
               >
                 🇺🇸 English
@@ -303,7 +303,7 @@ export default function HomePage() {
                   setLanguage("id");
                 }}
                 className={`rounded-full px-2.5 py-1 transition-all duration-200 ${
-                  language === "id" ? "bg-[#FF6B4A] text-white" : "bg-transparent text-[#FF6B4A] hover:bg-[#FFF0E8]"
+                  language === "id" ? "bg-[#4F46E5] text-white" : "bg-[#FFFFFF] text-[#64748B] hover:bg-[#EEF2FF]"
                 }`}
               >
                 🇮🇩 Indonesia
@@ -312,7 +312,7 @@ export default function HomePage() {
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
             {streakBadge != null && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF3E0] px-3 py-1.5 text-[11px] font-medium text-[#E65100]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFFBEB] px-3 py-1.5 text-[11px] font-medium text-[#92400E]">
                 <span aria-hidden>🔥</span>
                 {language === "ko"
                   ? `${streakBadge}일 연속`
@@ -321,7 +321,7 @@ export default function HomePage() {
                   : `${streakBadge} day streak`}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-3 py-1.5 text-[11px] font-medium text-[#FF6B4A]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF2FF] px-3 py-1.5 text-[11px] font-medium text-[#4F46E5]">
               <span aria-hidden>🟢</span>
               {language === "ko"
                 ? `접속자 ${onlineCount}명`
@@ -329,7 +329,7 @@ export default function HomePage() {
                 ? `${onlineCount} daring`
                 : `${onlineCount} online`}
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF0E8] px-3 py-1.5 text-[11px] font-medium text-[#FF6B4A]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF2FF] px-3 py-1.5 text-[11px] font-medium text-[#4F46E5]">
               <span aria-hidden>📚</span>
               {language === "ko"
                 ? `학습 중 ${learningCount}명`
@@ -342,13 +342,13 @@ export default function HomePage() {
 
         {/* 히어로 */}
         <section className="space-y-3 text-center opacity-0 animate-fade-in-up" style={{ animationDelay: "80ms", animationFillMode: "forwards" }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9A7060]">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
             {language === "ko" ? "AI 한국어 회화" : language === "id" ? "Percakapan Korea AI" : "AI Korean Conversation"}
           </p>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#FF6B4A] sm:text-4xl md:text-[2.5rem]">
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#0F172A] sm:text-4xl md:text-[2.5rem]">
             {language === "ko" ? "오구오구" : "OguOgu"}
           </h1>
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-[#9A7060] sm:text-base">
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-[#64748B] sm:text-base">
             {language === "ko"
               ? "따뜻한 오구 친구와 함께, 내 일상에 딱 맞는 한국어 회화를 연습해보세요."
               : language === "id"
@@ -360,19 +360,19 @@ export default function HomePage() {
         {/* 오늘의 표현 */}
         {todayPhrase && (
           <section className="opacity-0 animate-fade-in-up" style={{ animationDelay: "140ms", animationFillMode: "forwards" }}>
-            <div className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_12px_32px_rgba(0,0,0,0.06)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#FF6B4A]">
+            <div className="rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] p-4 shadow-[0_12px_32px_rgba(0,0,0,0.06)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4F46E5]">
                 {t.todayLabel}
               </p>
-              <p className="mt-2 text-lg font-bold text-[#3D2010]">{todayPhrase.korean}</p>
-              <p className="mt-1 text-[13px] text-[#9A7060]">{phraseTranslation}</p>
-              <p className="mt-2 text-[12px] text-[#9A7060]">
+              <p className="mt-2 text-lg font-bold text-[#0F172A]">{todayPhrase.korean}</p>
+              <p className="mt-1 text-[13px] text-[#64748B]">{phraseTranslation}</p>
+              <p className="mt-2 text-[12px] text-[#64748B]">
                 🐥 {todayPhrase.context}
               </p>
               <button
                 type="button"
                 onClick={handleStartTodayPhrase}
-                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FF6B4A] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(255,107,74,0.45)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#4F46E5] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] active:scale-[0.98]"
               >
                 {t.todayButton}
               </button>
@@ -382,15 +382,15 @@ export default function HomePage() {
 
         {/* 7일 챌린지 */}
         <section className="space-y-3 opacity-0 animate-fade-in-up" style={{ animationDelay: "220ms", animationFillMode: "forwards" }}>
-          <div className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_12px_32px_rgba(0,0,0,0.06)]">
+          <div className="rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] p-4 shadow-[0_12px_32px_rgba(0,0,0,0.06)]">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9A7060]">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748B]">
                   {t.challengeTitle}
                 </p>
-                <p className="mt-1 text-[12px] text-[#9A7060]">{t.challengeSubtitle}</p>
+                <p className="mt-1 text-[12px] text-[#64748B]">{t.challengeSubtitle}</p>
               </div>
-              <span className="rounded-full bg-[#FFF3E0] px-3 py-1 text-[11px] font-semibold text-[#FF6B4A]">
+              <span className="rounded-full bg-[#EEF2FF] px-3 py-1 text-[11px] font-semibold text-[#4F46E5]">
                 Day {currentDay}/7
               </span>
             </div>
@@ -403,10 +403,10 @@ export default function HomePage() {
                     key={d.day}
                     className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold ${
                       completed
-                        ? "bg-[#6BCB77] text-white"
+                        ? "bg-[#4F46E5] text-white"
                         : isCurrent
-                        ? "bg-[#FF6B4A] text-white"
-                        : "bg-[#FFF0E8] text-[#9A7060]"
+                        ? "bg-[#4F46E5] text-white"
+                        : "bg-[#E5E7EB] text-[#64748B]"
                     }`}
                   >
                     {d.day}
@@ -415,7 +415,7 @@ export default function HomePage() {
               })}
             </div>
             {currentChallenge && (
-              <p className="mt-3 text-[13px] font-medium text-[#3D2010]">
+              <p className="mt-3 text-[13px] font-medium text-[#0F172A]">
                 {language === "ko"
                   ? `오늘의 미션: ${currentChallenge.title.ko}`
                   : language === "id"
@@ -426,7 +426,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={handleStartTodayMission}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FF6B4A] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(255,107,74,0.45)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#4F46E5] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] active:scale-[0.98]"
             >
               {t.startTodayMission}
             </button>
@@ -435,10 +435,10 @@ export default function HomePage() {
 
         {/* 하루 사용량 */}
         <section className="opacity-0 animate-fade-in-up" style={{ animationDelay: "280ms", animationFillMode: "forwards" }}>
-          <div className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] px-4 py-3 text-[12px] text-[#9A7060] shadow-[0_8px_24px_rgba(0,0,0,0.04)]">
+          <div className="rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] px-4 py-3 text-[12px] text-[#64748B] shadow-[0_8px_24px_rgba(0,0,0,0.04)]">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-[#3D2010]">{t.usageLabel}</span>
-              <span className="font-semibold text-[#FF6B4A]">
+              <span className="font-semibold text-[#0F172A]">{t.usageLabel}</span>
+              <span className="font-semibold text-[#4F46E5]">
                 {remaining}/5
               </span>
             </div>
@@ -454,16 +454,16 @@ export default function HomePage() {
 
         {/* 빠른 시작 2x2 */}
         <section className="space-y-2 opacity-0 animate-fade-in-up" style={{ animationDelay: "340ms", animationFillMode: "forwards" }}>
-          <h2 className="text-sm font-semibold text-[#3D2010]">{t.quickTitle}</h2>
+          <h2 className="text-sm font-semibold text-[#0F172A]">{t.quickTitle}</h2>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={goMissionList}
-              className="flex flex-col items-start gap-1 rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] px-3 py-3 text-left text-[13px] shadow-sm transition hover:border-[#FF6B4A] hover:bg-[#FFF0E8]"
+              className="flex flex-col items-start gap-1 rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] px-3 py-3 text-left text-[13px] shadow-sm transition hover:bg-[#EEF2FF]"
             >
               <span className="text-lg">🎭</span>
-              <span className="font-semibold text-[#3D2010]">{t.quickMission}</span>
-              <span className="text-[11px] text-[#9A7060]">
+              <span className="font-semibold text-[#0F172A]">{t.quickMission}</span>
+              <span className="text-[11px] text-[#64748B]">
                 {language === "ko"
                   ? "상황별 미션으로 연습"
                   : language === "id"
@@ -474,11 +474,11 @@ export default function HomePage() {
             <button
               type="button"
               onClick={goDramaChat}
-              className="flex flex-col items-start gap-1 rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] px-3 py-3 text-left text-[13px] shadow-sm transition hover:border-[#FF6B4A] hover:bg-[#FFF0E8]"
+              className="flex flex-col items-start gap-1 rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] px-3 py-3 text-left text-[13px] shadow-sm transition hover:bg-[#EEF2FF]"
             >
               <span className="text-lg">📺</span>
-              <span className="font-semibold text-[#3D2010]">{t.quickDrama}</span>
-              <span className="text-[11px] text-[#9A7060]">
+              <span className="font-semibold text-[#0F172A]">{t.quickDrama}</span>
+              <span className="text-[11px] text-[#64748B]">
                 {language === "ko"
                   ? "K-드라마 감성 대화"
                   : language === "id"
@@ -489,11 +489,11 @@ export default function HomePage() {
             <button
               type="button"
               onClick={goPhrases}
-              className="flex flex-col items-start gap-1 rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] px-3 py-3 text-left text-[13px] shadow-sm transition hover:border-[#FF6B4A] hover:bg-[#FFF0E8]"
+              className="flex flex-col items-start gap-1 rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] px-3 py-3 text-left text-[13px] shadow-sm transition hover:bg-[#EEF2FF]"
             >
               <span className="text-lg">📚</span>
-              <span className="font-semibold text-[#3D2010]">{t.quickPhrases}</span>
-              <span className="text-[11px] text-[#9A7060]">
+              <span className="font-semibold text-[#0F172A]">{t.quickPhrases}</span>
+              <span className="text-[11px] text-[#64748B]">
                 {language === "ko"
                   ? "저장한 표현 다시 보기"
                   : language === "id"
@@ -504,11 +504,11 @@ export default function HomePage() {
             <button
               type="button"
               onClick={goFreeChat}
-              className="flex flex-col items-start gap-1 rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] px-3 py-3 text-left text-[13px] shadow-sm transition hover:border-[#FF6B4A] hover:bg-[#FFF0E8]"
+              className="flex flex-col items-start gap-1 rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] px-3 py-3 text-left text-[13px] shadow-sm transition hover:bg-[#EEF2FF]"
             >
               <span className="text-lg">💬</span>
-              <span className="font-semibold text-[#3D2010]">{t.quickFree}</span>
-              <span className="text-[11px] text-[#9A7060]">
+              <span className="font-semibold text-[#0F172A]">{t.quickFree}</span>
+              <span className="text-[11px] text-[#64748B]">
                 {language === "ko"
                   ? "주제 상관없이 편하게"
                   : language === "id"
@@ -523,15 +523,15 @@ export default function HomePage() {
         <div className="mt-4 text-center">
           <a
             href={"/board" + (language && language !== "ko" ? "?lang=" + language : "")}
-            className="inline-flex items-center gap-1.5 rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] px-4 py-2.5 text-sm font-medium text-[#3D2010] shadow-sm transition hover:border-[#FF6B4A] hover:bg-[#FFF0E8] hover:text-[#FF6B4A]"
+            className="inline-flex items-center gap-1.5 rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] px-4 py-2.5 text-sm font-medium text-[#0F172A] shadow-sm transition hover:bg-[#EEF2FF] hover:text-[#4F46E5]"
           >
             {language === "ko" ? "📋 유저 게시판" : language === "id" ? "📋 Forum Komunitas" : "📋 Community Board"}
           </a>
         </div>
 
         {/* 푸터 */}
-        <footer className="mt-10 border-t border-[#FFE0D0] bg-[#FFF0E8] py-6 text-center text-sm text-[#9A7060]">
-          <p className="font-medium text-[#9A7060]">White Rabbit</p>
+        <footer className="mt-10 border-t border-[#E5E7EB] bg-[#F8FAFC] py-6 text-center text-sm text-[#64748B]">
+          <p className="font-medium text-[#64748B]">White Rabbit</p>
           <p className="mt-1">
             {language === "ko"
               ? "문의사항은 "
@@ -540,7 +540,7 @@ export default function HomePage() {
               : "For inquiries, contact "}
             <a
               href="mailto:cleex.hq@gmail.com"
-              className="text-[#FF6B4A] underline decoration-[#FF6B4A]/60 underline-offset-2 transition hover:decoration-[#FF6B4A]"
+              className="text-[#4F46E5] underline decoration-[#4F46E5]/60 underline-offset-2 transition hover:decoration-[#4F46E5]"
             >
               cleex.hq@gmail.com
             </a>

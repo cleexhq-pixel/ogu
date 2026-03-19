@@ -97,14 +97,14 @@ export default function MissionPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FFF8F0] px-4 py-6 text-[#3D2010]">
+    <main className="min-h-screen bg-[#F9FAFB] px-4 py-6 text-[#0F172A]">
       <div className="mx-auto max-w-2xl space-y-6">
         {/* 헤더 */}
         <header className="flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={handleBackHome}
-            className="text-[13px] text-[#9A7060] transition hover:text-[#FF6B4A]"
+            className="text-[13px] text-[#64748B] transition hover:text-[#4F46E5]"
           >
             {labels.back}
           </button>
@@ -114,12 +114,12 @@ export default function MissionPage() {
             </span>
             <h1 className="text-lg font-bold">{labels.header}</h1>
           </div>
-          <div className="inline-flex rounded-full border border-[#FFE0D0] bg-[#FFFFFF] p-1 text-[11px] font-medium shadow-sm">
+          <div className="inline-flex rounded-full border border-[#E5E7EB] bg-[#FFFFFF] p-1 text-[11px] font-medium shadow-sm">
             <button
               type="button"
               onClick={() => setLanguage("ko")}
               className={`rounded-full px-2.5 py-1 transition ${
-                language === "ko" ? "bg-[#FF6B4A] text-white" : "text-[#FF6B4A] hover:bg-[#FFF0E8]"
+                language === "ko" ? "bg-[#4F46E5] text-white" : "text-[#64748B] hover:bg-[#EEF2FF]"
               }`}
             >
               🇰🇷
@@ -128,7 +128,7 @@ export default function MissionPage() {
               type="button"
               onClick={() => setLanguage("en")}
               className={`rounded-full px-2.5 py-1 transition ${
-                language === "en" ? "bg-[#FF6B4A] text-white" : "text-[#FF6B4A] hover:bg-[#FFF0E8]"
+                language === "en" ? "bg-[#4F46E5] text-white" : "text-[#64748B] hover:bg-[#EEF2FF]"
               }`}
             >
               EN
@@ -137,7 +137,7 @@ export default function MissionPage() {
               type="button"
               onClick={() => setLanguage("id")}
               className={`rounded-full px-2.5 py-1 transition ${
-                language === "id" ? "bg-[#FF6B4A] text-white" : "text-[#FF6B4A] hover:bg-[#FFF0E8]"
+                language === "id" ? "bg-[#4F46E5] text-white" : "text-[#64748B] hover:bg-[#EEF2FF]"
               }`}
             >
               ID
@@ -146,16 +146,16 @@ export default function MissionPage() {
         </header>
 
         {/* 카테고리 탭 */}
-        <nav className="flex gap-2 overflow-x-auto text-[12px]">
+        <nav className="flex gap-4 overflow-x-auto border-b border-[#E5E7EB] text-[12px]">
           {CATEGORY_TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setCategoryFilter(tab.id)}
-              className={`rounded-full border px-3 py-1.5 transition ${
+              className={`border-b-2 px-1 py-2 transition ${
                 categoryFilter === tab.id
-                  ? "border-[#FF6B4A] bg-[#FF6B4A] text-white"
-                  : "border-[#FFE0D0] bg-[#FFFFFF] text-[#3D2010] hover:border-[#FF6B4A]/60"
+                  ? "border-[#4F46E5] text-[#4F46E5]"
+                  : "border-transparent text-[#64748B] hover:text-[#4F46E5]"
               }`}
             >
               {tab.id === "all"
@@ -186,19 +186,25 @@ export default function MissionPage() {
             return (
               <article
                 key={mission.id}
-                className="flex flex-col justify-between rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
+                className="flex flex-col justify-between rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center rounded-full bg-[#FFF3E0] px-2 py-0.5 text-[10px] font-semibold text-[#FF6B4A]">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      mission.category === "daily"
+                        ? "bg-[#EEF2FF] text-[#4F46E5]"
+                        : mission.category === "work"
+                        ? "bg-[#FFFBEB] text-[#D97706]"
+                        : "bg-[#FEF2F2] text-[#DC2626]"
+                    }`}>
                       {categoryBadge}
                     </span>
-                    <span className="text-[11px] text-[#9A7060]">{levelLabel}</span>
+                    <span className="text-[11px] text-[#64748B]">{levelLabel}</span>
                   </div>
-                  <h2 className="text-sm font-semibold text-[#3D2010]">{title}</h2>
-                  <div className="mt-1 space-y-1 rounded-2xl bg-[#FFF8F0] px-3 py-2">
-                    <p className="text-[11px] font-medium text-[#9A7060]">{labels.stepsLabel}</p>
-                    <p className="text-[11px] text-[#3D2010]">
+                  <h2 className="text-sm font-semibold text-[#0F172A]">{title}</h2>
+                  <div className="mt-1 space-y-1 rounded-2xl bg-[#F8FAFC] px-3 py-2">
+                    <p className="text-[11px] font-medium text-[#64748B]">{labels.stepsLabel}</p>
+                    <p className="text-[11px] text-[#0F172A]">
                       {Array.isArray(steps) ? steps.join(" → ") : ""}
                     </p>
                   </div>
@@ -206,7 +212,7 @@ export default function MissionPage() {
                 <button
                   type="button"
                   onClick={() => handleStartMission(mission.id)}
-                  className="mt-3 inline-flex w-full items-center justify-center rounded-2xl bg-[#FF6B4A] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(255,107,74,0.4)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-2xl bg-[#4F46E5] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] active:scale-[0.98]"
                 >
                   {labels.start}
                 </button>
