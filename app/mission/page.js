@@ -28,11 +28,23 @@ export default function MissionPage() {
   const router = useRouter();
   const [language, setLanguage] = useState("en");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [showRecommended, setShowRecommended] = useState(false);
+  const [showMoreMissions, setShowMoreMissions] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const lang = getTodayLang();
     setLanguage(lang);
+    const params = new URLSearchParams(window.location.search);
+    const onboarding = params.get("onboarding") === "true";
+    const visited = window.localStorage.getItem("ogu_visited");
+    if (onboarding || !visited) {
+      setShowRecommended(true);
+      setShowMoreMissions(false);
+    } else {
+      setShowRecommended(false);
+      setShowMoreMissions(true);
+    }
     pageview(window.location.pathname + window.location.search);
   }, []);
 
@@ -72,7 +84,19 @@ export default function MissionPage() {
           ? "단계 미리보기"
           : language === "id"
           ? "Langkah singkat"
-          : "Steps preview"
+          : "Steps preview",
+      recommendedTitle:
+        language === "ko"
+          ? "🐥 지금 바로 시작하세요!"
+          : language === "id"
+          ? "🐥 Mulai sekarang!"
+          : "🐥 Start right now!",
+      recommendedBadge:
+        language === "ko" ? "추천" : language === "id" ? "Rekomendasi" : "Recommended",
+      moreMissions:
+        language === "ko" ? "더 많은 미션 보기" : language === "id" ? "Lihat lebih banyak misi" : "See more missions",
+      hideMissions:
+        language === "ko" ? "미션 접기" : language === "id" ? "Sembunyikan misi" : "Hide missions"
     }),
     [language]
   );
@@ -81,6 +105,16 @@ export default function MissionPage() {
     if (categoryFilter === "all") return MISSIONS;
     return MISSIONS.filter((m) => m.category === categoryFilter);
   }, [categoryFilter]);
+
+  const recommendedIds = ["greeting-friend", "self-intro", "cafe-order"];
+  const recommendedMissions = useMemo(
+    () => MISSIONS.filter((m) => recommendedIds.includes(m.id)),
+    []
+  );
+  const regularMissions = useMemo(
+    () => filteredMissions.filter((m) => !recommendedIds.includes(m.id)),
+    [filteredMissions]
+  );
 
   const handleStartMission = (missionId) => {
     trackStartMission(missionId);
@@ -169,9 +203,55 @@ export default function MissionPage() {
           ))}
         </nav>
 
+        {showRecommended && (
+          <section className="space-y-3">
+            <h2 className="text-base font-bold text-[#0F172A]">{labels.recommendedTitle}</h2>
+            <div className="grid gap-4">
+              {recommendedMissions.map((mission) => {
+                const title =
+                  language === "ko" ? mission.title.ko : language === "id" ? mission.title.id : mission.title.en;
+                const steps = mission.steps[language] || mission.steps.en;
+                const levelLabel = labels.level[mission.level] || mission.level;
+                return (
+                  <article
+                    key={`recommended-${mission.id}`}
+                    className="flex flex-col justify-between rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] p-5 shadow-[0_10px_28px_rgba(0,0,0,0.06)]"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex items-center rounded-full bg-[#EEF2FF] px-2.5 py-1 text-[10px] font-semibold text-[#4F46E5]">
+                          {labels.recommendedBadge}
+                        </span>
+                        <span className="text-[11px] text-[#64748B]">{levelLabel}</span>
+                      </div>
+                      <h3 className={`text-base font-bold text-[#0F172A] ${language === "ko" ? "korean-text" : ""}`}>{title}</h3>
+                      <p className="text-[12px] text-[#64748B]">{Array.isArray(steps) ? steps.join(" → ") : ""}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleStartMission(mission.id)}
+                      className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-[#4F46E5] px-4 py-2.5 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] active:scale-[0.98]"
+                    >
+                      {labels.start}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowMoreMissions((v) => !v)}
+              className="w-full rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] px-4 py-2 text-[12px] font-medium text-[#64748B] hover:bg-[#F8FAFC]"
+            >
+              {showMoreMissions ? labels.hideMissions : labels.moreMissions}
+            </button>
+          </section>
+        )}
+
         {/* 미션 카드 그리드 */}
-        <section className="grid gap-4 sm:grid-cols-2">
-          {filteredMissions.map((mission) => {
+        {(showMoreMissions || !showRecommended) && (
+          <section className="grid gap-4 sm:grid-cols-2">
+          {(showRecommended ? regularMissions : filteredMissions).map((mission) => {
             const title =
               language === "ko" ? mission.title.ko : language === "id" ? mission.title.id : mission.title.en;
             const steps = mission.steps[language] || mission.steps.en;
@@ -219,7 +299,8 @@ export default function MissionPage() {
               </article>
             );
           })}
-        </section>
+          </section>
+        )}
       </div>
     </main>
   );

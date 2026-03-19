@@ -21,6 +21,8 @@ function getTodayKey() {
 export default function HomePage() {
   const router = useRouter();
   const [language, setLanguage] = useState("en");
+  const [isFirstVisitor, setIsFirstVisitor] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
   const [learningCount, setLearningCount] = useState(0);
   const [streakBadge, setStreakBadge] = useState(null);
@@ -33,6 +35,19 @@ export default function HomePage() {
     if (typeof window === "undefined") return;
     pageview(window.location.pathname + window.location.search);
     trackAppOpen();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const visited = window.localStorage.getItem("ogu_visited");
+    if (!visited) {
+      setIsFirstVisitor(true);
+      const timer = setTimeout(() => {
+        setShowOnboardingModal(true);
+        window.localStorage.setItem("ogu_visited", "true");
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // Supabase 접속자 폴링 (5초)
@@ -202,6 +217,16 @@ export default function HomePage() {
     router.push(`/chat?${params.toString()}`);
   };
 
+  const startOneMinuteTrial = () => {
+    const params = new URLSearchParams({
+      mission: "greeting-friend",
+      level: "beginner",
+      lang: language,
+      onboarding: "true"
+    });
+    router.push(`/chat?${params.toString()}`);
+  };
+
   const goMissionList = () => {
     const qs = new URLSearchParams();
     qs.set("lang", language);
@@ -251,7 +276,41 @@ export default function HomePage() {
     quickPhrases:
       language === "ko" ? "내 표현장" : language === "id" ? "Frasaku" : "My Phrases",
     quickFree:
-      language === "ko" ? "자유 대화" : language === "id" ? "Bebas Bicara" : "Free Talk"
+      language === "ko" ? "자유 대화" : language === "id" ? "Bebas Bicara" : "Free Talk",
+    oneMinuteCta:
+      language === "ko"
+        ? "한국어 1분 체험 시작 🐥"
+        : language === "id"
+        ? "Mulai Praktik 1 Menit 🐥"
+        : "Start 1-Min Korean Practice 🐥",
+    oneMinuteSub:
+      language === "ko"
+        ? "회원가입 없이 3턴 체험 가능 · 영어 힌트 제공"
+        : language === "id"
+        ? "Tanpa daftar · 3 giliran gratis · Ada petunjuk"
+        : "No sign-up needed · 3-turn free trial · English hints",
+    onboardingTitle:
+      language === "ko"
+        ? "안녕하세요! 오구오구예요 🐥"
+        : language === "id"
+        ? "Halo! Saya OguOgu 🐥"
+        : "Hello! I'm OguOgu 🐥",
+    onboardingDesc:
+      language === "ko"
+        ? "AI 친구와 1분 한국어 대화를 해보세요.\n회원가입 없이 바로 시작할 수 있어요!"
+        : language === "id"
+        ? "Praktik bahasa Korea dengan teman AI dalam 1 menit.\nTanpa perlu daftar!"
+        : "Practice Korean with your AI friend in 1 minute.\nNo sign-up needed!",
+    onboardingPick:
+      language === "ko"
+        ? "👋 오늘의 추천: 친구에게 안부 묻기"
+        : language === "id"
+        ? "👋 Rekomendasi: Sapa teman"
+        : "👋 Today's pick: Greet a friend",
+    onboardingStart:
+      language === "ko" ? "지금 바로 시작하기 →" : language === "id" ? "Mulai Sekarang →" : "Start Right Now →",
+    onboardingBrowse:
+      language === "ko" ? "둘러보기" : language === "id" ? "Lihat dulu" : "Browse first"
   };
 
   return (
@@ -259,6 +318,37 @@ export default function HomePage() {
       <Analytics />
       <main className="min-h-screen bg-[#F9FAFB] px-4 py-6 sm:py-10 text-[#0F172A]">
         <div className="mx-auto flex max-w-lg flex-col gap-8 sm:gap-10">
+        {showOnboardingModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+              <p className="text-center text-4xl">🐥</p>
+              <h2 className="mt-3 text-center text-lg font-bold text-[#0F172A]">{t.onboardingTitle}</h2>
+              <p className="mt-2 whitespace-pre-line text-center text-sm text-[#64748B]">{t.onboardingDesc}</p>
+              <p className="mt-3 rounded-xl bg-[#EEF2FF] px-3 py-2 text-center text-sm font-medium text-[#4F46E5]">
+                {t.onboardingPick}
+              </p>
+              <button
+                type="button"
+                onClick={startOneMinuteTrial}
+                className="mt-4 w-full rounded-2xl bg-[#4F46E5] py-3 text-sm font-semibold text-white transition hover:bg-[#4338CA]"
+              >
+                {t.onboardingStart}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowOnboardingModal(false)}
+                className="mt-2 w-full text-center text-xs font-medium text-[#64748B] underline-offset-2 hover:underline"
+              >
+                {t.onboardingBrowse}
+              </button>
+            </div>
+          </div>
+        )}
         {/* 헤더 */}
         <header className="flex flex-col gap-4 opacity-0 animate-fade-in-up" style={{ animationDelay: "0ms", animationFillMode: "forwards" }}>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -310,38 +400,11 @@ export default function HomePage() {
               </button>
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-            {streakBadge != null && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFFBEB] px-3 py-1.5 text-[11px] font-medium text-[#92400E]">
-                <span aria-hidden>🔥</span>
-                {language === "ko"
-                  ? `${streakBadge}일 연속`
-                  : language === "id"
-                  ? `${streakBadge} hari berturut-turut`
-                  : `${streakBadge} day streak`}
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF2FF] px-3 py-1.5 text-[11px] font-medium text-[#4F46E5]">
-              <span aria-hidden>🟢</span>
-              {language === "ko"
-                ? `접속자 ${onlineCount}명`
-                : language === "id"
-                ? `${onlineCount} daring`
-                : `${onlineCount} online`}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF2FF] px-3 py-1.5 text-[11px] font-medium text-[#4F46E5]">
-              <span aria-hidden>📚</span>
-              {language === "ko"
-                ? `학습 중 ${learningCount}명`
-                : language === "id"
-                ? `${learningCount} sedang belajar`
-                : `${learningCount} learning`}
-            </span>
-          </div>
+          
         </header>
 
         {/* 히어로 */}
-        <section className="space-y-3 text-center opacity-0 animate-fade-in-up" style={{ animationDelay: "80ms", animationFillMode: "forwards" }}>
+        {!isFirstVisitor && <section className="space-y-3 text-center opacity-0 animate-fade-in-up" style={{ animationDelay: "80ms", animationFillMode: "forwards" }}>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#64748B]">
             {language === "ko" ? "AI 한국어 회화" : language === "id" ? "Percakapan Korea AI" : "AI Korean Conversation"}
           </p>
@@ -355,7 +418,7 @@ export default function HomePage() {
               ? "Berlatih percakapan Korea yang cocok dengan keseharianmu, bersama teman Ogu yang hangat."
               : "Practice everyday Korean conversations with your warm Ogu friend—perfectly matched to your life."}
           </p>
-        </section>
+        </section>}
 
         {/* 오늘의 표현 */}
         {todayPhrase && (
@@ -379,6 +442,17 @@ export default function HomePage() {
             </div>
           </section>
         )}
+
+        <section className="space-y-3 opacity-0 animate-fade-in-up" style={{ animationDelay: "180ms", animationFillMode: "forwards" }}>
+          <button
+            type="button"
+            onClick={startOneMinuteTrial}
+            className="inline-flex w-full items-center justify-center rounded-2xl bg-[#4F46E5] px-4 py-4 text-[15px] font-semibold text-white shadow-[0_12px_32px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] active:scale-[0.98]"
+          >
+            {t.oneMinuteCta}
+          </button>
+          <p className="text-center text-xs text-[#64748B]">{t.oneMinuteSub}</p>
+        </section>
 
         {/* 7일 챌린지 */}
         <section className="space-y-3 opacity-0 animate-fade-in-up" style={{ animationDelay: "220ms", animationFillMode: "forwards" }}>
@@ -516,6 +590,29 @@ export default function HomePage() {
                   : "Talk about anything you like"}
               </span>
             </button>
+          </div>
+        </section>
+
+        <section className="opacity-0 animate-fade-in-up" style={{ animationDelay: "380ms", animationFillMode: "forwards" }}>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {streakBadge != null && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFFBEB] px-3 py-1.5 text-[11px] font-medium text-[#92400E]">
+                <span aria-hidden>🔥</span>
+                {language === "ko"
+                  ? `${streakBadge}일 연속`
+                  : language === "id"
+                  ? `${streakBadge} hari berturut-turut`
+                  : `${streakBadge} day streak`}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF2FF] px-3 py-1.5 text-[11px] font-medium text-[#4F46E5]">
+              <span aria-hidden>🟢</span>
+              {language === "ko" ? `접속자 ${onlineCount}명` : language === "id" ? `${onlineCount} daring` : `${onlineCount} online`}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF2FF] px-3 py-1.5 text-[11px] font-medium text-[#4F46E5]">
+              <span aria-hidden>📚</span>
+              {language === "ko" ? `학습 중 ${learningCount}명` : language === "id" ? `${learningCount} sedang belajar` : `${learningCount} learning`}
+            </span>
           </div>
         </section>
 
