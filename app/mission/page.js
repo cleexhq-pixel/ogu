@@ -201,7 +201,7 @@ export default function MissionPage() {
                     </span>
                     <span className="text-[11px] text-[#64748B]">{levelLabel}</span>
                   </div>
-                  <h2 className="text-sm font-semibold text-[#0F172A]">{title}</h2>
+                  <h2 className={`text-sm font-semibold text-[#0F172A] ${language === "ko" ? "korean-text" : ""}`}>{title}</h2>
                   <div className="mt-1 space-y-1 rounded-2xl bg-[#F8FAFC] px-3 py-2">
                     <p className="text-[11px] font-medium text-[#64748B]">{labels.stepsLabel}</p>
                     <p className="text-[11px] text-[#0F172A]">
