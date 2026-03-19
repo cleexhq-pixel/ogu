@@ -151,7 +151,7 @@ function PhrasesContent() {
                 key={`${p.korean}-${idx}`}
                 className="rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
               >
-                <p className="text-sm font-semibold text-[#0F172A]">
+                <p className="korean-text text-sm font-semibold text-[#0F172A]">
                   {p.korean}
                 </p>
                 <p className="mt-1 text-[11px] text-[#64748B]">

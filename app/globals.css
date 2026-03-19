@@ -20,3 +20,17 @@ body {
   --color-text-secondary: #64748B;
 }
 
+* {
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+.korean-text {
+  font-family: "Noto Sans KR", sans-serif;
+  font-weight: 500;
+}
+
+.korean-body {
+  font-family: "Noto Sans KR", sans-serif;
+  font-weight: 400;
+}
+

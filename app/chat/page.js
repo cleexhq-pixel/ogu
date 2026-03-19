@@ -783,7 +783,7 @@ function ChatContent() {
                       {isUser ? "👤" : "🐥"}
                     </div>
                     <div
-                      className={`rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${bubbleStyle}`}
+                      className={`korean-text rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${bubbleStyle}`}
                     >
                       {isUser ? content : isViolationBubble ? content : renderAssistantContent(content, showHints)}
                       {isViolationBubble && violationLevel === 3 && level3Countdown != null && (
@@ -821,7 +821,7 @@ function ChatContent() {
                       <div className="mt-2 space-y-2">
                         {m.corrections.map((c, cIdx) => (
                           <div key={cIdx} className="rounded-xl bg-white/60 px-3 py-2">
-                            <p className="text-[12px]">
+                            <p className="korean-text text-[12px]">
                               <span className="text-[#DC2626] line-through">{c.original ?? ""}</span>
                               <span className="mx-1.5 text-[#D97706]">→</span>
                               <span className="font-medium text-[#16A34A]">{c.corrected ?? ""}</span>

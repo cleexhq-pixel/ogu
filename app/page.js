@@ -364,9 +364,9 @@ export default function HomePage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4F46E5]">
                 {t.todayLabel}
               </p>
-              <p className="mt-2 text-lg font-bold text-[#0F172A]">{todayPhrase.korean}</p>
+              <p className="korean-text mt-2 text-lg font-bold text-[#0F172A]">{todayPhrase.korean}</p>
               <p className="mt-1 text-[13px] text-[#64748B]">{phraseTranslation}</p>
-              <p className="mt-2 text-[12px] text-[#64748B]">
+              <p className="korean-body mt-2 text-[12px] text-[#64748B]">
                 🐥 {todayPhrase.context}
               </p>
               <button

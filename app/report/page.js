@@ -413,9 +413,9 @@ function ReportContent() {
                     <span className="mb-2 text-[10px] font-medium uppercase tracking-wider text-[#4F46E5]">
                       {language === "ko" ? `표현 ${idx + 1}` : language === "id" ? `Ekspresi ${idx + 1}` : `Expression ${idx + 1}`}
                     </span>
-                    <p className="text-sm font-semibold text-[#0F172A]">{korean}</p>
+                    <p className="korean-text text-sm font-semibold text-[#0F172A]">{korean}</p>
                     <p className="mt-1 text-[11px] text-[#64748B]">{english}</p>
-                    <p className="mt-2 text-[11px] leading-relaxed text-[#94A3B8]">
+                    <p className="korean-body mt-2 text-[11px] leading-relaxed text-[#94A3B8]">
                       {example}
                     </p>
                     {realExpr && (
