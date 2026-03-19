@@ -4,7 +4,19 @@
 
 body {
   @apply antialiased;
-  background-color: #FFF8F0;
-  color: #3D2010;
+  background-color: #F9FAFB;
+  color: #0F172A;
+}
+
+:root {
+  --color-primary: #4F46E5;
+  --color-primary-soft: #EEF2FF;
+  --color-success: #16A34A;
+  --color-error: #DC2626;
+  --color-background: #F9FAFB;
+  --color-surface: #FFFFFF;
+  --color-border: #E5E7EB;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
 }
 

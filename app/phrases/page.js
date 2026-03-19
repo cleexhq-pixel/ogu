@@ -126,13 +126,13 @@ function PhrasesContent() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FFF8F0] px-4 py-6 text-[#3D2010]">
+    <main className="min-h-screen bg-[#F9FAFB] px-4 py-6 text-[#0F172A]">
       <div className="mx-auto max-w-2xl space-y-6">
         <header className="flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={backToReport}
-            className="text-[13px] text-[#9A7060] transition hover:text-[#FF6B4A]"
+            className="text-[13px] text-[#64748B] transition hover:text-[#4F46E5]"
           >
             {labels.back}
           </button>
@@ -141,7 +141,7 @@ function PhrasesContent() {
         </header>
 
         {phrases.length === 0 ? (
-          <div className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] px-4 py-10 text-center text-[13px] whitespace-pre-line text-[#9A7060] shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
+          <div className="rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] px-4 py-10 text-center text-[13px] whitespace-pre-line text-[#64748B] shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
             {labels.empty}
           </div>
         ) : (
@@ -149,36 +149,36 @@ function PhrasesContent() {
             {phrases.map((p, idx) => (
               <article
                 key={`${p.korean}-${idx}`}
-                className="rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
+                className="rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
               >
-                <p className="text-sm font-semibold text-[#3D2010]">
+                <p className="text-sm font-semibold text-[#0F172A]">
                   {p.korean}
                 </p>
-                <p className="mt-1 text-[11px] text-[#9A7060]">
+                <p className="mt-1 text-[11px] text-[#64748B]">
                   {translationFor(p)}
                 </p>
-                <p className="mt-1 text-[10px] text-[#C09A8A]">
+                <p className="mt-1 text-[10px] text-[#94A3B8]">
                   {formatDate(p.saved_at)}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                   <button
                     type="button"
                     onClick={() => handleSpeak(p.korean)}
-                    className="inline-flex items-center gap-1 rounded-full border border-[#FFE0D0] bg-[#FFF8F0] px-3 py-1 font-medium text-[#3D2010] hover:border-[#FF6B4A] hover:bg-[#FFF0E8]"
+                    className="inline-flex items-center gap-1 rounded-full bg-[#EEF2FF] px-3 py-1 font-medium text-[#4F46E5] hover:bg-[#E0E7FF]"
                   >
                     🔊 {labels.speak}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleChat(p.korean)}
-                    className="inline-flex items-center gap-1 rounded-full border border-[#FFE0D0] bg-[#FFF8F0] px-3 py-1 font-medium text-[#3D2010] hover:border-[#FF6B4A] hover:bg-[#FFF0E8]"
+                    className="inline-flex items-center gap-1 rounded-full bg-[#4F46E5] px-3 py-1 font-medium text-white hover:bg-[#4338CA]"
                   >
                     💬 {labels.chat}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(idx)}
-                    className="inline-flex items-center gap-1 rounded-full border border-[#FFE0D0] bg-[#FFF8F0] px-3 py-1 font-medium text-[#B71C1C] hover:border-[#F44336] hover:bg-[#FFEBEE]"
+                    className="inline-flex items-center gap-1 rounded-full bg-[#FEF2F2] px-3 py-1 font-medium text-[#DC2626] hover:bg-[#FEE2E2]"
                   >
                     🗑️ {labels.remove}
                   </button>
@@ -196,7 +196,7 @@ export default function PhrasesPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-[#FFF8F0] px-4 py-6 text-[#3D2010]">
+        <main className="flex min-h-screen items-center justify-center bg-[#F9FAFB] px-4 py-6 text-[#0F172A]">
           <span className="animate-pulse-soft">🐥</span>
         </main>
       }

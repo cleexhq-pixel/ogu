@@ -94,7 +94,7 @@ function renderAssistantContent(text, showHints) {
       return (
         <span
           key={index}
-          className="block text-[11px] font-medium text-[#FF6B4A]"
+          className="block text-[11px] font-medium text-[#64748B]"
         >
           {part}
         </span>
@@ -624,7 +624,7 @@ function ChatContent() {
     userTurns <= 2 ? 1 : userTurns <= 5 ? 2 : 3;
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-[#FFF8F0] px-3 py-4 sm:px-4 sm:py-6 text-[#3D2010]">
+    <main className="flex min-h-screen flex-col items-center bg-[#F9FAFB] px-3 py-4 sm:px-4 sm:py-6 text-[#0F172A]">
       {/* 마이크 권한 안내 모달 */}
       {showMicPermissionModal && (
         <div
@@ -634,11 +634,11 @@ function ChatContent() {
           aria-modal="true"
           aria-labelledby="mic-permission-title"
         >
-          <div className="w-full max-w-md rounded-3xl border border-[#FFE0D0] bg-[#FFF8F0] p-6 shadow-[0_24px_48px_rgba(0,0,0,0.12)]">
-            <h2 id="mic-permission-title" className="mb-3 text-lg font-bold text-[#3D2010]">
+          <div className="w-full max-w-md rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] p-6 shadow-[0_24px_48px_rgba(0,0,0,0.12)]">
+            <h2 id="mic-permission-title" className="mb-3 text-lg font-bold text-[#0F172A]">
               🎤 {language === "ko" ? "마이크 권한이 필요해요" : language === "id" ? "Akses mikrofon diperlukan" : "Microphone Access Required"}
             </h2>
-            <p className="mb-5 text-sm leading-relaxed text-[#3D2010]">
+            <p className="mb-5 text-sm leading-relaxed text-[#0F172A]">
               {language === "ko"
                 ? "음성 대화를 사용하려면 마이크 접근을 허용해주세요. 브라우저 주소창 왼쪽 🔒 아이콘을 클릭하고 마이크를 '허용'으로 변경해주세요."
                 : language === "id"
@@ -648,7 +648,7 @@ function ChatContent() {
             <button
               type="button"
               onClick={() => setShowMicPermissionModal(false)}
-              className="w-full rounded-2xl bg-[#FF6B4A] py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(255,107,74,0.35)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
+              className="w-full rounded-2xl bg-[#4F46E5] py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] active:scale-[0.98]"
             >
               {language === "ko" ? "알겠어요!" : language === "id" ? "Mengerti!" : "Got it!"}
             </button>
@@ -656,18 +656,18 @@ function ChatContent() {
         </div>
       )}
 
-      <div className="flex w-full max-w-2xl flex-1 flex-col rounded-3xl border border-[#FFE0D0] bg-[#FFFFFF] shadow-[0_20px_50px_rgba(0,0,0,0.06)] overflow-hidden">
+      <div className="flex w-full max-w-2xl flex-1 flex-col rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] shadow-[0_20px_50px_rgba(0,0,0,0.06)] overflow-hidden">
         {/* 헤더 */}
-        <header className="flex items-center justify-between gap-3 border-b border-[#FFE0D0] bg-[#FFF8F0] px-4 py-3">
+        <header className="flex items-center justify-between gap-3 border-b border-[#E5E7EB] bg-[#FFFFFF] px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0E8] text-xl shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#EEF2FF] text-xl shadow-sm">
               {personaMeta.emoji}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#3D2010]">
+              <p className="truncate text-sm font-semibold text-[#0F172A]">
                 {personaMeta.name}
               </p>
-              <p className="text-[11px] text-[#9A7060]">
+              <p className="text-[11px] text-[#64748B]">
                 {personaMeta.subtitle ?? levelLabel}
               </p>
             </div>
@@ -678,8 +678,8 @@ function ChatContent() {
               onClick={() => setIsMuted((m) => !m)}
               className={`rounded-xl border px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
                 isMuted
-                  ? "border-[#FFE0D0] bg-[#FFFFFF] text-[#9A7060] hover:border-[#FF6B4A]/60"
-                  : "border-[#FF6B4A] bg-[#FFF0E8] text-[#3D2010]"
+                  ? "border-[#E5E7EB] bg-[#FFFFFF] text-[#64748B] hover:border-[#CBD5E1]"
+                  : "border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]"
               }`}
               title={isMuted ? (language === "ko" ? "음성 켜기" : language === "id" ? "Nyalakan suara" : "Turn on voice") : (language === "ko" ? "음성 끄기" : language === "id" ? "Matikan suara" : "Mute voice")}
             >
@@ -693,8 +693,8 @@ function ChatContent() {
               }}
               className={`rounded-xl border px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
                 showHints
-                  ? "border-[#FF6B4A] bg-[#FFF0E8] text-[#3D2010]"
-                  : "border-[#FFE0D0] bg-[#FFFFFF] text-[#9A7060] hover:border-[#FF6B4A]/60"
+                  ? "border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]"
+                  : "border-[#E5E7EB] bg-[#FFFFFF] text-[#64748B] hover:border-[#CBD5E1]"
               }`}
             >
               {language === "ko" ? (showHints ? "힌트 숨기기 👀" : "힌트 보기 👀") : language === "id" ? (showHints ? "Sembunyikan Petunjuk 👀" : "Tampilkan Petunjuk 👀") : (showHints ? "Hide Hints 👀" : "Show Hints 👀")}
@@ -702,7 +702,7 @@ function ChatContent() {
             <button
               type="button"
               onClick={handleEndConversation}
-              className="rounded-xl bg-[#FF6B4A] px-3 py-2 text-[11px] font-semibold text-white shadow-[0_4px_14px_rgba(255,107,74,0.35)] transition hover:bg-[#ff5a33] active:scale-[0.98]"
+              className="rounded-xl border border-[#E5E7EB] bg-[#FFFFFF] px-3 py-2 text-[11px] font-semibold text-[#DC2626] transition hover:bg-[#F8FAFC] active:scale-[0.98]"
             >
               {language === "ko" ? "대화 끝내기" : language === "id" ? "Akhiri Percakapan" : "End Conversation"}
             </button>
@@ -711,8 +711,8 @@ function ChatContent() {
 
         {/* 미션 진행바 */}
         {missionMeta && (
-          <div className="border-b border-[#FFE0D0] bg-[#FFFFFF] px-4 py-2">
-            <p className="text-[11px] font-semibold text-[#9A7060]">
+          <div className="border-b border-[#E5E7EB] bg-[#FFFFFF] px-4 py-2">
+            <p className="text-[11px] font-semibold text-[#64748B]">
               {language === "ko"
                 ? `미션: ${missionMeta.title.ko}`
                 : language === "id"
@@ -725,16 +725,16 @@ function ChatContent() {
                   <div
                     className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold ${
                       step < currentStep
-                        ? "bg-[#6BCB77] text-white"
+                        ? "bg-[#4F46E5] text-white"
                         : step === currentStep
-                        ? "bg-[#FF6B4A] text-white"
-                        : "bg-[#FFF0E8] text-[#9A7060]"
+                        ? "bg-[#4F46E5] text-white"
+                        : "bg-[#E5E7EB] text-[#64748B]"
                     }`}
                   >
                     {step}
                   </div>
                   {missionSteps && missionSteps[step - 1] && (
-                    <span className="hidden text-[10px] text-[#9A7060] sm:inline">
+                    <span className="hidden text-[10px] text-[#64748B] sm:inline">
                       {missionSteps[step - 1]}
                     </span>
                   )}
@@ -753,14 +753,14 @@ function ChatContent() {
 
             const isViolationBubble = !isUser && violationLevel != null;
             const bubbleStyle = isUser
-              ? "bg-[#FF6B4A] text-white shadow-[0_4px_14px_rgba(255,107,74,0.25)]"
+              ? "bg-[#4F46E5] text-white shadow-[0_4px_14px_rgba(79,70,229,0.25)]"
               : isViolationBubble
               ? violationLevel === 1
-                ? "border-2 border-[#FF9800] bg-[#FFF3E0] text-[#E65100]"
+                ? "border-2 border-[#D97706] bg-[#FFFBEB] text-[#92400E]"
                 : violationLevel === 2
-                ? "border-2 border-[#F44336] bg-[#FFEBEE] text-[#B71C1C]"
-                : "border-2 border-[#F44336] bg-[#FFEBEE] text-[#B71C1C]"
-              : "bg-[#FFF0E8] text-[#3D2010] shadow-[0_2px_12px_rgba(0,0,0,0.04)]";
+                ? "border-2 border-[#DC2626] bg-[#FEF2F2] text-[#991B1B]"
+                : "border-2 border-[#DC2626] bg-[#FEF2F2] text-[#991B1B]"
+              : "border border-[#E5E7EB] bg-[#FFFFFF] text-[#0F172A] shadow-[0_2px_12px_rgba(0,0,0,0.04)]";
 
             const hasCorrections = !isUser && !isViolationBubble && m.corrections && m.corrections.length > 0;
             const isCorrectionCollapsed = correctionCollapsed[idx];
@@ -777,7 +777,7 @@ function ChatContent() {
                   >
                     <div
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base ${
-                        isUser ? "bg-[#FF6B4A]" : "bg-[#FFF0E8]"
+                        isUser ? "bg-[#4F46E5]" : "bg-[#EEF2FF]"
                       }`}
                     >
                       {isUser ? "👤" : "🐥"}
@@ -801,16 +801,16 @@ function ChatContent() {
                 {hasCorrections && (
                   <div
                     className="animate-bubble-in ml-10 rounded-2xl border-2 px-4 py-3 sm:ml-12"
-                    style={{ backgroundColor: "#FFF8E1", borderColor: "#FFB300" }}
+                    style={{ backgroundColor: "#FFFBEB", borderColor: "#D97706" }}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[12px] font-semibold text-[#3D2010]">
+                      <span className="text-[12px] font-semibold text-[#0F172A]">
                         ✏️ {language === "ko" ? "교정" : language === "id" ? "Koreksi" : "Correction"}
                       </span>
                       <button
                         type="button"
                         onClick={() => setCorrectionCollapsed((prev) => ({ ...prev, [idx]: !prev[idx] }))}
-                        className="text-[11px] font-medium text-[#FFB300] hover:underline"
+                        className="text-[11px] font-medium text-[#D97706] hover:underline"
                       >
                         {isCorrectionCollapsed
                           ? (language === "ko" ? "펼치기 ▼" : language === "id" ? "Buka ▼" : "Expand ▼")
@@ -822,11 +822,11 @@ function ChatContent() {
                         {m.corrections.map((c, cIdx) => (
                           <div key={cIdx} className="rounded-xl bg-white/60 px-3 py-2">
                             <p className="text-[12px]">
-                              <span className="text-red-600 line-through">{c.original ?? ""}</span>
-                              <span className="mx-1.5 text-[#FFB300]">→</span>
-                              <span className="font-medium text-green-700">{c.corrected ?? ""}</span>
+                              <span className="text-[#DC2626] line-through">{c.original ?? ""}</span>
+                              <span className="mx-1.5 text-[#D97706]">→</span>
+                              <span className="font-medium text-[#16A34A]">{c.corrected ?? ""}</span>
                             </p>
-                            <p className="mt-1 text-[11px] text-[#6D4C41]">
+                            <p className="mt-1 text-[11px] text-[#64748B]">
                               {language === "ko" ? (c.explanation_ko ?? c.explanation_en) : language === "id" ? (c.explanation_id ?? c.explanation_en) : (c.explanation_en ?? c.explanation_ko)}
                             </p>
                           </div>
@@ -842,13 +842,13 @@ function ChatContent() {
           {isLoading && (
             <div className="flex justify-start">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FFF0E8] text-base animate-pulse-soft">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#EEF2FF] text-base animate-pulse-soft">
                   🐥
                 </div>
-                <div className="flex items-center gap-1.5 rounded-2xl bg-[#FFF0E8] px-4 py-2.5">
-                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#FF6B4A]/60" style={{ animationDelay: "0ms" }} />
-                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#FF6B4A]/60" style={{ animationDelay: "200ms" }} />
-                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#FF6B4A]/60" style={{ animationDelay: "400ms" }} />
+                <div className="flex items-center gap-1.5 rounded-2xl bg-[#EEF2FF] px-4 py-2.5">
+                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#4F46E5]/60" style={{ animationDelay: "0ms" }} />
+                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#4F46E5]/60" style={{ animationDelay: "200ms" }} />
+                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#4F46E5]/60" style={{ animationDelay: "400ms" }} />
                 </div>
               </div>
             </div>
@@ -856,9 +856,9 @@ function ChatContent() {
         </div>
 
         {/* 입력창 */}
-        <div className="border-t border-[#FFE0D0] bg-[#FFF8F0] px-4 py-3">
+        <div className="border-t border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
           {usageLimited && (
-            <div className="mb-2 rounded-2xl bg-[#FFEBEE] px-3 py-2 text-center text-[12px] text-[#B71C1C]">
+            <div className="mb-2 rounded-2xl bg-[#FEF2F2] px-3 py-2 text-center text-[12px] text-[#991B1B]">
               {language === "ko"
                 ? "오늘의 무료 연습 5회를 모두 사용했어요 🐥 내일 다시 만나요!"
                 : language === "id"
@@ -868,7 +868,7 @@ function ChatContent() {
                 <button
                   type="button"
                   onClick={() => router.push("/")}
-                  className="rounded-xl bg-[#FF6B4A] px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-[#ff5a33]"
+                  className="rounded-xl bg-[#4F46E5] px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-[#4338CA]"
                 >
                   {language === "ko" ? "홈으로 돌아가기" : language === "id" ? "Kembali ke Beranda" : "Back to Home"}
                 </button>
@@ -888,15 +888,15 @@ function ChatContent() {
               disabled={!getSpeechRecognition() || isRequestingPermission}
               className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition active:scale-[0.98] ${
                 isRequestingPermission
-                  ? "border border-[#FFE0D0] bg-[#FFF0E8] text-[#9A7060]"
+                  ? "border border-[#E5E7EB] bg-[#F1F5F9] text-[#64748B]"
                   : isRecording
                   ? "bg-[#C53030] text-white shadow-[0_0_0_3px_rgba(197,48,48,0.3)] animate-pulse"
-                  : "border border-[#FFE0D0] bg-[#FFFFFF] text-[#3D2010] hover:border-[#FF6B4A]/60 hover:bg-[#FFF0E8]"
+                  : "border border-[#E5E7EB] bg-[#FFFFFF] text-[#0F172A] hover:border-[#CBD5E1] hover:bg-[#F8FAFC]"
               }`}
               title={language === "ko" ? (isRecording ? "녹음 중지" : isRequestingPermission ? "권한 요청 중..." : "음성 입력") : language === "id" ? (isRecording ? "Stop rekam" : isRequestingPermission ? "Meminta izin..." : "Input suara") : (isRecording ? "Stop recording" : isRequestingPermission ? "Requesting permission..." : "Voice input")}
             >
               {isRequestingPermission ? (
-                <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#FF6B4A] border-t-transparent" />
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#4F46E5] border-t-transparent" />
               ) : (
                 "🎤"
               )}
@@ -909,13 +909,13 @@ function ChatContent() {
               placeholder={
                 language === "ko" ? "한국어로 말해보세요..." : language === "id" ? "Ketik dalam bahasa Korea..." : "Type in Korean..."
               }
-              className="h-12 flex-1 rounded-2xl border border-[#FFE0D0] bg-[#FFFFFF] px-4 text-sm text-[#3D2010] placeholder:text-[#C09A8A] shadow-sm transition focus:border-[#FF6B4A] focus:outline-none focus:ring-2 focus:ring-[#FF6B4A]/20"
+              className="h-12 flex-1 rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] px-4 text-sm text-[#0F172A] placeholder:text-[#94A3B8] shadow-sm transition focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20"
             />
             <button
               type="button"
               disabled={!input.trim() || isLoading || usageLimited}
               onClick={handleSend}
-              className="flex h-12 items-center justify-center rounded-2xl bg-[#FF6B4A] px-5 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(255,107,74,0.35)] transition disabled:cursor-not-allowed disabled:bg-[#E8D5CF] disabled:shadow-none hover:bg-[#ff5a33] active:scale-[0.98]"
+              className="flex h-12 items-center justify-center rounded-2xl bg-[#4F46E5] px-5 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.35)] transition disabled:cursor-not-allowed disabled:bg-[#F1F5F9] disabled:text-[#94A3B8] disabled:shadow-none hover:bg-[#4338CA] active:scale-[0.98]"
             >
               {language === "ko" ? "전송" : language === "id" ? "Kirim" : "Send"}
             </button>
@@ -930,7 +930,7 @@ export default function ChatPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-[#FFF8F0] px-4 py-6 text-[#3D2010]">
+        <main className="flex min-h-screen items-center justify-center bg-[#F9FAFB] px-4 py-6 text-[#0F172A]">
           <span className="animate-pulse-soft">🐥</span>
         </main>
       }
