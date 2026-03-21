@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import {
   pageview,
@@ -78,13 +78,33 @@ function parseAIResponse(rawText) {
   return { displayText, corrections };
 }
 
-function renderAssistantContent(text, showHints) {
+/** @param {"default" | "indigo" | "muted"} variant */
+function renderAssistantContent(text, showHints, variant = "default") {
   if (!text) return null;
+  const body = showHints ? text : stripHints(text, false);
   if (!showHints) {
-    return stripHints(text, false);
+    if (variant === "indigo") {
+      return <span className="block text-lg font-medium leading-relaxed text-white korean-text">{body}</span>;
+    }
+    if (variant === "muted") {
+      return <span className="block text-base font-medium leading-relaxed text-[#64748B] korean-text">{body}</span>;
+    }
+    return body;
   }
 
-  const parts = text.split(/(\([^)]*\))/g);
+  const parts = body.split(/(\([^)]*\))/g);
+  const hintClass =
+    variant === "indigo"
+      ? "block text-[11px] font-medium text-[#EEF2FF]"
+      : variant === "muted"
+      ? "block text-[11px] font-medium text-[#94A3B8]"
+      : "block text-[11px] font-medium text-[#64748B]";
+  const mainClass =
+    variant === "indigo"
+      ? "block text-lg font-medium leading-relaxed text-white korean-text"
+      : variant === "muted"
+      ? "block text-base font-medium leading-relaxed text-[#64748B] korean-text"
+      : "block";
 
   return parts.map((part, index) => {
     if (!part) return null;
@@ -92,17 +112,14 @@ function renderAssistantContent(text, showHints) {
 
     if (isTranslation) {
       return (
-        <span
-          key={index}
-          className="block text-[11px] font-medium text-[#64748B]"
-        >
+        <span key={index} className={hintClass}>
           {part}
         </span>
       );
     }
 
     return (
-      <span key={index} className="block">
+      <span key={index} className={mainClass}>
         {part.trim()}
       </span>
     );
@@ -111,6 +128,7 @@ function renderAssistantContent(text, showHints) {
 
 function ChatContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const levelParam = searchParams.get("level") || "beginner";
@@ -139,9 +157,10 @@ function ChatContent() {
   const [violationCount, setViolationCount] = useState(0);
   const [level3Countdown, setLevel3Countdown] = useState(null);
   const [allCorrections, setAllCorrections] = useState([]);
-  const [correctionCollapsed, setCorrectionCollapsed] = useState({});
   const [usageLimited, setUsageLimited] = useState(false);
-  const [showMissionCompleteModal, setShowMissionCompleteModal] = useState(false);
+  const [missionCelebration, setMissionCelebration] = useState(false);
+  const [pendingCorrections, setPendingCorrections] = useState(null);
+  const [userCardLift, setUserCardLift] = useState(false);
   const [showStarterButtons, setShowStarterButtons] = useState(isOnboarding);
 
   const recognitionRef = useRef(null);
@@ -149,6 +168,11 @@ function ChatContent() {
   const level3CountdownStartedRef = useRef(false);
   const missionCompleteRef = useRef(false);
   const firstUserSentRef = useRef(false);
+  const allCorrectionsRef = useRef([]);
+
+  useEffect(() => {
+    allCorrectionsRef.current = allCorrections;
+  }, [allCorrections]);
 
   const personaMeta = useMemo(() => {
     const names = {
@@ -432,6 +456,71 @@ function ChatContent() {
     startConversation();
   }, [level, persona, language]);
 
+  const completeMissionFlow = useCallback(
+    (historyMessages) => {
+      if (missionCompleteRef.current) return;
+      missionCompleteRef.current = true;
+      setMissionCelebration(true);
+      setPendingCorrections(null);
+      trackMissionComplete(missionId);
+
+      if (typeof window !== "undefined") {
+        try {
+          const raw = window.localStorage.getItem(`ogu_usage_${todayKey}`);
+          let missionCount = 0;
+          let convoCount = 0;
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            missionCount = parsed.mission || 0;
+            convoCount = parsed.conversation || 0;
+          }
+          missionCount += 1;
+          window.localStorage.setItem(
+            `ogu_usage_${todayKey}`,
+            JSON.stringify({ mission: missionCount, conversation: convoCount })
+          );
+
+          if (challengeDayParam) {
+            const dayNum = Number(challengeDayParam);
+            if (!Number.isNaN(dayNum)) {
+              const progressRaw = window.localStorage.getItem("ogu_challenge_progress");
+              let arr = [];
+              if (progressRaw) {
+                try {
+                  const parsed = JSON.parse(progressRaw);
+                  if (Array.isArray(parsed)) arr = parsed;
+                } catch {
+                  arr = [];
+                }
+              }
+              if (!arr.includes(dayNum)) {
+                arr.push(dayNum);
+                arr.sort((a, b) => a - b);
+                window.localStorage.setItem("ogu_challenge_progress", JSON.stringify(arr));
+              }
+            }
+          }
+        } catch {
+          // ignore localStorage errors
+        }
+      }
+
+      setTimeout(() => {
+        try {
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem("ogu-chat-history", JSON.stringify(historyMessages));
+            window.sessionStorage.setItem("ogu-chat-end", String(Date.now()));
+            window.localStorage.setItem("ogu_corrections", JSON.stringify(allCorrectionsRef.current));
+          }
+        } catch {}
+        const q = new URLSearchParams({ level, persona, lang: language });
+        if (missionId) q.set("mission", missionId);
+        router.push(`/report?${q.toString()}`);
+      }, 2000);
+    },
+    [todayKey, challengeDayParam, level, persona, language, missionId, router]
+  );
+
   const handleSend = async (presetText) => {
     const trimmed = (presetText ?? input).trim();
     if (!trimmed || isLoading) return;
@@ -518,6 +607,8 @@ function ChatContent() {
     setMessages(nextMessages);
     setInput("");
     setShowStarterButtons(false);
+    setUserCardLift(true);
+    setTimeout(() => setUserCardLift(false), 300);
     setIsLoading(true);
 
     try {
@@ -547,64 +638,26 @@ function ChatContent() {
         const { displayText, corrections } = parseAIResponse(reply);
         if (corrections.length) setAllCorrections((prev) => [...prev, ...corrections]);
         const includesMissionComplete = displayText.includes("[MISSION_COMPLETE]");
-        setMessages((prev) => [...prev, { role: "assistant", content: displayText.replace("[MISSION_COMPLETE]", "").trim(), corrections: corrections.length ? corrections : undefined }]);
+        const cleanedDisplay = displayText.replace("[MISSION_COMPLETE]", "").trim();
+        const userMsgCount = nextMessages.filter((m) => m.role === "user").length;
+        const shouldCompleteMission =
+          missionMeta && (includesMissionComplete || userMsgCount >= 3);
 
-        if (missionMeta && includesMissionComplete && !missionCompleteRef.current) {
-          missionCompleteRef.current = true;
-          setShowMissionCompleteModal(true);
-          trackMissionComplete(missionId);
-
-          if (typeof window !== "undefined") {
-            try {
-              const raw = window.localStorage.getItem(`ogu_usage_${todayKey}`);
-              let missionCount = 0;
-              let convoCount = 0;
-              if (raw) {
-                const parsed = JSON.parse(raw);
-                missionCount = parsed.mission || 0;
-                convoCount = parsed.conversation || 0;
-              }
-              missionCount += 1;
-              window.localStorage.setItem(
-                `ogu_usage_${todayKey}`,
-                JSON.stringify({ mission: missionCount, conversation: convoCount })
-              );
-
-              if (challengeDayParam) {
-                const dayNum = Number(challengeDayParam);
-                if (!Number.isNaN(dayNum)) {
-                  const progressRaw = window.localStorage.getItem("ogu_challenge_progress");
-                  let arr = [];
-                  if (progressRaw) {
-                    try {
-                      const parsed = JSON.parse(progressRaw);
-                      if (Array.isArray(parsed)) arr = parsed;
-                    } catch {
-                      arr = [];
-                    }
-                  }
-                  if (!arr.includes(dayNum)) {
-                    arr.push(dayNum);
-                    arr.sort((a, b) => a - b);
-                    window.localStorage.setItem("ogu_challenge_progress", JSON.stringify(arr));
-                  }
-                }
-              }
-            } catch {
-              // ignore localStorage errors
-            }
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: cleanedDisplay,
+            corrections: corrections.length ? corrections : undefined
           }
+        ]);
 
-          setTimeout(() => {
-            try {
-              if (typeof window !== "undefined") {
-                window.sessionStorage.setItem("ogu-chat-history", JSON.stringify([...nextMessages, { role: "assistant", content: displayText }]));
-                window.sessionStorage.setItem("ogu-chat-end", String(Date.now()));
-                window.localStorage.setItem("ogu_corrections", JSON.stringify(allCorrections));
-              }
-            } catch {}
-            router.push(`/report?level=${level}&persona=${persona}&lang=${language}`);
-          }, 2000);
+        if (shouldCompleteMission) {
+          completeMissionFlow([...nextMessages, { role: "assistant", content: cleanedDisplay }]);
+        } else if (corrections.length) {
+          setPendingCorrections(corrections);
+        } else {
+          setPendingCorrections(null);
         }
       }
     } catch (e) {
@@ -630,7 +683,9 @@ function ChatContent() {
     } catch (e) {
       console.error("Failed to store history", e);
     }
-    router.push(`/report?level=${level}&persona=${persona}&lang=${language}`);
+    const q = new URLSearchParams({ level, persona, lang: language });
+    if (missionId) q.set("mission", missionId);
+    router.push(`/report?${q.toString()}`);
   };
 
   const handleKeyDown = (e) => {
@@ -670,13 +725,61 @@ function ChatContent() {
       ? language === "ko" ? "초급" : language === "id" ? "Dasar" : "Elementary"
       : language === "ko" ? "중급" : language === "id" ? "Menengah" : "Intermediate";
 
+  const lastMsg = messages[messages.length - 1];
+  const displayAssistant = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return messages[i];
+    }
+    return null;
+  }, [messages]);
+
   const userTurns = messages.filter((m) => m.role === "user").length;
-  const currentStep =
-    userTurns <= 2 ? 1 : userTurns <= 5 ? 2 : 3;
+  const assistantCount = messages.filter((m) => m.role === "assistant").length;
+  const pairsComplete = Math.min(userTurns, Math.max(0, assistantCount - 1));
+
+  const isViolationAssistant =
+    lastMsg?.role === "assistant" && lastMsg?.violationLevel != null;
+
+  const userBlocked =
+    usageLimited ||
+    missionCelebration ||
+    (pendingCorrections?.length ?? 0) > 0 ||
+    (lastMsg?.violationLevel === 3 && level3Countdown != null);
+
+  const canUserType =
+    !userBlocked && !isLoading && lastMsg?.role === "assistant";
+
+  const aiSpeakHighlight =
+    !isViolationAssistant &&
+    (!!pendingCorrections ||
+      isLoading ||
+      lastMsg?.role === "user" ||
+      (messages.length === 0 && isLoading) ||
+      (!canUserType && lastMsg?.role === "assistant"));
+
+  const missionStepDisplay = missionMeta
+    ? isLoading && lastMsg?.role === "user"
+      ? Math.min(userTurns, 3)
+      : Math.min(userTurns + 1, 3)
+    : 0;
+
+  const aiFadeKey = `${assistantCount}-${(displayAssistant?.content || "").slice(0, 40)}`;
+
+  const turnLabel =
+    language === "ko" ? "내 차례예요 💬" : language === "id" ? "Giliran kamu 💬" : "Your turn 💬";
+  const inputPlaceholder =
+    language === "ko"
+      ? "한국어로 답해보세요!"
+      : language === "id"
+      ? "Balas dalam bahasa Korea!"
+      : "Reply in Korean!";
+  const correctionDismissLabel =
+    language === "ko" ? "이해했어요 👍" : language === "id" ? "Mengerti 👍" : "Got it 👍";
+  const missionDoneLabel =
+    language === "ko" ? "🎉 미션 완료!" : language === "id" ? "🎉 Misi selesai!" : "🎉 Mission complete!";
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-[#F9FAFB] px-3 py-4 sm:px-4 sm:py-6 text-[#0F172A]">
-      {/* 마이크 권한 안내 모달 */}
+    <main className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[#F9FAFB] text-[#0F172A]">
       {showMicPermissionModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -707,147 +810,162 @@ function ChatContent() {
         </div>
       )}
 
-      <div className="flex w-full max-w-2xl flex-1 flex-col rounded-3xl border border-[#E5E7EB] bg-[#FFFFFF] shadow-[0_20px_50px_rgba(0,0,0,0.06)] overflow-hidden">
-        {/* 헤더 */}
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5E7EB] bg-[#FFFFFF] px-3 py-3">
-          <div className="flex min-w-0 flex-shrink items-center gap-2">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#EEF2FF] text-xl shadow-sm">
-              {personaMeta.emoji}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#0F172A]">
-                {personaMeta.name}
-              </p>
-              <p className="text-[11px] text-[#64748B]">
-                {personaMeta.subtitle ?? levelLabel}
-              </p>
-            </div>
+      {missionCelebration && (
+        <div className="fixed inset-0 z-40 flex flex-col bg-[#4F46E5] px-4 py-6">
+          <div className="flex min-h-0 flex-[45] flex-col items-center justify-center rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)]" />
+          <div className="flex flex-[10] flex-col items-center justify-center px-2">
+            <p className="text-center text-xl font-bold text-white sm:text-2xl">{missionDoneLabel}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsMuted((m) => !m)}
-              className={`rounded-xl border px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
-                isMuted
-                  ? "border-[#E5E7EB] bg-[#FFFFFF] text-[#64748B] hover:border-[#CBD5E1]"
-                  : "border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]"
-              }`}
-              title={isMuted ? (language === "ko" ? "음성 켜기" : language === "id" ? "Nyalakan suara" : "Turn on voice") : (language === "ko" ? "음성 끄기" : language === "id" ? "Matikan suara" : "Mute voice")}
-            >
-              {isMuted ? "🔇" : "🔊"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowHints((v) => !v);
-                trackUseHint();
-              }}
-              className={`rounded-xl border px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
-                showHints
-                  ? "border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]"
-                  : "border-[#E5E7EB] bg-[#FFFFFF] text-[#64748B] hover:border-[#CBD5E1]"
-              }`}
-            >
-              <span className="sm:hidden">👀</span>
-              <span className="hidden sm:inline">
-                {language === "ko"
-                  ? (showHints ? "힌트 숨기기 👀" : "힌트 보기 👀")
+          <div className="flex min-h-0 flex-[45] flex-col items-center justify-center rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)]" />
+        </div>
+      )}
+
+      {/* 상단 헤더 */}
+      <header className="shrink-0 border-b border-[#E5E7EB] bg-white px-3 py-2.5">
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EEF2FF] text-lg">
+                {personaMeta.emoji}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[#0F172A]">
+                  {missionMeta
+                    ? language === "ko"
+                      ? missionMeta.title.ko
+                      : language === "id"
+                      ? missionMeta.title.id
+                      : missionMeta.title.en
+                    : personaMeta.name}
+                </p>
+                <p className="truncate text-[11px] text-[#64748B]">
+                  {missionMeta ? (personaMeta.subtitle ?? levelLabel) : personaMeta.subtitle ?? levelLabel}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+              <div className="flex rounded-lg border border-[#E5E7EB] bg-[#F8FAFC] p-0.5 text-[10px] font-semibold">
+                {["ko", "en", "id"].map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => {
+                      const p = new URLSearchParams(searchParams.toString());
+                      p.set("lang", code);
+                      router.replace(`${pathname}?${p.toString()}`);
+                    }}
+                    className={`rounded-md px-2 py-1 uppercase transition ${
+                      language === code ? "bg-[#4F46E5] text-white" : "text-[#64748B] hover:bg-[#EEF2FF]"
+                    }`}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMuted((m) => !m)}
+                className={`rounded-lg border px-2 py-1.5 text-[11px] font-medium ${
+                  isMuted
+                    ? "border-[#E5E7EB] bg-white text-[#64748B]"
+                    : "border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]"
+                }`}
+                title={
+                  isMuted
+                    ? language === "ko"
+                      ? "음성 켜기"
+                      : language === "id"
+                      ? "Nyalakan suara"
+                      : "Turn on voice"
+                    : language === "ko"
+                    ? "음성 끄기"
+                    : language === "id"
+                    ? "Matikan suara"
+                    : "Mute voice"
+                }
+              >
+                {isMuted ? "🔇" : "🔊"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowHints((v) => !v);
+                  trackUseHint();
+                }}
+                className={`rounded-lg border px-2 py-1.5 text-[11px] font-medium ${
+                  showHints
+                    ? "border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]"
+                    : "border-[#E5E7EB] bg-white text-[#64748B]"
+                }`}
+              >
+                👀
+              </button>
+              <button
+                type="button"
+                onClick={handleEndConversation}
+                className="rounded-lg border border-[#FEE2E2] bg-[#FEF2F2] px-2.5 py-1.5 text-[11px] font-semibold text-[#DC2626] active:scale-[0.98]"
+              >
+                {missionMeta
+                  ? language === "ko"
+                    ? "종료"
+                    : language === "id"
+                    ? "Selesai"
+                    : "End"
+                  : language === "ko"
+                  ? "대화 끝내기"
                   : language === "id"
-                  ? (showHints ? "Sembunyikan Petunjuk 👀" : "Tampilkan Petunjuk 👀")
-                  : (showHints ? "Hide Hints 👀" : "Show Hints 👀")}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={handleEndConversation}
-              className="rounded-xl border border-[#E5E7EB] bg-[#FFFFFF] px-3 py-2 text-[11px] font-semibold text-[#DC2626] transition hover:bg-[#F8FAFC] active:scale-[0.98]"
-            >
-              <span className="sm:hidden">End</span>
-              <span className="hidden sm:inline">
-                {language === "ko" ? "대화 끝내기" : language === "id" ? "Akhiri Percakapan" : "End Conversation"}
-              </span>
-            </button>
-          </div>
-        </header>
-
-        {/* 미션 진행바 */}
-        {missionMeta && (
-          <div className="border-b border-[#E5E7EB] bg-[#FFFFFF] px-4 py-2">
-            <p className="text-[11px] font-semibold text-[#64748B]">
-              {language === "ko"
-                ? `미션: ${missionMeta.title.ko}`
-                : language === "id"
-                ? `Misi: ${missionMeta.title.id}`
-                : `Mission: ${missionMeta.title.en}`}
-            </p>
-            <div className="mt-1 flex items-center gap-2 text-[11px]">
-              {[1, 2, 3].map((step) => (
-                <div key={step} className="flex items-center gap-1">
-                  <div
-                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold ${
-                      step < currentStep
-                        ? "bg-[#4F46E5] text-white"
-                        : step === currentStep
-                        ? "bg-[#4F46E5] text-white"
-                        : "bg-[#E5E7EB] text-[#64748B]"
-                    }`}
-                  >
-                    {step}
-                  </div>
-                  {missionSteps && missionSteps[step - 1] && (
-                    <span className="hidden text-[10px] text-[#64748B] sm:inline">
-                      {missionSteps[step - 1]}
-                    </span>
-                  )}
-                </div>
-              ))}
+                  ? "Akhiri"
+                  : "End chat"}
+              </button>
             </div>
           </div>
-        )}
 
-        {/* 채팅 영역 */}
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5">
-          {messages.map((m, idx) => {
-            const isUser = m.role === "user";
-            const content = m.content || "";
-            const violationLevel = m.violationLevel;
-
-            const isViolationBubble = !isUser && violationLevel != null;
-            const bubbleStyle = isUser
-              ? "bg-[#4F46E5] text-white shadow-[0_4px_14px_rgba(79,70,229,0.25)]"
-              : isViolationBubble
-              ? violationLevel === 1
-                ? "border-2 border-[#D97706] bg-[#FFFBEB] text-[#92400E]"
-                : violationLevel === 2
-                ? "border-2 border-[#DC2626] bg-[#FEF2F2] text-[#991B1B]"
-                : "border-2 border-[#DC2626] bg-[#FEF2F2] text-[#991B1B]"
-              : "border border-[#E5E7EB] bg-[#FFFFFF] text-[#0F172A] shadow-[0_2px_12px_rgba(0,0,0,0.04)]";
-
-            const hasCorrections = !isUser && !isViolationBubble && m.corrections && m.corrections.length > 0;
-            const isCorrectionCollapsed = correctionCollapsed[idx];
-
-            return (
-              <div key={idx} className="w-full space-y-2">
+          {missionMeta && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-[#64748B]">
+                <span>
+                  Step {missionStepDisplay} / 3
+                </span>
+                {missionSteps[missionStepDisplay - 1] && (
+                  <span className="ml-2 max-w-[55%] truncate text-[10px] font-normal">
+                    {missionSteps[missionStepDisplay - 1]}
+                  </span>
+                )}
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
                 <div
-                  className={`animate-bubble-in flex w-full ${isUser ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`flex max-w-[85%] items-end gap-2 sm:max-w-[80%] ${
-                      isUser ? "flex-row-reverse" : "flex-row"
-                    }`}
-                  >
-                    <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base ${
-                        isUser ? "bg-[#4F46E5]" : "bg-[#EEF2FF]"
-                      }`}
-                    >
-                      {isUser ? "👤" : "🐥"}
-                    </div>
-                    <div
-                      className={`korean-text rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${bubbleStyle}`}
-                    >
-                      {isUser ? content : isViolationBubble ? content : renderAssistantContent(content, showHints)}
-                      {isViolationBubble && violationLevel === 3 && level3Countdown != null && (
+                  className="h-full rounded-full bg-[#4F46E5] transition-all duration-300 ease-out"
+                  style={{ width: `${(missionStepDisplay / 3) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* 카드 영역: 45% / 10% / 45% */}
+      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2">
+        {/* 위: AI 카드 + 교정 */}
+        <div className="flex min-h-0 flex-[45] flex-col gap-2 overflow-hidden">
+          <div
+            className={`relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl p-4 shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-colors duration-300 ${
+              isViolationAssistant
+                ? lastMsg.violationLevel === 1
+                  ? "border-2 border-[#D97706] bg-[#FFFBEB]"
+                  : "border-2 border-[#DC2626] bg-[#FEF2F2]"
+                : aiSpeakHighlight
+                ? "border-0 bg-[#4F46E5]"
+                : "border border-solid border-[#E5E7EB] bg-[#F8FAFC]"
+            }`}
+          >
+            <span className="absolute left-3 top-3 text-lg leading-none">🐥</span>
+            <div className="mt-6 min-h-0 flex-1 overflow-hidden pr-1">
+              {displayAssistant?.content ? (
+                <div key={aiFadeKey} className="animate-chat-ai-fade">
+                  {isViolationAssistant ? (
+                    <div className="korean-text text-base font-medium leading-relaxed text-[#0F172A]">
+                      {displayAssistant.content}
+                      {lastMsg?.violationLevel === 3 && level3Countdown != null && (
                         <p className="mt-2 text-[11px] font-medium opacity-90">
                           {language === "ko"
                             ? `${level3Countdown}초 후 대화가 종료됩니다...`
@@ -857,147 +975,239 @@ function ChatContent() {
                         </p>
                       )}
                     </div>
-                  </div>
+                  ) : (
+                    renderAssistantContent(
+                      displayAssistant.content,
+                      showHints,
+                      aiSpeakHighlight ? "indigo" : "muted"
+                    )
+                  )}
                 </div>
-                {hasCorrections && (
-                  <div
-                    className="animate-bubble-in ml-10 rounded-2xl border-2 px-4 py-3 sm:ml-12"
-                    style={{ backgroundColor: "#FFFBEB", borderColor: "#D97706" }}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[12px] font-semibold text-[#0F172A]">
-                        ✏️ {language === "ko" ? "교정" : language === "id" ? "Koreksi" : "Correction"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setCorrectionCollapsed((prev) => ({ ...prev, [idx]: !prev[idx] }))}
-                        className="text-[11px] font-medium text-[#D97706] hover:underline"
-                      >
-                        {isCorrectionCollapsed
-                          ? (language === "ko" ? "펼치기 ▼" : language === "id" ? "Buka ▼" : "Expand ▼")
-                          : (language === "ko" ? "접기 ▲" : language === "id" ? "Tutup ▲" : "Collapse ▲")}
-                      </button>
-                    </div>
-                    {!isCorrectionCollapsed && (
-                      <div className="mt-2 space-y-2">
-                        {m.corrections.map((c, cIdx) => (
-                          <div key={cIdx} className="rounded-xl bg-white/60 px-3 py-2">
-                            <p className="korean-text text-[12px]">
-                              <span className="text-[#DC2626] line-through">{c.original ?? ""}</span>
-                              <span className="mx-1.5 text-[#D97706]">→</span>
-                              <span className="font-medium text-[#16A34A]">{c.corrected ?? ""}</span>
-                            </p>
-                            <p className="mt-1 text-[11px] text-[#64748B]">
-                              {language === "ko" ? (c.explanation_ko ?? c.explanation_en) : language === "id" ? (c.explanation_id ?? c.explanation_en) : (c.explanation_en ?? c.explanation_ko)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              ) : isLoading && messages.length === 0 ? (
+                <div className="flex h-full items-center justify-center gap-1 text-[#94A3B8]">
+                  <span className="animate-pulse-soft">·</span>
+                  <span className="animate-pulse-soft" style={{ animationDelay: "150ms" }}>
+                    ·
+                  </span>
+                  <span className="animate-pulse-soft" style={{ animationDelay: "300ms" }}>
+                    ·
+                  </span>
+                </div>
+              ) : (
+                <p className="text-sm text-[#94A3B8]"> </p>
+              )}
+            </div>
+          </div>
 
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#EEF2FF] text-base animate-pulse-soft">
-                  🐥
-                </div>
-                <div className="flex items-center gap-1.5 rounded-2xl bg-[#EEF2FF] px-4 py-2.5">
-                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#4F46E5]/60" style={{ animationDelay: "0ms" }} />
-                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#4F46E5]/60" style={{ animationDelay: "200ms" }} />
-                  <span className="h-2 w-2 animate-pulse-soft rounded-full bg-[#4F46E5]/60" style={{ animationDelay: "400ms" }} />
-                </div>
+          {pendingCorrections && pendingCorrections.length > 0 && (
+            <div className="animate-correction-slide-up shrink-0 rounded-xl border-2 border-[#D97706] bg-[#FFFBEB] p-3 shadow-sm">
+              <p className="mb-2 text-[12px] font-semibold text-[#92400E]">
+                ✏️ {language === "ko" ? "교정" : language === "id" ? "Koreksi" : "Correction"}
+              </p>
+              <div className="mb-3 max-h-[24vh] space-y-2 overflow-hidden">
+                {pendingCorrections.map((c, cIdx) => (
+                  <div key={cIdx} className="rounded-lg bg-white/70 px-2.5 py-2">
+                    <p className="korean-text text-[12px]">
+                      <span className="text-[#DC2626] line-through">{c.original ?? ""}</span>
+                      <span className="mx-1.5 text-[#D97706]">→</span>
+                      <span className="font-medium text-[#16A34A]">{c.corrected ?? ""}</span>
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#64748B]">
+                      {language === "ko"
+                        ? c.explanation_ko ?? c.explanation_en
+                        : language === "id"
+                        ? c.explanation_id ?? c.explanation_en
+                        : c.explanation_en ?? c.explanation_ko}
+                    </p>
+                  </div>
+                ))}
               </div>
+              <button
+                type="button"
+                onClick={() => setPendingCorrections(null)}
+                className="w-full rounded-xl bg-[#D97706] py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#B45309] active:scale-[0.99]"
+              >
+                {correctionDismissLabel}
+              </button>
             </div>
           )}
         </div>
 
-        {/* 입력창 */}
-        <div className="border-t border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
-          {showStarterButtons && !usageLimited && (
-            <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
-              {starterMessages.map((starter) => (
-                <button
-                  key={starter}
-                  type="button"
-                  onClick={() => handleStarterSelect(starter)}
-                  className="shrink-0 rounded-full border border-[#4F46E5] bg-[#EEF2FF] px-3 py-1.5 text-[12px] font-medium text-[#4F46E5]"
-                >
-                  {starter}
-                </button>
-              ))}
-            </div>
+        {/* 중간: 진행 */}
+        <div className="flex min-h-0 flex-[10] flex-col items-center justify-center gap-1 px-2">
+          {missionMeta ? (
+            <>
+              <span className="text-[13px] font-bold tabular-nums text-[#0F172A]">
+                {missionStepDisplay} / 3
+              </span>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    className="h-2 w-2 rounded-full transition-colors duration-300"
+                    style={{
+                      backgroundColor: i <= pairsComplete ? "#4F46E5" : "#E5E7EB"
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="h-px w-2/3 rounded-full bg-[#E5E7EB]" />
           )}
-          {usageLimited && (
-            <div className="mb-2 rounded-2xl bg-[#FEF2F2] px-3 py-2 text-center text-[12px] text-[#991B1B]">
-              {language === "ko"
-                ? "오늘의 무료 연습 5회를 모두 사용했어요 🐥 내일 다시 만나요!"
-                : language === "id"
-                ? "Sesi gratis hari ini sudah habis 🐥 Sampai jumpa besok!"
-                : "You've used all 5 free sessions today 🐥 See you tomorrow!"}
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={() => router.push("/")}
-                  className="rounded-xl bg-[#4F46E5] px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-[#4338CA]"
-                >
-                  {language === "ko" ? "홈으로 돌아가기" : language === "id" ? "Kembali ke Beranda" : "Back to Home"}
-                </button>
+        </div>
+
+        {/* 아래: 유저 카드 */}
+        <div
+          className={`flex min-h-0 flex-[45] flex-col overflow-hidden rounded-2xl transition-all duration-300 ease-out ${
+            userCardLift ? "animate-chat-card-lift" : ""
+          } ${
+            canUserType && !usageLimited
+              ? "border-2 border-[#4F46E5] bg-white shadow-[0_8px_28px_rgba(79,70,229,0.12)]"
+              : "border border-[#E5E7EB] bg-[#F8FAFC]"
+          }`}
+        >
+          {canUserType && !usageLimited ? (
+            <div className="flex min-h-0 flex-1 flex-col p-3">
+              <p className="mb-2 text-center text-[12px] font-semibold text-[#4F46E5]">{turnLabel}</p>
+              {showStarterButtons && (
+                <div className="mb-2 flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+                  {starterMessages.map((starter) => (
+                    <button
+                      key={starter}
+                      type="button"
+                      onClick={() => handleStarterSelect(starter)}
+                      className="shrink-0 rounded-full border border-[#4F46E5] bg-[#EEF2FF] px-3 py-1.5 text-[12px] font-medium text-[#4F46E5]"
+                    >
+                      {starter}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {isRecording && (
+                <div className="mb-1 flex items-center justify-center gap-1.5 text-[11px] text-[#C53030]">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-[#C53030]" />
+                  {language === "ko" ? "녹음 중..." : language === "id" ? "Merekam..." : "Recording..."}
+                </div>
+              )}
+              <div className="flex min-h-0 flex-1 flex-col gap-2">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    if (isOnboarding && e.target.value.trim().length > 0) setShowStarterButtons(false);
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder={inputPlaceholder}
+                  className="min-h-[44px] w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20"
+                />
+                <div className="mt-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={!input.trim() || isLoading}
+                    onClick={() => handleSend()}
+                    className="flex h-11 flex-1 items-center justify-center rounded-xl bg-[#4F46E5] text-sm font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.3)] transition disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#94A3B8] disabled:shadow-none hover:bg-[#4338CA] active:scale-[0.98]"
+                  >
+                    {language === "ko" ? "전송" : language === "id" ? "Kirim" : "Send"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleRecording}
+                    disabled={!getSpeechRecognition() || isRequestingPermission}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition active:scale-[0.98] ${
+                      isRequestingPermission
+                        ? "border border-[#E5E7EB] bg-[#F1F5F9] text-[#64748B]"
+                        : isRecording
+                        ? "bg-[#C53030] text-white shadow-[0_0_0_3px_rgba(197,48,48,0.3)] animate-pulse"
+                        : "border border-[#E5E7EB] bg-white text-[#0F172A] hover:bg-[#F8FAFC]"
+                    }`}
+                    title={
+                      language === "ko"
+                        ? isRecording
+                          ? "녹음 중지"
+                          : isRequestingPermission
+                          ? "권한 요청 중..."
+                          : "음성 입력"
+                        : language === "id"
+                        ? isRecording
+                          ? "Stop rekam"
+                          : isRequestingPermission
+                          ? "Meminta izin..."
+                          : "Input suara"
+                        : isRecording
+                        ? "Stop recording"
+                        : isRequestingPermission
+                        ? "Requesting permission..."
+                        : "Voice input"
+                    }
+                  >
+                    {isRequestingPermission ? (
+                      <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#4F46E5] border-t-transparent" />
+                    ) : (
+                      "🎤"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : usageLimited ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center">
+              <p className="text-sm font-medium text-[#991B1B]">
+                {language === "ko"
+                  ? "오늘의 무료 연습 5회를 모두 사용했어요 🐥"
+                  : language === "id"
+                  ? "Sesi gratis hari ini sudah habis 🐥"
+                  : "You've used all 5 free sessions today 🐥"}
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                className="rounded-xl bg-[#4F46E5] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#4338CA]"
+              >
+                {language === "ko" ? "홈으로" : language === "id" ? "Beranda" : "Home"}
+              </button>
+            </div>
+          ) : pendingCorrections?.length > 0 && lastMsg?.role === "assistant" ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4 text-center">
+              <p className="text-[13px] font-medium text-[#64748B]">
+                {language === "ko"
+                  ? "위 교정을 확인한 뒤 계속해 주세요"
+                  : language === "id"
+                  ? "Periksa koreksi di atas untuk melanjutkan"
+                  : "Check the correction above to continue"}
+              </p>
+            </div>
+          ) : isLoading && lastMsg?.role === "user" ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden p-4">
+              {lastMsg?.content && (
+                <p className="line-clamp-3 w-full text-center text-sm text-[#64748B] korean-text">
+                  {lastMsg.content}
+                </p>
+              )}
+              <div className="flex items-center gap-1 text-xl font-bold text-[#94A3B8]">
+                <span className="animate-pulse-soft">·</span>
+                <span className="animate-pulse-soft" style={{ animationDelay: "150ms" }}>
+                  ·
+                </span>
+                <span className="animate-pulse-soft" style={{ animationDelay: "300ms" }}>
+                  ·
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center p-4">
+              <div className="flex items-center gap-1 text-xl font-bold text-[#94A3B8]">
+                <span className="animate-pulse-soft">·</span>
+                <span className="animate-pulse-soft" style={{ animationDelay: "150ms" }}>
+                  ·
+                </span>
+                <span className="animate-pulse-soft" style={{ animationDelay: "300ms" }}>
+                  ·
+                </span>
               </div>
             </div>
           )}
-          {isRecording && (
-            <div className="mb-2 flex items-center justify-center gap-1.5 text-[11px] text-[#C53030]">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-[#C53030]" />
-              {language === "ko" ? "녹음 중..." : language === "id" ? "Merekam..." : "Recording..."}
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleRecording}
-              disabled={!getSpeechRecognition() || isRequestingPermission}
-              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition active:scale-[0.98] ${
-                isRequestingPermission
-                  ? "border border-[#E5E7EB] bg-[#F1F5F9] text-[#64748B]"
-                  : isRecording
-                  ? "bg-[#C53030] text-white shadow-[0_0_0_3px_rgba(197,48,48,0.3)] animate-pulse"
-                  : "border border-[#E5E7EB] bg-[#FFFFFF] text-[#0F172A] hover:border-[#CBD5E1] hover:bg-[#F8FAFC]"
-              }`}
-              title={language === "ko" ? (isRecording ? "녹음 중지" : isRequestingPermission ? "권한 요청 중..." : "음성 입력") : language === "id" ? (isRecording ? "Stop rekam" : isRequestingPermission ? "Meminta izin..." : "Input suara") : (isRecording ? "Stop recording" : isRequestingPermission ? "Requesting permission..." : "Voice input")}
-            >
-              {isRequestingPermission ? (
-                <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#4F46E5] border-t-transparent" />
-              ) : (
-                "🎤"
-              )}
-            </button>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                if (isOnboarding && e.target.value.trim().length > 0) setShowStarterButtons(false);
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                language === "ko" ? "한국어로 말해보세요..." : language === "id" ? "Ketik dalam bahasa Korea..." : "Type in Korean..."
-              }
-              className="h-12 flex-1 rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] px-4 text-sm text-[#0F172A] placeholder:text-[#94A3B8] shadow-sm transition focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20"
-            />
-            <button
-              type="button"
-              disabled={!input.trim() || isLoading || usageLimited}
-              onClick={handleSend}
-              className="flex h-12 items-center justify-center rounded-2xl bg-[#4F46E5] px-5 text-[13px] font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.35)] transition disabled:cursor-not-allowed disabled:bg-[#F1F5F9] disabled:text-[#94A3B8] disabled:shadow-none hover:bg-[#4338CA] active:scale-[0.98]"
-            >
-              {language === "ko" ? "전송" : language === "id" ? "Kirim" : "Send"}
-            </button>
-          </div>
         </div>
       </div>
     </main>
@@ -1008,7 +1218,7 @@ export default function ChatPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-[#F9FAFB] px-4 py-6 text-[#0F172A]">
+        <main className="flex h-[100dvh] max-h-[100dvh] items-center justify-center overflow-hidden bg-[#F9FAFB] text-[#0F172A]">
           <span className="animate-pulse-soft">🐥</span>
         </main>
       }
