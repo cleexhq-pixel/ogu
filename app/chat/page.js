@@ -214,7 +214,6 @@ function ChatContent() {
   const [showStarterButtons, setShowStarterButtons] = useState(isOnboarding);
 
   const recognitionRef = useRef(null);
-  const synthesisRef = useRef(getSpeechSynthesis());
   const level3CountdownStartedRef = useRef(false);
   const missionCompleteRef = useRef(false);
   const firstUserSentRef = useRef(false);
