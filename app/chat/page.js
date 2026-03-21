@@ -79,7 +79,7 @@ function parseAIResponse(rawText) {
 }
 
 /**
- * 괄호 밖 = 한국어, 괄호 () 안 = 번역 (여러 개면 번역만 이어붙임)
+ * 괄호 밖 = 한국어, 괄호 () 안 = 번역 (API가 끝에 한 쌍만 두지 않을 때 fallback)
  */
 function splitKoreanAndTranslation(text, showHints) {
   if (!text || typeof text !== "string") return { korean: "", translation: null };
@@ -102,42 +102,83 @@ function splitKoreanAndTranslation(text, showHints) {
   return { korean, translation };
 }
 
+/** 마침표/물음표/느낌표 뒤(공백·줄바꿈)에서 한국어 줄 분리 */
+function splitKoreanIntoLines(korean) {
+  if (!korean) return [];
+  return korean
+    .split(/(?<=[.?!])[\s\n]+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+}
+
+/**
+ * 번역: 문자열 끝의 (...), 없으면 splitKoreanAndTranslation fallback
+ * 한국어: . ? ! 뒤 줄바꿈(또는 공백) 기준 분리
+ */
+function formatKoreanText(text, showHints) {
+  const raw = (text || "").replace(/\[MISSION_COMPLETE\]/g, "").trim();
+  if (!raw) return { lines: [], translation: null };
+
+  if (!showHints) {
+    const korean = stripHints(raw, false).trim();
+    const lines = splitKoreanIntoLines(korean);
+    return {
+      lines: lines.length ? lines : korean ? [korean] : [],
+      translation: null
+    };
+  }
+
+  const translationMatch = raw.match(/\(([^)]+)\)\s*$/);
+  let translation = translationMatch ? translationMatch[1].trim() : null;
+  let koreanBody = translationMatch ? raw.slice(0, translationMatch.index).trim() : raw;
+
+  if (!translation) {
+    const { korean, translation: t } = splitKoreanAndTranslation(raw, true);
+    if (t) {
+      translation = t;
+      koreanBody = korean;
+    }
+  }
+
+  let lines = splitKoreanIntoLines(koreanBody);
+  if (!lines.length && koreanBody) lines = [koreanBody];
+  return { lines, translation };
+}
+
 /** @param {"indigo" | "muted" | "violation"} variant */
 function renderAiMessageCard(text, showHints, variant = "muted") {
   if (!text) return null;
-  const { korean, translation } = splitKoreanAndTranslation(text, showHints);
-  const showTranslation = showHints && translation;
   const rawFallback = text.replace(/\[MISSION_COMPLETE\]/g, "").trim();
-  const koreanLine = korean || (showTranslation ? "" : rawFallback);
-  if (!koreanLine && !showTranslation) return null;
+  const { lines, translation } = formatKoreanText(text, showHints);
+  const showTranslation = showHints && translation;
+  const displayLines = lines.length ? lines : !showTranslation && rawFallback ? [rawFallback] : [];
 
-  if (variant === "violation") {
-    return (
-      <div className="ai-message-card">
-        <p className="korean-sentence korean-text !text-[#0F172A]">{koreanLine || rawFallback}</p>
-        {showTranslation ? (
-          <>
-            <hr className="message-divider !border-[#E5E7EB]" />
-            <p className="translation-text !text-[#64748B]">{translation}</p>
-          </>
-        ) : null}
+  if (!displayLines.length && !showTranslation) return null;
+
+  const content = (
+    <div className="ai-card-content">
+      <div className="korean-lines">
+        {displayLines.map((line, i) => (
+          <p key={i} className="korean-line korean-text">
+            {line}
+          </p>
+        ))}
       </div>
-    );
-  }
-
-  const mod = variant === "indigo" ? "ai-message-card--indigo" : "ai-message-card--muted";
-
-  return (
-    <div className={`ai-message-card ${mod}`}>
-      <p className="korean-sentence korean-text">{koreanLine || "\u00a0"}</p>
       {showTranslation ? (
         <>
-          <hr className="message-divider" />
-          <p className="translation-text">{translation}</p>
+          <hr className="divider" />
+          <p className="translation">{translation}</p>
         </>
       ) : null}
     </div>
   );
+
+  if (variant === "violation") {
+    return <div className="ai-message-card ai-message-card--violation">{content}</div>;
+  }
+
+  const mod = variant === "indigo" ? "ai-message-card--indigo" : "ai-message-card--muted";
+  return <div className={`ai-message-card ${mod}`}>{content}</div>;
 }
 
 function ChatContent() {

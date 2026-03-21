@@ -35,56 +35,87 @@ body {
 }
 
 @layer components {
-  /* Chat AI card: Korean + translation split */
+  /* Chat AI card */
   .ai-message-card {
     @apply w-full;
   }
 
-  .ai-message-card .korean-sentence {
+  .ai-card-content {
+    @apply w-full;
+  }
+
+  .korean-lines {
+    @apply w-full;
+  }
+
+  .korean-line {
     font-family: "Noto Sans KR", sans-serif;
     font-size: 1.25rem;
     font-weight: 600;
     color: #0f172a;
-    line-height: 1.8;
+    line-height: 1.9;
     letter-spacing: 0.02em;
-    margin-bottom: 12px;
+    margin-bottom: 4px;
   }
 
-  .ai-message-card .message-divider {
+  .korean-lines .korean-line:last-child {
+    margin-bottom: 0;
+  }
+
+  .divider {
     border: none;
     border-top: 1px solid #e5e7eb;
-    margin: 12px 0;
+    margin: 14px 0;
   }
 
-  .ai-message-card .translation-text {
+  .translation {
     font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    font-size: 1rem;
+    font-size: 0.875rem;
     color: #64748b;
-    line-height: 1.8;
-    margin-top: 8px;
     font-style: italic;
+    line-height: 1.6;
+    margin-top: 0;
+  }
+
+  @media (max-width: 639px) {
+    .translation {
+      font-size: 1rem;
+      line-height: 1.8;
+    }
   }
 
   /* Active indigo AI card */
-  .ai-message-card--indigo .korean-sentence {
+  .ai-message-card--indigo .korean-line {
     color: #ffffff;
   }
 
-  .ai-message-card--indigo .message-divider {
+  .ai-message-card--indigo .divider {
     border-top-color: rgba(255, 255, 255, 0.35);
   }
 
-  .ai-message-card--indigo .translation-text {
+  .ai-message-card--indigo .translation {
     color: #eef2ff;
-    font-style: italic;
   }
 
-  /* Muted AI card: Korean stays dark for readability on #F8FAFC */
-  .ai-message-card--muted .korean-sentence {
+  /* Muted AI card */
+  .ai-message-card--muted .korean-line {
     color: #0f172a;
   }
 
-  .ai-message-card--muted .translation-text {
+  .ai-message-card--muted .translation {
+    color: #64748b;
+  }
+
+  /* Violation / light card */
+  .ai-message-card--violation .korean-line {
+    color: #0f172a;
+  }
+
+  .ai-message-card--violation .divider {
+    border-top-color: #e5e7eb;
+  }
+
+  .ai-message-card--violation .translation {
     color: #64748b;
   }
 }
