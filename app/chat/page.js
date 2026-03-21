@@ -23,11 +23,6 @@ function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
-function getSpeechSynthesis() {
-  if (typeof window === "undefined") return null;
-  return window.speechSynthesis;
-}
-
 function parseViolationReply(reply) {
   if (!reply || typeof reply !== "string") return null;
   let raw = reply.trim();
@@ -378,7 +373,6 @@ function ChatContent() {
         recognition.abort();
       } catch (_) {}
       recognitionRef.current = null;
-      getSpeechSynthesis()?.cancel();
     };
   }, []);
 
@@ -417,26 +411,71 @@ function ChatContent() {
   }, [isRecording]);
 
   const lastSpokenRef = useRef(null);
+  const ttsAudioRef = useRef(null);
 
-  // TTS: 마지막 AI 응답이 바뀌었을 때만 한국어로 읽기 (힌트 제외, 위반 메시지는 읽지 않음)
+  const playTTS = useCallback(async (rawText) => {
+    try {
+      const koreanOnly = String(rawText)
+        .replace(/\[MISSION_COMPLETE\]/g, "")
+        .replace(/\([^)]+\)/g, "")
+        .trim();
+      const toSpeak = stripHints(koreanOnly, false).trim();
+      if (!toSpeak) return;
+      if (lastSpokenRef.current === toSpeak) return;
+
+      if (ttsAudioRef.current) {
+        try {
+          ttsAudioRef.current.pause();
+          ttsAudioRef.current.src = "";
+        } catch (_) {}
+        ttsAudioRef.current = null;
+      }
+
+      const response = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: toSpeak,
+          lang: "ko-KR"
+        })
+      });
+      const data = await response.json();
+      if (!data?.audioContent) return;
+
+      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+      audio.playbackRate = 1.0;
+      ttsAudioRef.current = audio;
+      audio.addEventListener(
+        "ended",
+        () => {
+          if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+        },
+        { once: true }
+      );
+      await audio.play();
+      lastSpokenRef.current = toSpeak;
+    } catch (err) {
+      console.log("TTS failed, skipping");
+    }
+  }, []);
+
+  // Google Cloud TTS: AI 응답 완료 후 재생 (위반 메시지 제외, 음소거 시 미호출)
   useEffect(() => {
-    if (isMuted || messages.length === 0) return;
+    if (isMuted || isLoading || messages.length === 0) return;
     const last = messages[messages.length - 1];
-    if (last?.role !== "assistant" || !last?.content || last?.violationLevel) return;
+    if (last?.role !== "assistant" || !last?.content || last?.violationLevel != null) return;
+    playTTS(last.content);
+  }, [messages, isMuted, isLoading, playTTS]);
 
-    const toSpeak = stripHints(String(last.content), false).trim();
-    if (!toSpeak || lastSpokenRef.current === toSpeak) return;
-    lastSpokenRef.current = toSpeak;
-
-    const synth = synthesisRef.current;
-    if (!synth) return;
-
-    synth.cancel();
-    const utterance = new SpeechSynthesisUtterance(toSpeak);
-    utterance.lang = "ko-KR";
-    utterance.rate = 0.9;
-    synth.speak(utterance);
-  }, [messages, isMuted]);
+  useEffect(() => {
+    if (!isMuted) return;
+    const a = ttsAudioRef.current;
+    if (a) {
+      try {
+        a.pause();
+      } catch (_) {}
+    }
+  }, [isMuted]);
 
   useEffect(() => {
     const supabase = getSupabase();
