@@ -1,8 +1,24 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { NextResponse } from "next/server";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 });
+
+function cleanJSON(text) {
+  let cleaned = String(text)
+    .replace(/```json\n?/gi, "")
+    .replace(/```\n?/gi, "")
+    .trim();
+
+  const jsonStart = cleaned.indexOf("{");
+  const jsonEnd = cleaned.lastIndexOf("}");
+  if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+    cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+  }
+
+  return cleaned;
+}
 
 export async function POST(request) {
   try {
@@ -56,25 +72,21 @@ export async function POST(request) {
       .join("\n");
 
     raw = raw.trim();
-    if (raw.startsWith("```")) {
-      raw = raw.replace(/^```[a-zA-Z]*\n?/, "").replace(/```$/, "").trim();
-    }
 
     let parsed;
     try {
-      parsed = JSON.parse(raw);
+      const cleaned = cleanJSON(raw);
+      parsed = JSON.parse(cleaned);
     } catch (e) {
       console.error("Failed to parse report JSON:", e, raw);
-      return new Response(
-        JSON.stringify({ error: "Failed to parse expressions" }),
-        { status: 500 }
-      );
+      return NextResponse.json({
+        expressions: [],
+        corrections: [],
+        encouragement: "잘 하셨어요! 🐥"
+      });
     }
 
-    return new Response(JSON.stringify(parsed), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
+    return NextResponse.json(parsed);
   } catch (error) {
     console.error("Report API error:", error);
     return new Response(
