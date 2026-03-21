@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
+    console.log("TTS API Key exists:", !!process.env.GOOGLE_TTS_API_KEY);
+    console.log("TTS API Key length:", process.env.GOOGLE_TTS_API_KEY?.length);
+
     const apiKey = process.env.GOOGLE_TTS_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: "TTS failed" }, { status: 500 });
@@ -45,7 +48,9 @@ export async function POST(request) {
     });
 
     if (!res.ok) {
-      return NextResponse.json({ error: "TTS failed" }, { status: 500 });
+      const errText = await res.text();
+      console.error("Google TTS Error:", errText);
+      return NextResponse.json({ error: errText }, { status: 500 });
     }
 
     const data = await res.json();
