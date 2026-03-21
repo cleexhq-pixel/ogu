@@ -78,52 +78,66 @@ function parseAIResponse(rawText) {
   return { displayText, corrections };
 }
 
-/** @param {"default" | "indigo" | "muted"} variant */
-function renderAssistantContent(text, showHints, variant = "default") {
-  if (!text) return null;
-  const body = showHints ? text : stripHints(text, false);
+/**
+ * 괄호 밖 = 한국어, 괄호 () 안 = 번역 (여러 개면 번역만 이어붙임)
+ */
+function splitKoreanAndTranslation(text, showHints) {
+  if (!text || typeof text !== "string") return { korean: "", translation: null };
+  let t = text.replace(/\[MISSION_COMPLETE\]/g, "").trim();
   if (!showHints) {
-    if (variant === "indigo") {
-      return <span className="block text-lg font-medium leading-relaxed text-white korean-text">{body}</span>;
+    return { korean: stripHints(t, false).trim(), translation: null };
+  }
+  const parts = t.split(/(\([^)]*\))/g).filter((p) => p.length > 0);
+  let korean = "";
+  const translations = [];
+  for (const part of parts) {
+    if (/^\([^)]*\)$/.test(part)) {
+      translations.push(part.slice(1, -1).trim());
+    } else {
+      korean += part;
     }
-    if (variant === "muted") {
-      return <span className="block text-base font-medium leading-relaxed text-[#64748B] korean-text">{body}</span>;
-    }
-    return body;
+  }
+  korean = korean.trim();
+  const translation = translations.length ? translations.join(" ") : null;
+  return { korean, translation };
+}
+
+/** @param {"indigo" | "muted" | "violation"} variant */
+function renderAiMessageCard(text, showHints, variant = "muted") {
+  if (!text) return null;
+  const { korean, translation } = splitKoreanAndTranslation(text, showHints);
+  const showTranslation = showHints && translation;
+  const rawFallback = text.replace(/\[MISSION_COMPLETE\]/g, "").trim();
+  const koreanLine = korean || (showTranslation ? "" : rawFallback);
+  if (!koreanLine && !showTranslation) return null;
+
+  if (variant === "violation") {
+    return (
+      <div className="ai-message-card">
+        <p className="korean-sentence korean-text !text-[#0F172A]">{koreanLine || rawFallback}</p>
+        {showTranslation ? (
+          <>
+            <hr className="message-divider !border-[#E5E7EB]" />
+            <p className="translation-text !text-[#64748B]">{translation}</p>
+          </>
+        ) : null}
+      </div>
+    );
   }
 
-  const parts = body.split(/(\([^)]*\))/g);
-  const hintClass =
-    variant === "indigo"
-      ? "block text-[11px] font-medium text-[#EEF2FF]"
-      : variant === "muted"
-      ? "block text-[11px] font-medium text-[#94A3B8]"
-      : "block text-[11px] font-medium text-[#64748B]";
-  const mainClass =
-    variant === "indigo"
-      ? "block text-lg font-medium leading-relaxed text-white korean-text"
-      : variant === "muted"
-      ? "block text-base font-medium leading-relaxed text-[#64748B] korean-text"
-      : "block";
+  const mod = variant === "indigo" ? "ai-message-card--indigo" : "ai-message-card--muted";
 
-  return parts.map((part, index) => {
-    if (!part) return null;
-    const isTranslation = part.startsWith("(") && part.endsWith(")");
-
-    if (isTranslation) {
-      return (
-        <span key={index} className={hintClass}>
-          {part}
-        </span>
-      );
-    }
-
-    return (
-      <span key={index} className={mainClass}>
-        {part.trim()}
-      </span>
-    );
-  });
+  return (
+    <div className={`ai-message-card ${mod}`}>
+      <p className="korean-sentence korean-text">{koreanLine || "\u00a0"}</p>
+      {showTranslation ? (
+        <>
+          <hr className="message-divider" />
+          <p className="translation-text">{translation}</p>
+        </>
+      ) : null}
+    </div>
+  );
 }
 
 function ChatContent() {
@@ -948,7 +962,7 @@ function ChatContent() {
         {/* 위: AI 카드 + 교정 */}
         <div className="flex min-h-0 flex-[45] flex-col gap-2 overflow-hidden">
           <div
-            className={`relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl p-4 shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-colors duration-300 ${
+            className={`relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl p-5 shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-colors duration-300 ${
               isViolationAssistant
                 ? lastMsg.violationLevel === 1
                   ? "border-2 border-[#D97706] bg-[#FFFBEB]"
@@ -959,14 +973,14 @@ function ChatContent() {
             }`}
           >
             <span className="absolute left-3 top-3 text-lg leading-none">🐥</span>
-            <div className="mt-6 min-h-0 flex-1 overflow-hidden pr-1">
+            <div className="mt-7 min-h-0 flex-1 overflow-hidden pr-0.5">
               {displayAssistant?.content ? (
                 <div key={aiFadeKey} className="animate-chat-ai-fade">
                   {isViolationAssistant ? (
-                    <div className="korean-text text-base font-medium leading-relaxed text-[#0F172A]">
-                      {displayAssistant.content}
+                    <div>
+                      {renderAiMessageCard(displayAssistant.content, showHints, "violation")}
                       {lastMsg?.violationLevel === 3 && level3Countdown != null && (
-                        <p className="mt-2 text-[11px] font-medium opacity-90">
+                        <p className="mt-3 text-base font-medium leading-[1.8] text-[#0F172A]">
                           {language === "ko"
                             ? `${level3Countdown}초 후 대화가 종료됩니다...`
                             : language === "id"
@@ -976,7 +990,7 @@ function ChatContent() {
                       )}
                     </div>
                   ) : (
-                    renderAssistantContent(
+                    renderAiMessageCard(
                       displayAssistant.content,
                       showHints,
                       aiSpeakHighlight ? "indigo" : "muted"
@@ -1000,19 +1014,20 @@ function ChatContent() {
           </div>
 
           {pendingCorrections && pendingCorrections.length > 0 && (
-            <div className="animate-correction-slide-up shrink-0 rounded-xl border-2 border-[#D97706] bg-[#FFFBEB] p-3 shadow-sm">
-              <p className="mb-2 text-[12px] font-semibold text-[#92400E]">
+            <div className="animate-correction-slide-up shrink-0 rounded-xl border-2 border-[#D97706] bg-[#FFFBEB] p-5 shadow-sm">
+              <p className="mb-3 text-base font-semibold leading-[1.8] text-[#92400E]">
                 ✏️ {language === "ko" ? "교정" : language === "id" ? "Koreksi" : "Correction"}
               </p>
-              <div className="mb-3 max-h-[24vh] space-y-2 overflow-hidden">
+              <div className="mb-4 max-h-[24vh] space-y-3 overflow-hidden">
                 {pendingCorrections.map((c, cIdx) => (
-                  <div key={cIdx} className="rounded-lg bg-white/70 px-2.5 py-2">
-                    <p className="korean-text text-[12px]">
-                      <span className="text-[#DC2626] line-through">{c.original ?? ""}</span>
-                      <span className="mx-1.5 text-[#D97706]">→</span>
-                      <span className="font-medium text-[#16A34A]">{c.corrected ?? ""}</span>
+                  <div key={cIdx} className="rounded-lg bg-white/70 px-4 py-3">
+                    <p className="mb-2 korean-text text-base leading-[1.8] text-[#DC2626] line-through">
+                      {c.original ?? ""}
                     </p>
-                    <p className="mt-1 text-[11px] text-[#64748B]">
+                    <p className="mb-2 korean-text text-base font-bold leading-[1.8] text-[#16A34A]">
+                      {c.corrected ?? ""}
+                    </p>
+                    <p className="mt-2 text-base leading-[1.8] text-[#64748B]">
                       {language === "ko"
                         ? c.explanation_ko ?? c.explanation_en
                         : language === "id"
@@ -1025,7 +1040,7 @@ function ChatContent() {
               <button
                 type="button"
                 onClick={() => setPendingCorrections(null)}
-                className="w-full rounded-xl bg-[#D97706] py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#B45309] active:scale-[0.99]"
+                className="w-full rounded-xl bg-[#D97706] py-3 text-base font-semibold leading-[1.8] text-white shadow-sm transition hover:bg-[#B45309] active:scale-[0.99]"
               >
                 {correctionDismissLabel}
               </button>
@@ -1037,7 +1052,7 @@ function ChatContent() {
         <div className="flex min-h-0 flex-[10] flex-col items-center justify-center gap-1 px-2">
           {missionMeta ? (
             <>
-              <span className="text-[13px] font-bold tabular-nums text-[#0F172A]">
+              <span className="text-base font-bold tabular-nums leading-[1.8] text-[#0F172A]">
                 {missionStepDisplay} / 3
               </span>
               <div className="flex items-center gap-2">
@@ -1085,12 +1100,12 @@ function ChatContent() {
                 </div>
               )}
               {isRecording && (
-                <div className="mb-1 flex items-center justify-center gap-1.5 text-[11px] text-[#C53030]">
+                <div className="mb-2 flex items-center justify-center gap-1.5 text-base leading-[1.8] text-[#C53030]">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-[#C53030]" />
                   {language === "ko" ? "녹음 중..." : language === "id" ? "Merekam..." : "Recording..."}
                 </div>
               )}
-              <div className="flex min-h-0 flex-1 flex-col gap-2">
+              <div className="flex min-h-0 flex-1 flex-col gap-3">
                 <input
                   type="text"
                   value={input}
@@ -1100,14 +1115,14 @@ function ChatContent() {
                   }}
                   onKeyDown={handleKeyDown}
                   placeholder={inputPlaceholder}
-                  className="min-h-[44px] w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20"
+                  className="min-h-[48px] w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-base leading-[1.8] text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20"
                 />
                 <div className="mt-auto flex items-center gap-2">
                   <button
                     type="button"
                     disabled={!input.trim() || isLoading}
                     onClick={() => handleSend()}
-                    className="flex h-11 flex-1 items-center justify-center rounded-xl bg-[#4F46E5] text-sm font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.3)] transition disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#94A3B8] disabled:shadow-none hover:bg-[#4338CA] active:scale-[0.98]"
+                    className="flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-[#4F46E5] text-base font-semibold leading-[1.8] text-white shadow-[0_8px_24px_rgba(79,70,229,0.3)] transition disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#94A3B8] disabled:shadow-none hover:bg-[#4338CA] active:scale-[0.98]"
                   >
                     {language === "ko" ? "전송" : language === "id" ? "Kirim" : "Send"}
                   </button>
@@ -1115,7 +1130,7 @@ function ChatContent() {
                     type="button"
                     onClick={toggleRecording}
                     disabled={!getSpeechRecognition() || isRequestingPermission}
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition active:scale-[0.98] ${
+                    className={`flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-xl transition active:scale-[0.98] ${
                       isRequestingPermission
                         ? "border border-[#E5E7EB] bg-[#F1F5F9] text-[#64748B]"
                         : isRecording
@@ -1169,8 +1184,8 @@ function ChatContent() {
               </button>
             </div>
           ) : pendingCorrections?.length > 0 && lastMsg?.role === "assistant" ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4 text-center">
-              <p className="text-[13px] font-medium text-[#64748B]">
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-5 text-center">
+              <p className="text-base font-medium leading-[1.8] text-[#64748B]">
                 {language === "ko"
                   ? "위 교정을 확인한 뒤 계속해 주세요"
                   : language === "id"
@@ -1181,7 +1196,7 @@ function ChatContent() {
           ) : isLoading && lastMsg?.role === "user" ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 overflow-hidden p-4">
               {lastMsg?.content && (
-                <p className="line-clamp-3 w-full text-center text-sm text-[#64748B] korean-text">
+                <p className="line-clamp-3 w-full text-center text-base leading-[1.8] text-[#64748B] korean-text">
                   {lastMsg.content}
                 </p>
               )}

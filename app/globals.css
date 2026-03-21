@@ -34,3 +34,58 @@ body {
   font-weight: 400;
 }
 
+@layer components {
+  /* Chat AI card: Korean + translation split */
+  .ai-message-card {
+    @apply w-full;
+  }
+
+  .ai-message-card .korean-sentence {
+    font-family: "Noto Sans KR", sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0f172a;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+    margin-bottom: 12px;
+  }
+
+  .ai-message-card .message-divider {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 12px 0;
+  }
+
+  .ai-message-card .translation-text {
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 1rem;
+    color: #64748b;
+    line-height: 1.8;
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  /* Active indigo AI card */
+  .ai-message-card--indigo .korean-sentence {
+    color: #ffffff;
+  }
+
+  .ai-message-card--indigo .message-divider {
+    border-top-color: rgba(255, 255, 255, 0.35);
+  }
+
+  .ai-message-card--indigo .translation-text {
+    color: #eef2ff;
+    font-style: italic;
+  }
+
+  /* Muted AI card: Korean stays dark for readability on #F8FAFC */
+  .ai-message-card--muted .korean-sentence {
+    color: #0f172a;
+  }
+
+  .ai-message-card--muted .translation-text {
+    color: #64748b;
+  }
+}
+
