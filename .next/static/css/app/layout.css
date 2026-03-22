@@ -804,6 +804,51 @@ video {
   --tw-translate-x: -50%;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
+@keyframes chat-ai-fade {
+
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+.animate-chat-ai-fade {
+  animation: chat-ai-fade 0.3s ease forwards;
+}
+@keyframes chat-card-lift {
+
+  0% {
+    transform: translateY(0);
+  }
+
+  40% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+.animate-chat-card-lift {
+  animation: chat-card-lift 0.3s ease forwards;
+}
+@keyframes correction-slide-up {
+
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-correction-slide-up {
+  animation: correction-slide-up 0.3s ease forwards;
+}
 @keyframes fade-in-up {
 
   0% {

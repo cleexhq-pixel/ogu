@@ -13,6 +13,9 @@ import {
 } from "@/app/lib/gtag";
 import { MISSIONS } from "@/app/data/missions";
 
+/** 동일 AI 메시지에 TTS가 두 번 도는 것 방지 (Strict Mode 이중 effect·연속 호출) */
+let ttsLastScheduledAssistantKey = "";
+
 function stripHints(text, enabled) {
   if (enabled) return text;
   return text.replace(/\s*\([^)]*\)/g, "");
@@ -413,6 +416,7 @@ function ChatContent() {
   const ttsAudioRef = useRef(null);
 
   const playTTS = useCallback(async (rawText) => {
+    let reservedToSpeak = null;
     try {
       const koreanOnly = String(rawText)
         .replace(/\[MISSION_COMPLETE\]/g, "")
@@ -420,6 +424,7 @@ function ChatContent() {
         .trim();
       const toSpeak = stripHints(koreanOnly, false).trim();
       if (!toSpeak) return;
+      // await 전에 동기로 막아 병렬 playTTS(이중 fetch·이중 재생) 방지
       if (lastSpokenRef.current === toSpeak) return;
 
       if (ttsAudioRef.current) {
@@ -430,6 +435,9 @@ function ChatContent() {
         ttsAudioRef.current = null;
       }
 
+      lastSpokenRef.current = toSpeak;
+      reservedToSpeak = toSpeak;
+
       const response = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -439,7 +447,10 @@ function ChatContent() {
         })
       });
       const data = await response.json();
-      if (!data?.audioContent) return;
+      if (!data?.audioContent) {
+        if (lastSpokenRef.current === reservedToSpeak) lastSpokenRef.current = null;
+        return;
+      }
 
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
       audio.playbackRate = 1.0;
@@ -451,18 +462,33 @@ function ChatContent() {
         },
         { once: true }
       );
-      await audio.play();
-      lastSpokenRef.current = toSpeak;
+      try {
+        await audio.play();
+      } catch {
+        if (lastSpokenRef.current === reservedToSpeak) lastSpokenRef.current = null;
+      }
     } catch (err) {
+      if (reservedToSpeak != null && lastSpokenRef.current === reservedToSpeak) {
+        lastSpokenRef.current = null;
+      }
       console.log("TTS failed, skipping");
     }
   }, []);
 
   // Google Cloud TTS: AI 응답 완료 후 재생 (위반 메시지 제외, 음소거 시 미호출)
   useEffect(() => {
-    if (isMuted || isLoading || messages.length === 0) return;
+    if (messages.length === 0) {
+      ttsLastScheduledAssistantKey = "";
+      return;
+    }
+    if (isMuted || isLoading) return;
     const last = messages[messages.length - 1];
     if (last?.role !== "assistant" || !last?.content || last?.violationLevel != null) return;
+
+    const assistantKey = `${messages.length - 1}:${last.content}`;
+    if (ttsLastScheduledAssistantKey === assistantKey) return;
+    ttsLastScheduledAssistantKey = assistantKey;
+
     playTTS(last.content);
   }, [messages, isMuted, isLoading, playTTS]);
 
