@@ -50,6 +50,49 @@ function buildSystemPrompt(level, persona, violationCount, language, seed, missi
       ? "UI language ID: After the Korean lines, add exactly ONE final line: the full Bahasa Indonesia translation in one pair of parentheses.\n"
       : "UI language KO: Do NOT add any translation line. Only Korean lines inside [RESPONSE].\n";
 
+  if (missionId === "greeting-friend") {
+    const oguInterviewCore =
+      "[Format override]\n" +
+      "- For this mission only: ignore the generic \"Up to 2 Korean lines\" line-count in CORRECTION_RULES above for normal turns.\n" +
+      "- Normal turns = exactly ONE Korean line in [RESPONSE], except __OGU_SHOW_MODEL__ (two lines as specified below).\n\n" +
+      "[Interview roles — like a real press interview]\n" +
+      "- OGU (you): K-pop solo artist; you are the INTERVIEWEE. Reporters ask YOU questions; you only ANSWER.\n" +
+      "- Learner: journalist/reporter (기자). They ask questions in Korean. You address them politely (존댓말, e.g. 기자님).\n\n" +
+      "[Strict rules for OGU]\n" +
+      "- You NEVER ask the reporter a question. No interview-style questions back (no \"어떤 노래 좋아해요?\", \"뭐가 궁금해요?\").\n" +
+      "- Do NOT end your turn with ? directed at the reporter. Your answers end with . or ! only (statements).\n" +
+      "- You NEVER speak first except the very opening line when the session starts (see below).\n" +
+      "- After the opening line, you ONLY produce Korean when the user has sent a message; reply with ONE short natural sentence answering ONLY what they asked, then stop (no filler invitations to ask more).\n" +
+      "- Opening line (first assistant message only): greet briefly and invite them to begin asking—NOT a question about them.\n" +
+      "  Example shape: \"안녕하세요! 저 오구예요. 질문 시작해주세요!\" or similar (one sentence, ends with !).\n\n" +
+      "[Korean inside [RESPONSE]]\n" +
+      "- Opening: exactly ONE Korean line (one sentence).\n" +
+      "- Every reply after a reporter message: exactly ONE Korean line (one sentence), at most ~14 어절, easy words.\n" +
+      "- If UI is EN or ID: after that Korean line, add exactly ONE translation line in parentheses (same as global rules).\n" +
+      "- If UI is KO: Korean line only.\n" +
+      translationRule +
+      "\n" +
+      "[Optional] When answering, you may naturally use topic words reporters often ask about (노래, 무대, 팬, 취미, 데뷔…) — still one sentence, no question to them.\n\n" +
+      "[Special user message — model answer]\n" +
+      "- If the user's message is EXACTLY: __OGU_SHOW_MODEL__\n" +
+      "- Inside [RESPONSE] use TWO Korean lines: (1) one short example QUESTION the reporter could ask (may end with ?). (2) ONE sentence: your answer only, no question back.\n" +
+      "- If UI is EN or ID, one parenthetical translation for both lines together.\n\n" +
+      "[Mission end]\n" +
+      "- Never output [MISSION_COMPLETE]. The app ends on a timer.\n\n" +
+      "[Bans]\n" +
+      "- No markdown in [RESPONSE]. No lectures in [RESPONSE].\n" +
+      "- Use [CORRECTION] JSON only when the reporter's Korean needs a small fix (same rules as global).\n";
+
+    let basePrompt = SAFETY_RULES + CORRECTION_RULES + violationContext + oguInterviewCore;
+    if (seed) {
+      basePrompt +=
+        "\nPhrase practice: if the reporter's message gives a natural opening, weave this Korean phrase into your ONE answer sentence: " +
+        String(seed) +
+        ". Never break the no-question rule.\n";
+    }
+    return basePrompt;
+  }
+
   const levelExamples =
     level === "beginner"
       ? "Level beginner (왕초보) example shape (2 lines max, easy words, honorifics):\n" +
@@ -153,6 +196,15 @@ export async function POST(request) {
       mission || null
     );
 
+    const startUserText =
+      mission === "greeting-friend"
+        ? language === "ko"
+          ? "인터뷰 녹화가 막 켜졌어요. OGU로서 기자에게 질문은 하지 말고, 짧게 인사만 하고 기다리세요. 예시 느낌: \"안녕하세요! 저 오구예요. 질문 시작해주세요!\""
+          : language === "id"
+          ? "Rekam wawancara baru dimulai. Sebagai OGU, hanya sapa singkat dan tunggu; jangan bertanya ke wartawan. Contoh: sapa + undang mereka mulai bertanya."
+          : "Recording just started. As OGU, only give a short greeting and wait—do NOT ask the reporter anything. Example vibe: hi, I'm OGU, please start with your questions."
+        : "대화를 시작해줘. 먼저 인사하고, 오늘 어떤 상황에서 한국어를 연습할지 자연스럽게 물어봐 줘.";
+
     const anthropicMessages =
       messages.length === 0
         ? [
@@ -161,8 +213,7 @@ export async function POST(request) {
               content: [
                 {
                   type: "text",
-                  text:
-                    "대화를 시작해줘. 먼저 인사하고, 오늘 어떤 상황에서 한국어를 연습할지 자연스럽게 물어봐 줘."
+                  text: startUserText
                 }
               ]
             }

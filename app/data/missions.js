@@ -31,17 +31,28 @@ export const MISSIONS = [
   },
   {
     id: "greeting-friend",
-    title: { ko: "친구에게 안부 묻기", en: "Catch up with a friend", id: "Menanyakan kabar teman" },
+    title: {
+      ko: "OGU 인터뷰 (1분)",
+      en: "OGU Interview (1 min)",
+      id: "Wawancara OGU (1 mnt)"
+    },
     category: "daily",
     level: "beginner",
     persona: "free",
-    steps: { ko: ["안녕 인사", "요즘 어때 묻기", "약속 잡기"], en: ["Say hi", "Ask how they are", "Make plans"], id: ["Sapa", "Tanya kabar", "Buat janji"] },
+    /** 말하기·타이머 UI용 (초) */
+    timerSeconds: 60,
+    interviewMode: true,
+    steps: {
+      ko: ["인터뷰 시작", "질문하기", "마무리 인사"],
+      en: ["Start interview", "Ask questions", "Closing"],
+      id: ["Mulai wawancara", "Bertanya", "Penutup"]
+    },
     prompt:
-      "You are a Korean friend catching up. Have a warm casual conversation. Use informal speech. Keep it fun and short.",
+      "OGU K-pop solo artist interview: learner is a journalist. See system prompt for rules.",
     completion: {
-      ko: "친구와 대화 완료! 진짜 친구 같았어요 🐥",
-      en: "Friend chat done! You sounded like a real friend 🐥",
-      id: "Obrolan selesai! Seperti teman sejati 🐥"
+      ko: "인터뷰 완료! 멋진 기자였어요 🎤",
+      en: "Interview complete! You were a great reporter 🎤",
+      id: "Wawancara selesai! Wartawan yang hebat 🎤"
     }
   },
   {

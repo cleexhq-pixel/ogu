@@ -12,6 +12,7 @@ import {
   trackSendVoice
 } from "@/app/lib/gtag";
 import { MISSIONS } from "@/app/data/missions";
+import { OGU_MODEL_ANSWER_TOKEN, getInterviewQuestionTopicHints } from "@/app/lib/ogu-interview";
 
 /** 동일 AI 메시지에 TTS가 두 번 도는 것 방지 (Strict Mode 이중 effect·연속 호출) */
 let ttsLastScheduledAssistantKey = "";
@@ -24,6 +25,27 @@ function stripHints(text, enabled) {
 function getSpeechRecognition() {
   if (typeof window === "undefined") return null;
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+/** 인터뷰 첫 인사: 질문 예시·모범 답변 등은 제거하고 짧은 인사 한 줄만 남김 */
+function sanitizeOguInterviewOpening(displayText) {
+  if (!displayText || typeof displayText !== "string") return displayText;
+  let t = displayText.replace(/\[MISSION_COMPLETE\]/g, "").trim();
+  t = t.replace(/\s*질문\s*예시\s*[:：][\s\S]*/gi, "");
+  t = t.replace(/\s*모범\s*답변\s*[:：][\s\S]*/gi, "");
+  t = t.replace(/\s*예시\s*질문\s*[:：][\s\S]*/gi, "");
+  t = t.replace(/\s*기자\s*예시\s*[:：][\s\S]*/gi, "");
+  const stripLinePatterns =
+    /^(질문\s*예시|모범\s*답변|예시\s*질문|기자\s*예시|샘플\s*질문|예\s*[:：])/i;
+  const lines = t
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .filter((l) => !stripLinePatterns.test(l) && !/질문\s*예시/.test(l) && !/모범\s*답변/.test(l));
+  if (lines.length === 0) return (t.split(/\n/)[0] || displayText).trim();
+  const first = lines[0];
+  const oneSentence = first.split(/(?<=[.!?])\s+/)[0]?.trim() || first;
+  return oneSentence;
 }
 
 function parseViolationReply(reply) {
@@ -189,6 +211,7 @@ function ChatContent() {
   const language = searchParams.get("lang") || "en";
   const userIdFromUrl = searchParams.get("userId");
   const missionId = searchParams.get("mission");
+  const isInterviewMission = missionId === "greeting-friend";
   const seed = searchParams.get("seed");
   const challengeDayParam = searchParams.get("challenge_day");
   const mode = searchParams.get("mode");
@@ -212,21 +235,55 @@ function ChatContent() {
   const [allCorrections, setAllCorrections] = useState([]);
   const [usageLimited, setUsageLimited] = useState(false);
   const [missionCelebration, setMissionCelebration] = useState(false);
+  const [missionCompleteStats, setMissionCompleteStats] = useState(null);
   const [pendingCorrections, setPendingCorrections] = useState(null);
   const [userCardLift, setUserCardLift] = useState(false);
   const [showStarterButtons, setShowStarterButtons] = useState(isOnboarding);
+  /** OGU 인터뷰 미션 전용 */
+  const [interviewSessionStarted, setInterviewSessionStarted] = useState(false);
+  const [interviewMissionSecondsLeft, setInterviewMissionSecondsLeft] = useState(null);
+  const [responseWindowSec, setResponseWindowSec] = useState(null);
+  /** 인터뷰 답변 타이머: 마이크 누름~TTS 종료까지 감소 일시정지 */
+  const [interviewResponseTimerPaused, setInterviewResponseTimerPaused] = useState(false);
 
   const recognitionRef = useRef(null);
   const level3CountdownStartedRef = useRef(false);
   const missionCompleteRef = useRef(false);
   const firstUserSentRef = useRef(false);
   const allCorrectionsRef = useRef([]);
+  /** 👀 번역/힌트 버튼 누른 횟수 (미션 완료 모달 통계용) */
+  const hintsUsedCountRef = useRef(0);
+  const messagesRef = useRef([]);
+  const interviewTranscriptBufferRef = useRef("");
+  const interviewMicHoldingRef = useRef(false);
+  const isInterviewMissionRef = useRef(isInterviewMission);
+  const handleSendRef = useRef(null);
 
   useEffect(() => {
     allCorrectionsRef.current = allCorrections;
   }, [allCorrections]);
 
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    isInterviewMissionRef.current = isInterviewMission;
+  }, [isInterviewMission]);
+
   const personaMeta = useMemo(() => {
+    if (isInterviewMission) {
+      return {
+        emoji: "🎤",
+        name: "OGU",
+        subtitle:
+          language === "ko"
+            ? "케이팝 솔로 아티스트 · 인터뷰"
+            : language === "id"
+            ? "Artis solo K-pop · Wawancara"
+            : "K-pop solo artist · Interview"
+      };
+    }
     const names = {
       cafe: { ko: "카페오구", en: "Café Ogu", id: "Kafe Ogu" },
       office: { ko: "직장오구", en: "Office Ogu", id: "Kantor Ogu" },
@@ -253,7 +310,7 @@ function ChatContent() {
       name,
       subtitle: sub
     };
-  }, [persona, language, isPhraseMode]);
+  }, [persona, language, isPhraseMode, isInterviewMission]);
 
   useEffect(() => {
     setShowHints(language === "en" || language === "id");
@@ -286,12 +343,17 @@ function ChatContent() {
 
   const missionSteps = missionMeta ? missionMeta.steps[language] || missionMeta.steps.en : [];
 
+  const beginInterviewSession = useCallback(() => {
+    setInterviewSessionStarted(true);
+    setInterviewMissionSecondsLeft(missionMeta?.timerSeconds ?? 60);
+  }, [missionMeta]);
+
   const starterMessages = useMemo(() => {
     const map = {
       "greeting-friend": {
-        ko: ["안녕하세요!", "오랜만이에요!", "잘 지냈어요?"],
-        en: ["Hi there!", "Long time no see!", "How are you?"],
-        id: ["Halo!", "Lama tidak jumpa!", "Apa kabar?"]
+        ko: ["데뷔는 언제였어요?", "오늘 컨디션 어때요?", "팬들에게 한 말씀 부탁드려요!"],
+        en: ["When did you debut?", "How do you feel today?", "A word for your fans?"],
+        id: ["Kapan debut?", "Bagaimana kondisimu hari ini?", "Pesan untuk penggemar?"]
       },
       "cafe-order": {
         ko: ["아이스 아메리카노 주세요!", "따뜻한 라떼 주세요!", "메뉴 추천해 주세요!"],
@@ -327,14 +389,14 @@ function ChatContent() {
     }
   }, [isOnboarding, messages, input]);
 
-  // STT: SpeechRecognition 초기화 및 이벤트
+  // STT: SpeechRecognition 초기화 및 이벤트 (인터뷰: 푸시투토크·단발, 그 외: 연속)
   useEffect(() => {
     const SpeechRecognition = getSpeechRecognition();
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = !isInterviewMission;
+    recognition.interimResults = !isInterviewMission;
     recognition.lang = "ko-KR";
 
     recognition.onresult = (event) => {
@@ -344,7 +406,12 @@ function ChatContent() {
           transcript += event.results[i][0].transcript;
         }
       }
-      if (transcript.trim()) {
+      if (!transcript.trim()) return;
+      if (isInterviewMissionRef.current) {
+        interviewTranscriptBufferRef.current = (
+          interviewTranscriptBufferRef.current + transcript
+        ).trim();
+      } else {
         setInput((prev) => (prev ? `${prev} ${transcript}` : transcript).trim());
       }
     };
@@ -357,6 +424,11 @@ function ChatContent() {
 
     recognition.onerror = (event) => {
       setIsRequestingPermission(false);
+      if (isInterviewMissionRef.current) {
+        interviewMicHoldingRef.current = false;
+        interviewTranscriptBufferRef.current = "";
+        setInterviewResponseTimerPaused(false);
+      }
       if (event.error === "not-allowed" || event.error === "denied") {
         setIsRecording(false);
         setShowMicPermissionModal(true);
@@ -367,6 +439,15 @@ function ChatContent() {
 
     recognition.onend = () => {
       setIsRecording(false);
+      if (isInterviewMissionRef.current && interviewMicHoldingRef.current === false) {
+        const t = interviewTranscriptBufferRef.current.trim();
+        interviewTranscriptBufferRef.current = "";
+        if (t && handleSendRef.current) {
+          handleSendRef.current(t);
+        } else {
+          setInterviewResponseTimerPaused(false);
+        }
+      }
     };
 
     recognitionRef.current = recognition;
@@ -376,7 +457,7 @@ function ChatContent() {
       } catch (_) {}
       recognitionRef.current = null;
     };
-  }, []);
+  }, [isInterviewMission]);
 
   const toggleRecording = useCallback(async () => {
     const recognition = recognitionRef.current;
@@ -412,18 +493,61 @@ function ChatContent() {
     }
   }, [isRecording]);
 
+  const startInterviewMic = useCallback(async () => {
+    const recognition = recognitionRef.current;
+    if (!recognition || !isInterviewMissionRef.current) return;
+    if (responseWindowSec === 0) return;
+    setInterviewResponseTimerPaused(true);
+    interviewTranscriptBufferRef.current = "";
+    interviewMicHoldingRef.current = true;
+    try {
+      if (navigator.permissions?.query) {
+        const result = await navigator.permissions.query({ name: "microphone" });
+        if (result.state === "denied") {
+          interviewMicHoldingRef.current = false;
+          setInterviewResponseTimerPaused(false);
+          setShowMicPermissionModal(true);
+          return;
+        }
+      }
+    } catch (_) {}
+    setIsRequestingPermission(true);
+    try {
+      recognition.start();
+      trackSendVoice();
+    } catch (e) {
+      console.warn("SpeechRecognition start failed", e);
+      interviewMicHoldingRef.current = false;
+      setInterviewResponseTimerPaused(false);
+      setIsRequestingPermission(false);
+      setShowMicPermissionModal(true);
+    }
+  }, [responseWindowSec]);
+
+  const endInterviewMic = useCallback(() => {
+    if (!isInterviewMissionRef.current) return;
+    interviewMicHoldingRef.current = false;
+    try {
+      recognitionRef.current?.stop();
+    } catch (_) {}
+  }, []);
+
   const lastSpokenRef = useRef(null);
   const ttsAudioRef = useRef(null);
 
-  const playTTS = useCallback(async (rawText) => {
+  const playTTS = useCallback(async (rawText, options) => {
     let reservedToSpeak = null;
+    const onEnded = options?.onEnded;
     try {
       const koreanOnly = String(rawText)
         .replace(/\[MISSION_COMPLETE\]/g, "")
         .replace(/\([^)]+\)/g, "")
         .trim();
       const toSpeak = stripHints(koreanOnly, false).trim();
-      if (!toSpeak) return;
+      if (!toSpeak) {
+        onEnded?.();
+        return;
+      }
       // await 전에 동기로 막아 병렬 playTTS(이중 fetch·이중 재생) 방지
       if (lastSpokenRef.current === toSpeak) return;
 
@@ -449,6 +573,7 @@ function ChatContent() {
       const data = await response.json();
       if (!data?.audioContent) {
         if (lastSpokenRef.current === reservedToSpeak) lastSpokenRef.current = null;
+        onEnded?.();
         return;
       }
 
@@ -459,6 +584,7 @@ function ChatContent() {
         "ended",
         () => {
           if (ttsAudioRef.current === audio) ttsAudioRef.current = null;
+          onEnded?.();
         },
         { once: true }
       );
@@ -466,12 +592,14 @@ function ChatContent() {
         await audio.play();
       } catch {
         if (lastSpokenRef.current === reservedToSpeak) lastSpokenRef.current = null;
+        onEnded?.();
       }
     } catch (err) {
       if (reservedToSpeak != null && lastSpokenRef.current === reservedToSpeak) {
         lastSpokenRef.current = null;
       }
       console.log("TTS failed, skipping");
+      onEnded?.();
     }
   }, []);
 
@@ -481,7 +609,7 @@ function ChatContent() {
       ttsLastScheduledAssistantKey = "";
       return;
     }
-    if (isMuted || isLoading) return;
+    if (isLoading) return;
     const last = messages[messages.length - 1];
     if (last?.role !== "assistant" || !last?.content || last?.violationLevel != null) return;
 
@@ -489,8 +617,38 @@ function ChatContent() {
     if (ttsLastScheduledAssistantKey === assistantKey) return;
     ttsLastScheduledAssistantKey = assistantKey;
 
+    const startInterviewResponseWindow = () => {
+      setResponseWindowSec(10);
+      setInterviewResponseTimerPaused(false);
+    };
+
+    if (last?.hiddenFromUi) {
+      ttsLastScheduledAssistantKey = `${messages.length - 1}:${last.content}`;
+      if (isInterviewMission && interviewSessionStarted) {
+        startInterviewResponseWindow();
+      }
+      return;
+    }
+
+    if (isInterviewMission && interviewSessionStarted) {
+      if (isMuted) {
+        startInterviewResponseWindow();
+        return;
+      }
+      playTTS(last.content, { onEnded: startInterviewResponseWindow });
+      return;
+    }
+
+    if (isMuted) return;
     playTTS(last.content);
-  }, [messages, isMuted, isLoading, playTTS]);
+  }, [
+    messages,
+    isMuted,
+    isLoading,
+    playTTS,
+    isInterviewMission,
+    interviewSessionStarted
+  ]);
 
   useEffect(() => {
     if (!isMuted) return;
@@ -535,6 +693,8 @@ function ChatContent() {
       }
     } catch {}
 
+    if (isInterviewMission && !interviewSessionStarted) return;
+
     const startConversation = async () => {
       setIsLoading(true);
       try {
@@ -563,7 +723,14 @@ function ChatContent() {
         } else {
           const { displayText, corrections } = parseAIResponse(reply);
           if (corrections.length) setAllCorrections((prev) => [...prev, ...corrections]);
-          setMessages([{ role: "assistant", content: displayText, corrections: corrections.length ? corrections : undefined }]);
+          const opening = isInterviewMission ? sanitizeOguInterviewOpening(displayText) : displayText;
+          setMessages([
+            {
+              role: "assistant",
+              content: opening,
+              corrections: corrections.length ? corrections : undefined
+            }
+          ]);
         }
       } catch (e) {
         console.error(e);
@@ -573,12 +740,29 @@ function ChatContent() {
     };
 
     startConversation();
-  }, [level, persona, language]);
+  }, [level, persona, language, missionId, seed, isInterviewMission, interviewSessionStarted]);
 
   const completeMissionFlow = useCallback(
     (historyMessages) => {
       if (missionCompleteRef.current) return;
       missionCompleteRef.current = true;
+
+      try {
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem("ogu-chat-history", JSON.stringify(historyMessages));
+          window.sessionStorage.setItem("ogu-chat-end", String(Date.now()));
+          window.localStorage.setItem("ogu_corrections", JSON.stringify(allCorrectionsRef.current));
+        }
+      } catch {
+        // ignore
+      }
+
+      const userTurns = historyMessages.filter((m) => m.role === "user" && !m.hiddenFromUi).length;
+      setMissionCompleteStats({
+        userTurns,
+        hintsUsed: hintsUsedCountRef.current
+      });
+
       setMissionCelebration(true);
       setPendingCorrections(null);
       trackMissionComplete(missionId);
@@ -623,26 +807,51 @@ function ChatContent() {
           // ignore localStorage errors
         }
       }
-
-      setTimeout(() => {
-        try {
-          if (typeof window !== "undefined") {
-            window.sessionStorage.setItem("ogu-chat-history", JSON.stringify(historyMessages));
-            window.sessionStorage.setItem("ogu-chat-end", String(Date.now()));
-            window.localStorage.setItem("ogu_corrections", JSON.stringify(allCorrectionsRef.current));
-          }
-        } catch {}
-        const q = new URLSearchParams({ level, persona, lang: language });
-        if (missionId) q.set("mission", missionId);
-        router.push(`/report?${q.toString()}`);
-      }, 2000);
     },
-    [todayKey, challengeDayParam, level, persona, language, missionId, router]
+    [todayKey, challengeDayParam, missionId]
   );
 
-  const handleSend = async (presetText) => {
+  const handleMissionCompleteHome = useCallback(() => {
+    setMissionCelebration(false);
+    setMissionCompleteStats(null);
+    router.push("/");
+  }, [router]);
+
+  const handleMissionCompleteRetry = useCallback(() => {
+    missionCompleteRef.current = false;
+    setMissionCelebration(false);
+    setMissionCompleteStats(null);
+    hintsUsedCountRef.current = 0;
+    if (typeof window !== "undefined") {
+      window.location.assign(`${window.location.pathname}${window.location.search}`);
+    }
+  }, []);
+
+  // OGU 인터뷰: 1분 미션 타이머
+  useEffect(() => {
+    if (!isInterviewMission || !interviewSessionStarted || interviewMissionSecondsLeft === null) return;
+    if (interviewMissionSecondsLeft <= 0) return;
+    const id = window.setTimeout(() => {
+      setInterviewMissionSecondsLeft((s) => (s == null || s <= 0 ? s : s - 1));
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [isInterviewMission, interviewSessionStarted, interviewMissionSecondsLeft]);
+
+  useEffect(() => {
+    if (!isInterviewMission || interviewMissionSecondsLeft !== 0) return;
+    if (missionCompleteRef.current) return;
+    completeMissionFlow(messagesRef.current);
+  }, [isInterviewMission, interviewMissionSecondsLeft, completeMissionFlow]);
+
+  const handleSend = async (presetText, options) => {
     const trimmed = (presetText ?? input).trim();
     if (!trimmed || isLoading) return;
+    if (isInterviewMission && responseWindowSec === 0 && !options?.hiddenFromUi) return;
+
+    if (isInterviewMission) {
+      setResponseWindowSec(null);
+      setInterviewResponseTimerPaused(true);
+    }
 
     // 하루 사용량 제한 체크 (첫 유저 발화 시)
     if (!firstUserSentRef.current) {
@@ -722,7 +931,14 @@ function ChatContent() {
       }
     }
 
-    const nextMessages = [...messages, { role: "user", content: trimmed }];
+    const nextMessages = [
+      ...messages,
+      {
+        role: "user",
+        content: trimmed,
+        ...(options?.hiddenFromUi ? { hiddenFromUi: true } : {})
+      }
+    ];
     setMessages(nextMessages);
     setInput("");
     setShowStarterButtons(false);
@@ -760,20 +976,23 @@ function ChatContent() {
         const cleanedDisplay = displayText.replace("[MISSION_COMPLETE]", "").trim();
         const userMsgCount = nextMessages.filter((m) => m.role === "user").length;
         const shouldCompleteMission =
-          missionMeta && (includesMissionComplete || userMsgCount >= 3);
+          missionMeta &&
+          missionId !== "greeting-friend" &&
+          (includesMissionComplete || userMsgCount >= 3);
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: cleanedDisplay,
-            corrections: corrections.length ? corrections : undefined
-          }
-        ]);
+        const modelAnswerRequest = nextMessages[nextMessages.length - 1]?.content === OGU_MODEL_ANSWER_TOKEN;
+        const assistantMsg = {
+          role: "assistant",
+          content: cleanedDisplay,
+          corrections: corrections.length ? corrections : undefined,
+          ...(modelAnswerRequest ? { hiddenFromUi: true } : {})
+        };
+
+        setMessages((prev) => [...prev, assistantMsg]);
 
         if (shouldCompleteMission) {
           completeMissionFlow([...nextMessages, { role: "assistant", content: cleanedDisplay }]);
-        } else if (corrections.length) {
+        } else if (corrections.length && !modelAnswerRequest) {
           setPendingCorrections(corrections);
         } else {
           setPendingCorrections(null);
@@ -781,10 +1000,14 @@ function ChatContent() {
       }
     } catch (e) {
       console.error(e);
+      if (isInterviewMission) {
+        setInterviewResponseTimerPaused(false);
+      }
     } finally {
       setIsLoading(false);
     }
   };
+  handleSendRef.current = handleSend;
 
   const handleEndConversation = () => {
     const supabase = getSupabase();
@@ -847,13 +1070,45 @@ function ChatContent() {
   const lastMsg = messages[messages.length - 1];
   const displayAssistant = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant") return messages[i];
+      const m = messages[i];
+      if (m.role === "assistant" && !m.hiddenFromUi) return m;
     }
     return null;
   }, [messages]);
 
+  // OGU 인터뷰: 답변 후 10초 카운트다운 (일시정지 중·0초에서는 감소 없음; 0초일 때만 타임아웃 버튼)
+  useEffect(() => {
+    if (!isInterviewMission || responseWindowSec === null || responseWindowSec < 1) return;
+    if (interviewResponseTimerPaused) return;
+    const id = window.setTimeout(() => {
+      setResponseWindowSec((s) => (s == null || s < 1 ? s : s - 1));
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [isInterviewMission, responseWindowSec, interviewResponseTimerPaused]);
+
+  const handleInterviewModelAnswer = () => {
+    setResponseWindowSec(null);
+    void handleSend(OGU_MODEL_ANSWER_TOKEN, { hiddenFromUi: true });
+  };
+
+  const handleInterviewRetryTimer = () => {
+    setResponseWindowSec(10);
+    setInterviewResponseTimerPaused(false);
+  };
+
+  const visibleChatMessages = useMemo(() => messages.filter((m) => !m.hiddenFromUi), [messages]);
+
   const userTurns = messages.filter((m) => m.role === "user").length;
   const assistantCount = messages.filter((m) => m.role === "assistant").length;
+
+  /** 남은 시간 5초 이하(5,4,3,2,1)일 때만 질문 키워드 힌트 표시 */
+  const interviewHintsToShow = useMemo(() => {
+    if (!isInterviewMission || !interviewSessionStarted) return [];
+    if (responseWindowSec == null || responseWindowSec > 5 || responseWindowSec < 1) return [];
+    if (responseWindowSec === 0) return [];
+    const ac = messages.filter((m) => m.role === "assistant").length;
+    return getInterviewQuestionTopicHints(Math.max(1, ac));
+  }, [isInterviewMission, interviewSessionStarted, responseWindowSec, messages]);
   const pairsComplete = Math.min(userTurns, Math.max(0, assistantCount - 1));
 
   const isViolationAssistant =
@@ -863,7 +1118,8 @@ function ChatContent() {
     usageLimited ||
     missionCelebration ||
     (pendingCorrections?.length ?? 0) > 0 ||
-    (lastMsg?.violationLevel === 3 && level3Countdown != null);
+    (lastMsg?.violationLevel === 3 && level3Countdown != null) ||
+    (isInterviewMission && responseWindowSec === 0);
 
   const canUserType =
     !userBlocked && !isLoading && lastMsg?.role === "assistant";
@@ -896,6 +1152,28 @@ function ChatContent() {
     language === "ko" ? "이해했어요 👍" : language === "id" ? "Mengerti 👍" : "Got it 👍";
   const missionDoneLabel =
     language === "ko" ? "🎉 미션 완료!" : language === "id" ? "🎉 Misi selesai!" : "🎉 Mission complete!";
+  const missionCompleteTitle =
+    missionMeta?.completion
+      ? language === "ko"
+        ? missionMeta.completion.ko
+        : language === "id"
+        ? missionMeta.completion.id
+        : missionMeta.completion.en
+      : missionDoneLabel;
+  const missionStatTurnsLabel =
+    language === "ko" ? "대화 횟수" : language === "id" ? "Jumlah percakapan" : "Conversation turns";
+  const missionStatHintsLabel =
+    language === "ko" ? "힌트 사용" : language === "id" ? "Petunjuk digunakan" : "Hints used";
+  const missionRetryLabel =
+    language === "ko" ? "다시 도전" : language === "id" ? "Coba lagi" : "Try again";
+  const missionHomeLabel =
+    language === "ko" ? "홈으로" : language === "id" ? "Beranda" : "Home";
+  const interviewApiLoadingLabel =
+    language === "ko"
+      ? "OGU가 답하는 중…"
+      : language === "id"
+      ? "OGU sedang menjawab…"
+      : "OGU is replying…";
 
   return (
     <main className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[#F9FAFB] text-[#0F172A]">
@@ -930,12 +1208,56 @@ function ChatContent() {
       )}
 
       {missionCelebration && (
-        <div className="fixed inset-0 z-40 flex flex-col bg-[#4F46E5] px-4 py-6">
-          <div className="flex min-h-0 flex-[45] flex-col items-center justify-center rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)]" />
-          <div className="flex flex-[10] flex-col items-center justify-center px-2">
-            <p className="text-center text-xl font-bold text-white sm:text-2xl">{missionDoneLabel}</p>
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[1px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mission-complete-title"
+        >
+          <div className="w-full max-w-[320px] rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-[0_20px_50px_rgba(0,0,0,0.18)]">
+            <h2
+              id="mission-complete-title"
+              className="text-center text-base font-bold leading-snug text-[#0F172A]"
+            >
+              {missionCompleteTitle}
+            </h2>
+            {missionCompleteStats && (
+              <div className="mt-4 space-y-2 rounded-xl bg-[#F8FAFC] px-3 py-3 text-center text-sm text-[#64748B]">
+                <p>
+                  <span className="font-medium text-[#475569]">{missionStatTurnsLabel}</span>
+                  <span className="mx-1 text-[#CBD5E1]">·</span>
+                  <span className="tabular-nums font-semibold text-[#0F172A]">
+                    {missionCompleteStats.userTurns}
+                    {language === "ko" ? "회" : language === "id" ? " kali" : " turns"}
+                  </span>
+                </p>
+                <p>
+                  <span className="font-medium text-[#475569]">{missionStatHintsLabel}</span>
+                  <span className="mx-1 text-[#CBD5E1]">·</span>
+                  <span className="tabular-nums font-semibold text-[#0F172A]">
+                    {missionCompleteStats.hintsUsed}
+                    {language === "ko" ? "회" : language === "id" ? " kali" : " times"}
+                  </span>
+                </p>
+              </div>
+            )}
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={handleMissionCompleteRetry}
+                className="flex-1 rounded-xl border border-[#E5E7EB] bg-white py-2.5 text-sm font-semibold text-[#475569] transition hover:bg-[#F8FAFC] active:scale-[0.98]"
+              >
+                {missionRetryLabel}
+              </button>
+              <button
+                type="button"
+                onClick={handleMissionCompleteHome}
+                className="flex-1 rounded-xl bg-[#4F46E5] py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4338CA] active:scale-[0.98]"
+              >
+                {missionHomeLabel}
+              </button>
+            </div>
           </div>
-          <div className="flex min-h-0 flex-[45] flex-col items-center justify-center rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)]" />
         </div>
       )}
 
@@ -1008,6 +1330,7 @@ function ChatContent() {
               <button
                 type="button"
                 onClick={() => {
+                  hintsUsedCountRef.current += 1;
                   setShowHints((v) => !v);
                   trackUseHint();
                 }}
@@ -1041,28 +1364,314 @@ function ChatContent() {
 
           {missionMeta && (
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-[#64748B]">
-                <span>
-                  Step {missionStepDisplay} / 3
-                </span>
-                {missionSteps[missionStepDisplay - 1] && (
-                  <span className="ml-2 max-w-[55%] truncate text-[10px] font-normal">
-                    {missionSteps[missionStepDisplay - 1]}
-                  </span>
-                )}
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
-                <div
-                  className="h-full rounded-full bg-[#4F46E5] transition-all duration-300 ease-out"
-                  style={{ width: `${(missionStepDisplay / 3) * 100}%` }}
-                />
-              </div>
+              {isInterviewMission ? (
+                <>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-[#64748B]">
+                    <span>
+                      {language === "ko"
+                        ? "남은 시간"
+                        : language === "id"
+                        ? "Sisa waktu"
+                        : "Time left"}
+                    </span>
+                    <span className="tabular-nums text-[#4F46E5]">
+                      {interviewSessionStarted && interviewMissionSecondsLeft != null
+                        ? `${Math.floor(interviewMissionSecondsLeft / 60)}:${String(
+                            interviewMissionSecondsLeft % 60
+                          ).padStart(2, "0")}`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                    <div
+                      className="h-full rounded-full bg-[#4F46E5] transition-all duration-300 ease-out"
+                      style={{
+                        width: `${
+                          interviewSessionStarted &&
+                          interviewMissionSecondsLeft != null &&
+                          (missionMeta.timerSeconds ?? 60) > 0
+                            ? (interviewMissionSecondsLeft / (missionMeta.timerSeconds ?? 60)) * 100
+                            : 0
+                        }%`
+                      }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-[#64748B]">
+                    <span>
+                      Step {missionStepDisplay} / 3
+                    </span>
+                    {missionSteps[missionStepDisplay - 1] && (
+                      <span className="ml-2 max-w-[55%] truncate text-[10px] font-normal">
+                        {missionSteps[missionStepDisplay - 1]}
+                      </span>
+                    )}
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                    <div
+                      className="h-full rounded-full bg-[#4F46E5] transition-all duration-300 ease-out"
+                      style={{ width: `${(missionStepDisplay / 3) * 100}%` }}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
       </header>
 
-      {/* 카드 영역: 45% / 10% / 45% */}
+      {isInterviewMission && !interviewSessionStarted ? (
+        <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center justify-center overflow-hidden px-6 pb-8 pt-2">
+          <div className="w-full max-w-md rounded-3xl border border-[#E5E7EB] bg-white p-8 text-center shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
+            <div className="mb-4 text-5xl">🎤</div>
+            <p className="mb-6 text-base font-medium leading-relaxed text-[#0F172A]">
+              {language === "ko"
+                ? "안녕하세요! 저는 케이팝 아티스트 OGU예요. 인터뷰 시작해볼까요? 🎤"
+                : language === "id"
+                ? "Halo! Aku OGU, artis solo K-pop. Mulai wawancara yuk? 🎤"
+                : "Hi! I'm OGU, a K-pop solo artist. Shall we start the interview? 🎤"}
+            </p>
+            <button
+              type="button"
+              onClick={beginInterviewSession}
+              className="w-full rounded-2xl bg-[#4F46E5] py-4 text-base font-bold text-white shadow-[0_8px_24px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] active:scale-[0.99]"
+            >
+              {language === "ko" ? "인터뷰 시작" : language === "id" ? "Mulai wawancara" : "Start interview"}
+            </button>
+          </div>
+        </div>
+      ) : isInterviewMission && interviewSessionStarted ? (
+        <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2">
+          <div className="flex max-h-[34vh] min-h-0 shrink-0 flex-col gap-2 overflow-y-auto">
+            {pendingCorrections && pendingCorrections.length > 0 && (
+              <div className="animate-correction-slide-up rounded-xl border-2 border-[#D97706] bg-[#FFFBEB] p-4 shadow-sm">
+                <p className="mb-2 text-sm font-semibold leading-[1.8] text-[#92400E]">
+                  ✏️ {language === "ko" ? "교정" : language === "id" ? "Koreksi" : "Correction"}
+                </p>
+                <div className="mb-3 max-h-[18vh] space-y-2 overflow-y-auto">
+                  {pendingCorrections.map((c, cIdx) => (
+                    <div key={cIdx} className="rounded-lg bg-white/70 px-3 py-2">
+                      <p className="mb-1 korean-text text-sm leading-snug text-[#DC2626] line-through">
+                        {c.original ?? ""}
+                      </p>
+                      <p className="mb-1 korean-text text-sm font-bold leading-snug text-[#16A34A]">
+                        {c.corrected ?? ""}
+                      </p>
+                      <p className="text-xs leading-snug text-[#64748B]">
+                        {language === "ko"
+                          ? c.explanation_ko ?? c.explanation_en
+                          : language === "id"
+                          ? c.explanation_id ?? c.explanation_en
+                          : c.explanation_en ?? c.explanation_ko}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingCorrections(null)}
+                  className="w-full rounded-xl bg-[#D97706] py-2.5 text-sm font-semibold text-white"
+                >
+                  {correctionDismissLabel}
+                </button>
+              </div>
+            )}
+            <div
+              className={`rounded-2xl border p-3 shadow-sm ${
+                isViolationAssistant
+                  ? lastMsg.violationLevel === 1
+                    ? "border-[#D97706] bg-[#FFFBEB]"
+                    : "border-[#DC2626] bg-[#FEF2F2]"
+                  : "border-[#E5E7EB] bg-[#F8FAFC]"
+              }`}
+            >
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[#94A3B8]">OGU</p>
+              {displayAssistant?.content ? (
+                <div key={aiFadeKey} className="origin-top scale-[0.94] animate-chat-ai-fade">
+                  {isViolationAssistant ? (
+                    <div>
+                      {renderAiMessageCard(displayAssistant.content, showHints, "violation")}
+                      {lastMsg?.violationLevel === 3 && level3Countdown != null && (
+                        <p className="mt-2 text-sm font-medium text-[#0F172A]">
+                          {language === "ko"
+                            ? `${level3Countdown}초 후 대화가 종료됩니다...`
+                            : language === "id"
+                            ? `Percakapan berakhir dalam ${level3Countdown} detik...`
+                            : `Ending in ${level3Countdown} seconds...`}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    renderAiMessageCard(displayAssistant.content, showHints, "muted")
+                  )}
+                </div>
+              ) : isLoading && messages.length === 0 ? (
+                <div className="flex justify-center gap-1 py-4 text-[#94A3B8]">
+                  <span className="animate-pulse-soft">·</span>
+                  <span className="animate-pulse-soft" style={{ animationDelay: "150ms" }}>
+                    ·
+                  </span>
+                  <span className="animate-pulse-soft" style={{ animationDelay: "300ms" }}>
+                    ·
+                  </span>
+                </div>
+              ) : null}
+              {responseWindowSec != null && responseWindowSec > 0 && interviewSessionStarted && (
+                <p className="mt-2 text-center text-sm font-bold tabular-nums text-[#4F46E5]">
+                  {interviewResponseTimerPaused
+                    ? language === "ko"
+                      ? "일시정지"
+                      : language === "id"
+                      ? "Dijeda"
+                      : "Paused"
+                    : language === "ko"
+                    ? `답할 수 있는 시간 ${responseWindowSec}초`
+                    : language === "id"
+                    ? `Waktu: ${responseWindowSec} dtk`
+                    : `${responseWindowSec}s left to reply`}
+                </p>
+              )}
+              {interviewHintsToShow.length > 0 && (
+                <div className="mt-2 flex flex-wrap justify-center gap-2">
+                  {interviewHintsToShow.map((h, i) => (
+                    <span
+                      key={`${h.word}-${i}`}
+                      className="rounded-lg border border-[#C7D2FE] bg-[#EEF2FF] px-2.5 py-1 text-xs font-medium text-[#3730A3]"
+                    >
+                      {h.word}{" "}
+                      <span className="text-[10px] font-normal text-[#6366F1]">({h.romaja})</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {responseWindowSec === 0 && interviewSessionStarted && (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={handleInterviewModelAnswer}
+                    className="flex-1 rounded-xl bg-[#4F46E5] py-2.5 text-sm font-semibold text-white shadow-md"
+                  >
+                    {language === "ko"
+                      ? "모범 답변 보기"
+                      : language === "id"
+                      ? "Lihat contoh"
+                      : "Show model answer"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleInterviewRetryTimer}
+                    className="flex-1 rounded-xl border border-[#E5E7EB] bg-white py-2.5 text-sm font-semibold text-[#0F172A]"
+                  >
+                    {language === "ko" ? "다시 시도" : language === "id" ? "Coba lagi" : "Try again"}
+                  </button>
+                </div>
+              )}
+            </div>
+            {visibleChatMessages.length > 0 && (
+              <div className="rounded-lg border border-[#E5E7EB] bg-white/80 px-2 py-1.5 text-[10px] text-[#64748B]">
+                <p className="mb-0.5 font-semibold text-[#94A3B8]">
+                  {language === "ko" ? "대화" : language === "id" ? "Log" : "Log"}
+                </p>
+                <div className="max-h-12 overflow-y-auto leading-tight">
+                  {visibleChatMessages.slice(-8).map((m, idx) => (
+                    <div key={idx} className="truncate">
+                      {m.role === "user" ? "You: " : "OGU: "}
+                      {(m.content || "").slice(0, 80)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center py-1">
+            <div className="text-[clamp(3.5rem,16vw,6.5rem)] leading-none drop-shadow-sm">🎤</div>
+          </div>
+          <div className="shrink-0 space-y-2 pb-2">
+            {isRecording && (
+              <p className="text-center text-sm font-medium text-[#C53030]">
+                {language === "ko" ? "듣고 있어요…" : language === "id" ? "Mendengarkan…" : "Listening…"}
+              </p>
+            )}
+            {isLoading && lastMsg?.role === "user" && interviewSessionStarted && !isRecording && (
+              <div className="flex flex-col items-center gap-1.5 py-1">
+                <p className="text-center text-sm font-medium text-[#64748B]">{interviewApiLoadingLabel}</p>
+                <div className="flex items-center gap-1 text-xl font-bold text-[#94A3B8]">
+                  <span className="animate-pulse-soft">·</span>
+                  <span className="animate-pulse-soft" style={{ animationDelay: "150ms" }}>
+                    ·
+                  </span>
+                  <span className="animate-pulse-soft" style={{ animationDelay: "300ms" }}>
+                    ·
+                  </span>
+                </div>
+              </div>
+            )}
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                if (isOnboarding && e.target.value.trim().length > 0) setShowStarterButtons(false);
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={inputPlaceholder}
+              disabled={!canUserType || usageLimited}
+              className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20"
+            />
+            <button
+              type="button"
+              disabled={!input.trim() || isLoading || !canUserType || usageLimited}
+              onClick={() => handleSend()}
+              className="h-11 w-full rounded-xl bg-[#4F46E5] text-sm font-bold text-white shadow-md transition hover:bg-[#4338CA] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#94A3B8]"
+            >
+              {language === "ko" ? "전송" : language === "id" ? "Kirim" : "Send"}
+            </button>
+            <button
+              type="button"
+              disabled={
+                !canUserType ||
+                isLoading ||
+                responseWindowSec === 0 ||
+                !getSpeechRecognition() ||
+                usageLimited ||
+                isRequestingPermission
+              }
+              onPointerDown={(e) => {
+                e.preventDefault();
+                void startInterviewMic();
+              }}
+              onPointerUp={(e) => {
+                e.preventDefault();
+                endInterviewMic();
+              }}
+              onPointerCancel={() => endInterviewMic()}
+              onPointerLeave={(e) => {
+                if (e.buttons === 0 && isRecording) endInterviewMic();
+              }}
+              className={`flex h-28 w-full touch-manipulation select-none items-center justify-center rounded-[2rem] text-4xl shadow-[0_12px_32px_rgba(79,70,229,0.25)] transition active:scale-[0.98] ${
+                isRecording
+                  ? "bg-[#C53030] text-white ring-4 ring-[#FECACA]"
+                  : "bg-gradient-to-b from-[#A5B4FC] to-[#4F46E5] text-white"
+              } disabled:cursor-not-allowed disabled:opacity-35 disabled:grayscale`}
+            >
+              {isRequestingPermission ? (
+                <span className="h-9 w-9 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                "🎤"
+              )}
+            </button>
+            <p className="px-1 text-center text-[11px] leading-snug text-[#64748B]">
+              {language === "ko"
+                ? "버튼을 누른 채 한국어로 말하고, 손을 떼면 전송돼요"
+                : language === "id"
+                ? "Tahan tombol, berbicara bahasa Korea, lepas untuk kirim"
+                : "Hold the button, speak Korean, release to send"}
+            </p>
+          </div>
+        </div>
+      ) : (
       <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2">
         {/* 위: AI 카드 + 교정 */}
         <div className="flex min-h-0 flex-[45] flex-col gap-2 overflow-hidden">
@@ -1330,6 +1939,7 @@ function ChatContent() {
           )}
         </div>
       </div>
+      )}
     </main>
   );
 }

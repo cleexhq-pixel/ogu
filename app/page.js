@@ -310,10 +310,10 @@ export default function HomePage() {
         : "Start 1-Min Korean Practice 🐥",
     oneMinuteSub:
       language === "ko"
-        ? "회원가입 없이 3턴 체험 가능 · 영어 힌트 제공"
+        ? "케이팝 아티스트 OGU 인터뷰 · 1분 · 말하기 중심 · 회원가입 없음"
         : language === "id"
-        ? "Tanpa daftar · 3 giliran gratis · Ada petunjuk"
-        : "No sign-up needed · 3-turn free trial · English hints",
+        ? "Wawancara OGU (K-pop) · 1 mnt · Fokus bicara · Tanpa daftar"
+        : "Interview K-pop artist OGU · 1 min · Voice-first · No sign-up",
     onboardingTitle:
       language === "ko"
         ? "안녕하세요! 오구오구예요 🐥"
@@ -328,10 +328,10 @@ export default function HomePage() {
         : "Practice Korean with your AI friend in 1 minute.\nNo sign-up needed!",
     onboardingPick:
       language === "ko"
-        ? "👋 오늘의 추천: 친구에게 안부 묻기"
+        ? "👋 오늘의 추천: OGU 인터뷰 (1분)"
         : language === "id"
-        ? "👋 Rekomendasi: Sapa teman"
-        : "👋 Today's pick: Greet a friend",
+        ? "👋 Rekomendasi: Wawancara OGU (1 mnt)"
+        : "👋 Today's pick: OGU interview (1 min)",
     onboardingStart:
       language === "ko" ? "지금 바로 시작하기 →" : language === "id" ? "Mulai Sekarang →" : "Start Right Now →",
     onboardingBrowse:
