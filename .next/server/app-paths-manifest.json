@@ -1,15 +1,15 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/api/active-users/cleanup/route": "app/api/active-users/cleanup/route.js",
-  "/api/filter/route": "app/api/filter/route.js",
-  "/api/report/route": "app/api/report/route.js",
-  "/api/tts/route": "app/api/tts/route.js",
   "/api/chat/route": "app/api/chat/route.js",
+  "/api/filter/route": "app/api/filter/route.js",
+  "/api/tts/route": "app/api/tts/route.js",
   "/api/usage/route": "app/api/usage/route.js",
-  "/chat/page": "app/chat/page.js",
+  "/api/report/route": "app/api/report/route.js",
   "/board/page": "app/board/page.js",
+  "/api/active-users/cleanup/route": "app/api/active-users/cleanup/route.js",
+  "/chat/page": "app/chat/page.js",
   "/mission/page": "app/mission/page.js",
-  "/report/page": "app/report/page.js",
+  "/page": "app/page.js",
   "/phrases/page": "app/phrases/page.js",
-  "/page": "app/page.js"
+  "/report/page": "app/report/page.js"
 }

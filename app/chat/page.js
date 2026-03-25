@@ -1413,7 +1413,7 @@ function ChatContent() {
       )}
 
       {/* 상단 헤더 */}
-      <header className="shrink-0 border-b border-[#E5E7EB] bg-white px-3 py-2.5 max-sm:px-2 max-sm:py-2">
+      <header className="shrink-0 border-b border-[#E5E7EB] bg-white px-3 py-2.5 max-sm:px-3 max-sm:py-2">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -1594,8 +1594,8 @@ function ChatContent() {
           </div>
         </div>
       ) : isInterviewMission && interviewSessionStarted ? (
-        <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2 max-sm:min-h-0 max-sm:px-2 max-sm:pb-1 max-sm:pt-1">
-          <div className="flex max-h-[28vh] min-h-0 shrink-0 flex-col gap-2 overflow-y-auto max-sm:max-h-[min(24vh,32%)] max-sm:min-h-0 max-sm:gap-1.5 max-sm:overflow-y-auto max-sm:[-webkit-overflow-scrolling:touch]">
+        <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2 max-sm:min-h-0 max-sm:flex-1 max-sm:gap-3 max-sm:px-3 max-sm:pb-[max(4px,env(safe-area-inset-bottom))] max-sm:pt-2">
+          <div className="flex max-h-[28vh] min-h-0 shrink-0 flex-col gap-2 overflow-y-auto max-sm:max-h-[min(24vh,32%)] max-sm:min-h-0 max-sm:gap-3 max-sm:overflow-y-auto max-sm:[-webkit-overflow-scrolling:touch]">
             {pendingCorrections && pendingCorrections.length > 0 && (
               <div className="animate-correction-slide-up rounded-xl border-2 border-[#D97706] bg-[#FFFBEB] p-4 shadow-sm">
                 <p className="mb-2 text-sm font-semibold leading-[1.8] text-[#92400E]">
@@ -1645,7 +1645,7 @@ function ChatContent() {
                     <div>
                       {renderAiMessageCard(displayAssistant.content, showHints, "violation")}
                       {lastMsg?.violationLevel === 3 && level3Countdown != null && (
-                        <p className="mt-2 text-sm font-medium text-[#0F172A]">
+                        <p className="mt-2 text-sm font-medium text-[#0F172A] max-sm:text-left">
                           {language === "ko"
                             ? `${level3Countdown}초 후 대화가 종료됩니다...`
                             : language === "id"
@@ -1740,7 +1740,7 @@ function ChatContent() {
             <div className="text-[clamp(3.5rem,16vw,6.5rem)] leading-none drop-shadow-sm">🎤</div>
           </div>
           <div
-            className="mt-auto shrink-0 space-y-2 pb-2 max-sm:mt-0 max-sm:w-full max-sm:space-y-1.5 max-sm:border-t max-sm:border-[#E5E7EB] max-sm:bg-[#F9FAFB] max-sm:px-0 max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))] max-sm:pt-2"
+            className="mt-auto shrink-0 space-y-2 pb-2 max-sm:mt-0 max-sm:w-full max-sm:space-y-3 max-sm:border-t max-sm:border-[#E5E7EB] max-sm:bg-[#F9FAFB] max-sm:px-3 max-sm:pb-[max(4px,env(safe-area-inset-bottom))] max-sm:pt-3"
           >
             {isRecording && (
               <p className="text-center text-sm font-medium text-[#C53030]">
@@ -1771,7 +1771,7 @@ function ChatContent() {
               onKeyDown={handleKeyDown}
               placeholder={inputPlaceholder}
               disabled={!canUserType || usageLimited}
-              className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20"
+              className="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 max-sm:px-3"
             />
             <button
               type="button"
@@ -1782,7 +1782,7 @@ function ChatContent() {
               {language === "ko" ? "전송" : language === "id" ? "Kirim" : "Send"}
             </button>
             {micPermissionHint && (
-              <p className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-center text-xs font-medium text-[#B91C1C] max-sm:text-[11px]">
+              <p className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-left text-xs font-medium text-[#B91C1C] max-sm:text-[11px]">
                 {micPermissionHint}
               </p>
             )}
@@ -1823,7 +1823,7 @@ function ChatContent() {
                 "🎤"
               )}
             </button>
-            <p className="px-1 text-center text-[11px] leading-snug text-[#64748B]">
+            <p className="px-0 text-center text-[11px] leading-snug text-[#64748B] max-sm:text-left">
               {language === "ko"
                 ? "버튼을 누른 채 한국어로 말하고, 손을 떼면 전송돼요"
                 : language === "id"
@@ -1833,9 +1833,9 @@ function ChatContent() {
           </div>
         </div>
       ) : (
-      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2 max-sm:min-h-0 max-sm:px-2 max-sm:pb-[max(0.25rem,env(safe-area-inset-bottom))] max-sm:pt-1">
+      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2 max-sm:min-h-0 max-sm:flex-1 max-sm:gap-3 max-sm:px-3 max-sm:pb-[max(4px,env(safe-area-inset-bottom))] max-sm:pt-2">
         {/* 위: AI 카드 + 교정 */}
-        <div className="flex min-h-0 flex-[45] flex-col gap-2 overflow-hidden max-sm:max-h-[min(38vh,44%)] max-sm:flex-none max-sm:gap-1">
+        <div className="flex min-h-0 flex-[45] flex-col gap-2 overflow-hidden max-sm:max-h-[min(38vh,44%)] max-sm:flex-none max-sm:gap-3">
           <div
             className={`relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl p-5 shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-colors duration-300 max-sm:p-3 max-sm:shadow-[0_8px_20px_rgba(0,0,0,0.06)] ${
               isViolationAssistant
@@ -1847,15 +1847,15 @@ function ChatContent() {
                 : "border border-solid border-[#E5E7EB] bg-[#F8FAFC]"
             }`}
           >
-            <span className="absolute left-3 top-3 text-lg leading-none max-sm:left-2 max-sm:top-2 max-sm:text-base">🐥</span>
-            <div className="mt-7 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-0.5 max-sm:mt-6">
+            <span className="absolute left-3 top-3 text-lg leading-none max-sm:left-3 max-sm:top-3 max-sm:text-base">🐥</span>
+            <div className="mt-7 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-0.5 max-sm:mt-6 max-sm:pr-0">
               {displayAssistant?.content ? (
                 <div key={aiFadeKey} className="animate-chat-ai-fade">
                   {isViolationAssistant ? (
                     <div>
                       {renderAiMessageCard(displayAssistant.content, showHints, "violation")}
                       {lastMsg?.violationLevel === 3 && level3Countdown != null && (
-                        <p className="mt-3 text-base font-medium leading-[1.8] text-[#0F172A]">
+                        <p className="mt-3 text-base font-medium leading-[1.8] text-[#0F172A] max-sm:mt-2 max-sm:text-left max-sm:text-sm">
                           {language === "ko"
                             ? `${level3Countdown}초 후 대화가 종료됩니다...`
                             : language === "id"
@@ -1924,7 +1924,7 @@ function ChatContent() {
         </div>
 
         {/* 중간: 진행 */}
-        <div className="flex min-h-0 flex-[10] flex-col items-center justify-center gap-1 px-2 max-sm:shrink-0 max-sm:flex-none max-sm:py-0.5">
+        <div className="flex min-h-0 flex-[10] flex-col items-center justify-center gap-1 px-2 max-sm:w-full max-sm:shrink-0 max-sm:flex-none max-sm:gap-1.5 max-sm:px-0 max-sm:py-0">
           {missionMeta ? (
             <>
               <span className="text-base font-bold tabular-nums leading-[1.8] text-[#0F172A]">
@@ -1958,17 +1958,17 @@ function ChatContent() {
           }`}
         >
           {canUserType && !usageLimited ? (
-            <div className="flex min-h-0 flex-1 flex-col p-3 max-sm:p-2 max-sm:pt-1.5">
+            <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 max-sm:min-h-0 max-sm:flex-1 max-sm:gap-3 max-sm:p-3 max-sm:pb-2">
               {micPermissionHint && (
-                <p className="mb-2 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-2 py-1.5 text-center text-[11px] font-medium leading-snug text-[#B91C1C]">
+                <p className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-left text-[11px] font-medium leading-snug text-[#B91C1C]">
                   {micPermissionHint}
                 </p>
               )}
-              <p className="mb-2 text-center text-[12px] font-semibold text-[#4F46E5] max-sm:mb-1 max-sm:text-[11px]">
+              <p className="text-center text-[12px] font-semibold text-[#4F46E5] max-sm:text-left max-sm:text-[11px]">
                 {turnLabel}
               </p>
               {showStarterButtons && (
-                <div className="mb-2 flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+                <div className="flex gap-2 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
                   {starterMessages.map((starter) => (
                     <button
                       key={starter}
@@ -1982,12 +1982,12 @@ function ChatContent() {
                 </div>
               )}
               {isRecording && (
-                <div className="mb-2 flex items-center justify-center gap-1.5 text-base leading-[1.8] text-[#C53030]">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-[#C53030]" />
+                <div className="flex items-center justify-start gap-1.5 text-base leading-[1.8] text-[#C53030] max-sm:text-sm">
+                  <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-[#C53030]" />
                   {language === "ko" ? "녹음 중..." : language === "id" ? "Merekam..." : "Recording..."}
                 </div>
               )}
-              <div className="flex min-h-0 flex-1 flex-col gap-3 max-sm:gap-2">
+              <div className="flex min-h-0 flex-1 flex-col gap-3 max-sm:min-h-0 max-sm:gap-3">
                 <input
                   type="text"
                   value={input}
@@ -1997,14 +1997,14 @@ function ChatContent() {
                   }}
                   onKeyDown={handleKeyDown}
                   placeholder={inputPlaceholder}
-                  className="min-h-[48px] w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-base leading-[1.8] text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 max-sm:min-h-[40px] max-sm:px-3 max-sm:py-2 max-sm:text-sm"
+                  className="min-h-[48px] w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-base leading-[1.8] text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 max-sm:min-h-[42px] max-sm:px-3 max-sm:py-2.5 max-sm:text-sm"
                 />
-                <div className="mt-auto flex shrink-0 items-center gap-2 max-sm:mt-0">
+                <div className="mt-auto flex w-full shrink-0 items-stretch gap-3 max-sm:mt-0">
                   <button
                     type="button"
                     disabled={!input.trim() || isLoading}
                     onClick={() => handleSend()}
-                    className="flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-[#4F46E5] text-base font-semibold leading-[1.8] text-white shadow-[0_8px_24px_rgba(79,70,229,0.3)] transition disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#94A3B8] disabled:shadow-none hover:bg-[#4338CA] active:scale-[0.98] max-sm:min-h-[42px] max-sm:text-sm"
+                    className="flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-[#4F46E5] text-base font-semibold leading-[1.8] text-white shadow-[0_8px_24px_rgba(79,70,229,0.3)] transition disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#94A3B8] disabled:shadow-none hover:bg-[#4338CA] active:scale-[0.98] max-sm:min-h-[42px] max-sm:text-sm"
                   >
                     {language === "ko" ? "전송" : language === "id" ? "Kirim" : "Send"}
                   </button>
@@ -2014,7 +2014,7 @@ function ChatContent() {
                     onTouchStart={onVoiceMicTouchStart}
                     onTouchEnd={onVoiceMicTouchEnd}
                     disabled={!getSpeechRecognition() || isRequestingPermission}
-                    className={`touch-manipulation flex min-h-[48px] min-w-[48px] shrink-0 select-none items-center justify-center rounded-xl transition active:scale-[0.98] max-sm:min-h-[42px] max-sm:min-w-[42px] ${
+                    className={`touch-manipulation flex min-h-[48px] min-w-[48px] shrink-0 select-none items-center justify-center rounded-xl transition active:scale-[0.98] max-sm:min-h-[42px] max-sm:min-w-[42px] max-sm:shrink-0 ${
                       isRequestingPermission
                         ? "border border-[#E5E7EB] bg-[#F1F5F9] text-[#64748B]"
                         : isRecording
