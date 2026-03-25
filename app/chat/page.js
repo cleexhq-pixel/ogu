@@ -27,6 +27,24 @@ function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
+/** 브라우저 마이크 권한 UI를 띄우고, 허용 여부를 확인 (iOS/Android에서 STT 전에 권장) */
+async function requestMicrophoneAccess() {
+  if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    return { ok: true };
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((t) => t.stop());
+    return { ok: true };
+  } catch (err) {
+    const name = err && err.name;
+    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+      return { ok: false, denied: true };
+    }
+    return { ok: true };
+  }
+}
+
 /** 인터뷰 첫 인사: 질문 예시·모범 답변 등은 제거하고 짧은 인사 한 줄만 남김 */
 function sanitizeOguInterviewOpening(displayText) {
   if (!displayText || typeof displayText !== "string") return displayText;
@@ -229,6 +247,7 @@ function ChatContent() {
   const [isRecording, setIsRecording] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showMicPermissionModal, setShowMicPermissionModal] = useState(false);
+  const [micPermissionHint, setMicPermissionHint] = useState(null);
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [violationCount, setViolationCount] = useState(0);
   const [level3Countdown, setLevel3Countdown] = useState(null);
@@ -256,6 +275,9 @@ function ChatContent() {
   const messagesRef = useRef([]);
   const interviewTranscriptBufferRef = useRef("");
   const interviewMicHoldingRef = useRef(false);
+  const interviewMicGestureAtRef = useRef(0);
+  const voiceMicTouchAtRef = useRef(0);
+  const interviewMicStartInFlightRef = useRef(false);
   const isInterviewMissionRef = useRef(isInterviewMission);
   const handleSendRef = useRef(null);
 
@@ -270,6 +292,11 @@ function ChatContent() {
   useEffect(() => {
     isInterviewMissionRef.current = isInterviewMission;
   }, [isInterviewMission]);
+
+  const languageRef = useRef(language);
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   const personaMeta = useMemo(() => {
     if (isInterviewMission) {
@@ -420,6 +447,7 @@ function ChatContent() {
       setIsRequestingPermission(false);
       setIsRecording(true);
       setShowMicPermissionModal(false);
+      setMicPermissionHint(null);
     };
 
     recognition.onerror = (event) => {
@@ -429,9 +457,17 @@ function ChatContent() {
         interviewTranscriptBufferRef.current = "";
         setInterviewResponseTimerPaused(false);
       }
-      if (event.error === "not-allowed" || event.error === "denied") {
+      if (event.error === "not-allowed" || event.error === "denied" || event.error === "service-not-allowed") {
         setIsRecording(false);
         setShowMicPermissionModal(true);
+        const lang = languageRef.current;
+        setMicPermissionHint(
+          lang === "ko"
+            ? "마이크 권한을 허용해주세요"
+            : lang === "id"
+            ? "Izinkan akses mikrofon"
+            : "Please allow microphone access"
+        );
       } else if (event.error === "aborted") {
         setIsRecording(false);
       }
@@ -477,6 +513,14 @@ function ChatContent() {
         const result = await navigator.permissions.query({ name: "microphone" });
         if (result.state === "denied") {
           setShowMicPermissionModal(true);
+          const lang = languageRef.current;
+          setMicPermissionHint(
+            lang === "ko"
+              ? "마이크 권한을 허용해주세요"
+              : lang === "id"
+              ? "Izinkan akses mikrofon"
+              : "Please allow microphone access"
+          );
           return;
         }
       }
@@ -484,12 +528,34 @@ function ChatContent() {
 
     setIsRequestingPermission(true);
     try {
+      const mic = await requestMicrophoneAccess();
+      if (!mic.ok && mic.denied) {
+        setIsRequestingPermission(false);
+        setShowMicPermissionModal(true);
+        const lang = languageRef.current;
+        setMicPermissionHint(
+          lang === "ko"
+            ? "마이크 권한을 허용해주세요"
+            : lang === "id"
+            ? "Izinkan akses mikrofon"
+            : "Please allow microphone access"
+        );
+        return;
+      }
       recognition.start();
       trackSendVoice();
     } catch (e) {
       console.warn("SpeechRecognition start failed", e);
       setIsRequestingPermission(false);
       setShowMicPermissionModal(true);
+      const lang = languageRef.current;
+      setMicPermissionHint(
+        lang === "ko"
+          ? "마이크 권한을 허용해주세요"
+          : lang === "id"
+          ? "Izinkan akses mikrofon"
+          : "Please allow microphone access"
+      );
     }
   }, [isRecording]);
 
@@ -497,6 +563,11 @@ function ChatContent() {
     const recognition = recognitionRef.current;
     if (!recognition || !isInterviewMissionRef.current) return;
     if (responseWindowSec === 0) return;
+    if (interviewMicStartInFlightRef.current) return;
+    const now = Date.now();
+    if (now - interviewMicGestureAtRef.current < 90) return;
+    interviewMicGestureAtRef.current = now;
+
     setInterviewResponseTimerPaused(true);
     interviewTranscriptBufferRef.current = "";
     interviewMicHoldingRef.current = true;
@@ -507,12 +578,37 @@ function ChatContent() {
           interviewMicHoldingRef.current = false;
           setInterviewResponseTimerPaused(false);
           setShowMicPermissionModal(true);
+          const lang = languageRef.current;
+          setMicPermissionHint(
+            lang === "ko"
+              ? "마이크 권한을 허용해주세요"
+              : lang === "id"
+              ? "Izinkan akses mikrofon"
+              : "Please allow microphone access"
+          );
           return;
         }
       }
     } catch (_) {}
     setIsRequestingPermission(true);
+    interviewMicStartInFlightRef.current = true;
     try {
+      const mic = await requestMicrophoneAccess();
+      if (!mic.ok && mic.denied) {
+        interviewMicHoldingRef.current = false;
+        setInterviewResponseTimerPaused(false);
+        setIsRequestingPermission(false);
+        setShowMicPermissionModal(true);
+        const lang = languageRef.current;
+        setMicPermissionHint(
+          lang === "ko"
+            ? "마이크 권한을 허용해주세요"
+            : lang === "id"
+            ? "Izinkan akses mikrofon"
+            : "Please allow microphone access"
+        );
+        return;
+      }
       recognition.start();
       trackSendVoice();
     } catch (e) {
@@ -521,6 +617,16 @@ function ChatContent() {
       setInterviewResponseTimerPaused(false);
       setIsRequestingPermission(false);
       setShowMicPermissionModal(true);
+      const lang = languageRef.current;
+      setMicPermissionHint(
+        lang === "ko"
+          ? "마이크 권한을 허용해주세요"
+          : lang === "id"
+          ? "Izinkan akses mikrofon"
+          : "Please allow microphone access"
+      );
+    } finally {
+      interviewMicStartInFlightRef.current = false;
     }
   }, [responseWindowSec]);
 
@@ -531,6 +637,41 @@ function ChatContent() {
       recognitionRef.current?.stop();
     } catch (_) {}
   }, []);
+
+  const onVoiceMicTouchStart = useCallback(
+    (e) => {
+      if (!getSpeechRecognition() || isRequestingPermission) return;
+      e.preventDefault();
+      voiceMicTouchAtRef.current = Date.now();
+      void toggleRecording();
+    },
+    [toggleRecording, isRequestingPermission]
+  );
+
+  const onVoiceMicTouchEnd = useCallback((e) => {
+    e.preventDefault();
+  }, []);
+
+  const onVoiceMicClick = useCallback(() => {
+    if (Date.now() - voiceMicTouchAtRef.current < 450) return;
+    void toggleRecording();
+  }, [toggleRecording]);
+
+  const onInterviewMicTouchStart = useCallback(
+    (e) => {
+      e.preventDefault();
+      void startInterviewMic();
+    },
+    [startInterviewMic]
+  );
+
+  const onInterviewMicTouchEnd = useCallback(
+    (e) => {
+      e.preventDefault();
+      endInterviewMic();
+    },
+    [endInterviewMic]
+  );
 
   const lastSpokenRef = useRef(null);
   const ttsAudioRef = useRef(null);
@@ -1176,7 +1317,7 @@ function ChatContent() {
       : "OGU is replying…";
 
   return (
-    <main className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[#F9FAFB] text-[#0F172A]">
+    <main className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-[#F9FAFB] text-[#0F172A] max-sm:h-[100dvh] max-sm:max-h-[100dvh]">
       {showMicPermissionModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -1189,6 +1330,13 @@ function ChatContent() {
             <h2 id="mic-permission-title" className="mb-3 text-lg font-bold text-[#0F172A]">
               🎤 {language === "ko" ? "마이크 권한이 필요해요" : language === "id" ? "Akses mikrofon diperlukan" : "Microphone Access Required"}
             </h2>
+            <p className="mb-2 text-sm font-semibold text-[#B91C1C]">
+              {language === "ko"
+                ? "마이크 권한을 허용해주세요"
+                : language === "id"
+                ? "Izinkan akses mikrofon"
+                : "Please allow microphone access"}
+            </p>
             <p className="mb-5 text-sm leading-relaxed text-[#0F172A]">
               {language === "ko"
                 ? "음성 대화를 사용하려면 마이크 접근을 허용해주세요. 브라우저 주소창 왼쪽 🔒 아이콘을 클릭하고 마이크를 '허용'으로 변경해주세요."
@@ -1198,7 +1346,10 @@ function ChatContent() {
             </p>
             <button
               type="button"
-              onClick={() => setShowMicPermissionModal(false)}
+              onClick={() => {
+                setShowMicPermissionModal(false);
+                setMicPermissionHint(null);
+              }}
               className="w-full rounded-2xl bg-[#4F46E5] py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] active:scale-[0.98]"
             >
               {language === "ko" ? "알겠어요!" : language === "id" ? "Mengerti!" : "Got it!"}
@@ -1262,7 +1413,7 @@ function ChatContent() {
       )}
 
       {/* 상단 헤더 */}
-      <header className="shrink-0 border-b border-[#E5E7EB] bg-white px-3 py-2.5">
+      <header className="shrink-0 border-b border-[#E5E7EB] bg-white px-3 py-2.5 max-sm:px-2 max-sm:py-2">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -1443,8 +1594,8 @@ function ChatContent() {
           </div>
         </div>
       ) : isInterviewMission && interviewSessionStarted ? (
-        <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2">
-          <div className="flex max-h-[34vh] min-h-0 shrink-0 flex-col gap-2 overflow-y-auto">
+        <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2 max-sm:min-h-0 max-sm:px-2 max-sm:pb-1 max-sm:pt-1">
+          <div className="flex max-h-[28vh] min-h-0 shrink-0 flex-col gap-2 overflow-y-auto max-sm:max-h-[min(24vh,32%)] max-sm:min-h-0 max-sm:gap-1.5 max-sm:overflow-y-auto max-sm:[-webkit-overflow-scrolling:touch]">
             {pendingCorrections && pendingCorrections.length > 0 && (
               <div className="animate-correction-slide-up rounded-xl border-2 border-[#D97706] bg-[#FFFBEB] p-4 shadow-sm">
                 <p className="mb-2 text-sm font-semibold leading-[1.8] text-[#92400E]">
@@ -1585,10 +1736,12 @@ function ChatContent() {
               </div>
             )}
           </div>
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center py-1">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center py-1 max-sm:hidden">
             <div className="text-[clamp(3.5rem,16vw,6.5rem)] leading-none drop-shadow-sm">🎤</div>
           </div>
-          <div className="shrink-0 space-y-2 pb-2">
+          <div
+            className="mt-auto shrink-0 space-y-2 pb-2 max-sm:mt-0 max-sm:w-full max-sm:space-y-1.5 max-sm:border-t max-sm:border-[#E5E7EB] max-sm:bg-[#F9FAFB] max-sm:px-0 max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))] max-sm:pt-2"
+          >
             {isRecording && (
               <p className="text-center text-sm font-medium text-[#C53030]">
                 {language === "ko" ? "듣고 있어요…" : language === "id" ? "Mendengarkan…" : "Listening…"}
@@ -1628,6 +1781,11 @@ function ChatContent() {
             >
               {language === "ko" ? "전송" : language === "id" ? "Kirim" : "Send"}
             </button>
+            {micPermissionHint && (
+              <p className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-center text-xs font-medium text-[#B91C1C] max-sm:text-[11px]">
+                {micPermissionHint}
+              </p>
+            )}
             <button
               type="button"
               disabled={
@@ -1638,6 +1796,9 @@ function ChatContent() {
                 usageLimited ||
                 isRequestingPermission
               }
+              onTouchStart={onInterviewMicTouchStart}
+              onTouchEnd={onInterviewMicTouchEnd}
+              onTouchCancel={onInterviewMicTouchEnd}
               onPointerDown={(e) => {
                 e.preventDefault();
                 void startInterviewMic();
@@ -1650,7 +1811,7 @@ function ChatContent() {
               onPointerLeave={(e) => {
                 if (e.buttons === 0 && isRecording) endInterviewMic();
               }}
-              className={`flex h-28 w-full touch-manipulation select-none items-center justify-center rounded-[2rem] text-4xl shadow-[0_12px_32px_rgba(79,70,229,0.25)] transition active:scale-[0.98] ${
+              className={`flex h-28 w-full touch-manipulation select-none items-center justify-center rounded-[2rem] text-4xl shadow-[0_12px_32px_rgba(79,70,229,0.25)] transition active:scale-[0.98] max-sm:h-20 max-sm:rounded-3xl max-sm:text-3xl ${
                 isRecording
                   ? "bg-[#C53030] text-white ring-4 ring-[#FECACA]"
                   : "bg-gradient-to-b from-[#A5B4FC] to-[#4F46E5] text-white"
@@ -1672,11 +1833,11 @@ function ChatContent() {
           </div>
         </div>
       ) : (
-      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2">
+      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-hidden px-3 pb-3 pt-2 max-sm:min-h-0 max-sm:px-2 max-sm:pb-[max(0.25rem,env(safe-area-inset-bottom))] max-sm:pt-1">
         {/* 위: AI 카드 + 교정 */}
-        <div className="flex min-h-0 flex-[45] flex-col gap-2 overflow-hidden">
+        <div className="flex min-h-0 flex-[45] flex-col gap-2 overflow-hidden max-sm:max-h-[min(38vh,44%)] max-sm:flex-none max-sm:gap-1">
           <div
-            className={`relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl p-5 shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-colors duration-300 ${
+            className={`relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl p-5 shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-colors duration-300 max-sm:p-3 max-sm:shadow-[0_8px_20px_rgba(0,0,0,0.06)] ${
               isViolationAssistant
                 ? lastMsg.violationLevel === 1
                   ? "border-2 border-[#D97706] bg-[#FFFBEB]"
@@ -1686,8 +1847,8 @@ function ChatContent() {
                 : "border border-solid border-[#E5E7EB] bg-[#F8FAFC]"
             }`}
           >
-            <span className="absolute left-3 top-3 text-lg leading-none">🐥</span>
-            <div className="mt-7 min-h-0 flex-1 overflow-hidden pr-0.5">
+            <span className="absolute left-3 top-3 text-lg leading-none max-sm:left-2 max-sm:top-2 max-sm:text-base">🐥</span>
+            <div className="mt-7 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-0.5 max-sm:mt-6">
               {displayAssistant?.content ? (
                 <div key={aiFadeKey} className="animate-chat-ai-fade">
                   {isViolationAssistant ? (
@@ -1728,8 +1889,8 @@ function ChatContent() {
           </div>
 
           {pendingCorrections && pendingCorrections.length > 0 && (
-            <div className="animate-correction-slide-up shrink-0 rounded-xl border-2 border-[#D97706] bg-[#FFFBEB] p-5 shadow-sm">
-              <p className="mb-3 text-base font-semibold leading-[1.8] text-[#92400E]">
+            <div className="animate-correction-slide-up shrink-0 rounded-xl border-2 border-[#D97706] bg-[#FFFBEB] p-5 shadow-sm max-sm:max-h-[22vh] max-sm:overflow-y-auto max-sm:p-3">
+              <p className="mb-3 text-base font-semibold leading-[1.8] text-[#92400E] max-sm:mb-2 max-sm:text-sm">
                 ✏️ {language === "ko" ? "교정" : language === "id" ? "Koreksi" : "Correction"}
               </p>
               <div className="mb-4 max-h-[24vh] space-y-3 overflow-hidden">
@@ -1763,7 +1924,7 @@ function ChatContent() {
         </div>
 
         {/* 중간: 진행 */}
-        <div className="flex min-h-0 flex-[10] flex-col items-center justify-center gap-1 px-2">
+        <div className="flex min-h-0 flex-[10] flex-col items-center justify-center gap-1 px-2 max-sm:shrink-0 max-sm:flex-none max-sm:py-0.5">
           {missionMeta ? (
             <>
               <span className="text-base font-bold tabular-nums leading-[1.8] text-[#0F172A]">
@@ -1788,7 +1949,7 @@ function ChatContent() {
 
         {/* 아래: 유저 카드 */}
         <div
-          className={`flex min-h-0 flex-[45] flex-col overflow-hidden rounded-2xl transition-all duration-300 ease-out ${
+          className={`mt-auto flex min-h-0 flex-[45] flex-col overflow-hidden rounded-2xl transition-all duration-300 ease-out max-sm:mt-0 max-sm:min-h-0 max-sm:flex-1 max-sm:shrink-0 ${
             userCardLift ? "animate-chat-card-lift" : ""
           } ${
             canUserType && !usageLimited
@@ -1797,8 +1958,15 @@ function ChatContent() {
           }`}
         >
           {canUserType && !usageLimited ? (
-            <div className="flex min-h-0 flex-1 flex-col p-3">
-              <p className="mb-2 text-center text-[12px] font-semibold text-[#4F46E5]">{turnLabel}</p>
+            <div className="flex min-h-0 flex-1 flex-col p-3 max-sm:p-2 max-sm:pt-1.5">
+              {micPermissionHint && (
+                <p className="mb-2 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-2 py-1.5 text-center text-[11px] font-medium leading-snug text-[#B91C1C]">
+                  {micPermissionHint}
+                </p>
+              )}
+              <p className="mb-2 text-center text-[12px] font-semibold text-[#4F46E5] max-sm:mb-1 max-sm:text-[11px]">
+                {turnLabel}
+              </p>
               {showStarterButtons && (
                 <div className="mb-2 flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
                   {starterMessages.map((starter) => (
@@ -1819,7 +1987,7 @@ function ChatContent() {
                   {language === "ko" ? "녹음 중..." : language === "id" ? "Merekam..." : "Recording..."}
                 </div>
               )}
-              <div className="flex min-h-0 flex-1 flex-col gap-3">
+              <div className="flex min-h-0 flex-1 flex-col gap-3 max-sm:gap-2">
                 <input
                   type="text"
                   value={input}
@@ -1829,22 +1997,24 @@ function ChatContent() {
                   }}
                   onKeyDown={handleKeyDown}
                   placeholder={inputPlaceholder}
-                  className="min-h-[48px] w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-base leading-[1.8] text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20"
+                  className="min-h-[48px] w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-base leading-[1.8] text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#4F46E5] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 max-sm:min-h-[40px] max-sm:px-3 max-sm:py-2 max-sm:text-sm"
                 />
-                <div className="mt-auto flex items-center gap-2">
+                <div className="mt-auto flex shrink-0 items-center gap-2 max-sm:mt-0">
                   <button
                     type="button"
                     disabled={!input.trim() || isLoading}
                     onClick={() => handleSend()}
-                    className="flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-[#4F46E5] text-base font-semibold leading-[1.8] text-white shadow-[0_8px_24px_rgba(79,70,229,0.3)] transition disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#94A3B8] disabled:shadow-none hover:bg-[#4338CA] active:scale-[0.98]"
+                    className="flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-[#4F46E5] text-base font-semibold leading-[1.8] text-white shadow-[0_8px_24px_rgba(79,70,229,0.3)] transition disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#94A3B8] disabled:shadow-none hover:bg-[#4338CA] active:scale-[0.98] max-sm:min-h-[42px] max-sm:text-sm"
                   >
                     {language === "ko" ? "전송" : language === "id" ? "Kirim" : "Send"}
                   </button>
                   <button
                     type="button"
-                    onClick={toggleRecording}
+                    onClick={onVoiceMicClick}
+                    onTouchStart={onVoiceMicTouchStart}
+                    onTouchEnd={onVoiceMicTouchEnd}
                     disabled={!getSpeechRecognition() || isRequestingPermission}
-                    className={`flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-xl transition active:scale-[0.98] ${
+                    className={`touch-manipulation flex min-h-[48px] min-w-[48px] shrink-0 select-none items-center justify-center rounded-xl transition active:scale-[0.98] max-sm:min-h-[42px] max-sm:min-w-[42px] ${
                       isRequestingPermission
                         ? "border border-[#E5E7EB] bg-[#F1F5F9] text-[#64748B]"
                         : isRecording
