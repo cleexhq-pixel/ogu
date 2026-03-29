@@ -8,7 +8,6 @@ import Analytics from "@/app/components/Analytics";
 import {
   isValidLang,
   LANG_CODES,
-  LANG_PILL_LABEL,
   normalizeLang,
   OGU_LANG_KEY,
   resolveLangFromUrlAndStorage,
@@ -288,7 +287,7 @@ export default function HomePage() {
                       : { backgroundColor: "transparent", color: "#64748B" }
                   }
                 >
-                  {LANG_PILL_LABEL[code]}
+                  {code.toUpperCase()}
                 </button>
               ))}
             </div>

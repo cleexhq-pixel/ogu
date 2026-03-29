@@ -3,15 +3,6 @@
 export const LANG_CODES = /** @type {const} */ (["ko", "en", "id", "fr", "pt"]);
 export const OGU_LANG_KEY = "ogu_lang";
 
-/** Short label for language pills (FR / PT include flag per product spec) */
-export const LANG_PILL_LABEL = {
-  ko: "KO",
-  en: "EN",
-  id: "ID",
-  fr: "🇫🇷 FR",
-  pt: "🇧🇷 PT"
-};
-
 /**
  * @param {string | null | undefined} code
  * @returns {UILang}
