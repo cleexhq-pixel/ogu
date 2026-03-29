@@ -462,49 +462,56 @@ function FirstLineFlow() {
           )}
 
           {step === 4 && content && (
-            <div key="s4" className={stepClass}>
-              <p className="text-center text-6xl leading-none" aria-hidden>
-                🎉
-              </p>
-              <h2
-                className="mt-5 text-center text-2xl font-extrabold leading-tight sm:text-[1.65rem]"
-                style={{ color: TEXT_PRIMARY }}
-              >
-                You just said your first Korean sentence!
-              </h2>
+            <div key="s4" className={`${stepClass} mx-auto w-full max-w-[400px] text-center`}>
               <div
-                className="mt-8 space-y-4 rounded-[18px] border-2 bg-white p-5"
-                style={{ borderColor: CARD_BORDER, boxShadow: "0 10px 32px rgba(109, 40, 255, 0.06)" }}
+                className="inline-flex items-center justify-center rounded-[20px] px-4 py-2 text-[11px] font-bold text-white"
+                style={{ backgroundColor: BRAND_PURPLE }}
+              >
+                🎉 FIRST LINE COMPLETE
+              </div>
+              <h2
+                className="mt-5 text-[26px] font-bold leading-tight tracking-[-0.5px] text-[#0f172a]"
+              >
+                You just spoke{" "}
+                <span style={{ color: BRAND_PURPLE }}>Korean!</span>
+              </h2>
+              <p className="mt-3 text-[14px] text-[#6b7280]">
+                That&apos;s your first sentence. Keep going.
+              </p>
+              <div
+                className="mt-8 rounded-[20px] border-2 bg-white px-5 py-6 text-center"
+                style={{ borderColor: CARD_BORDER }}
               >
                 <div>
                   <p
-                    className="text-[10px] font-bold uppercase tracking-[0.14em] sm:text-[11px]"
+                    className="text-[10px] font-bold uppercase tracking-[0.12em]"
                     style={{ color: BRAND_PURPLE }}
                   >
-                    You typed
+                    YOU SAID
                   </p>
-                  <p className="font-korean mt-2 text-lg font-semibold" style={{ color: TEXT_PRIMARY }}>
+                  <p className="font-korean mt-2 text-[20px] font-bold leading-snug" style={{ color: TEXT_PRIMARY }}>
                     {userInput.trim()}
                   </p>
                 </div>
-                <div className="border-t pt-4" style={{ borderColor: CARD_BORDER }}>
+                <div className="my-5 h-px w-full" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
+                <div>
                   <p
-                    className="text-[10px] font-bold uppercase tracking-[0.14em] sm:text-[11px]"
+                    className="text-[10px] font-bold uppercase tracking-[0.12em]"
                     style={{ color: BRAND_PURPLE }}
                   >
-                    Model line
+                    MODEL LINE
                   </p>
-                  <p className="font-korean mt-2 text-lg font-semibold" style={{ color: TEXT_PRIMARY }}>
+                  <p className="font-korean mt-2 text-[20px] font-bold leading-snug" style={{ color: TEXT_PRIMARY }}>
                     {content.ko}
                   </p>
-                  <p className="mt-1 text-sm text-[#94A3B8]">{content.en}</p>
+                  <p className="mt-2 text-[13px] text-[#6b7280]">{content.en}</p>
                 </div>
                 {normalizeKorean(userInput) === normalizeKorean(content.ko) ? (
                   <p
-                    className="rounded-xl py-2 text-center text-sm font-semibold"
-                    style={{ backgroundColor: `${BRAND_GOLD}40`, color: "#854d0e" }}
+                    className="mt-5 rounded-full py-2.5 text-sm font-bold text-[#0f172a]"
+                    style={{ backgroundColor: BRAND_GOLD }}
                   >
-                    Perfect match!
+                    ✨ Perfect match!
                   </p>
                 ) : null}
               </div>
@@ -512,20 +519,23 @@ function FirstLineFlow() {
                 <button
                   type="button"
                   onClick={tryAnother}
-                  className="w-full rounded-2xl py-4 text-[15px] font-bold text-white transition hover:brightness-110"
-                  style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
+                  className="w-full rounded-[14px] py-4 text-[15px] font-bold text-white transition hover:brightness-110 active:scale-[0.99]"
+                  style={{ backgroundColor: BRAND_PURPLE }}
                 >
                   Try another one
                 </button>
                 <button
                   type="button"
                   onClick={goHome}
-                  className="w-full rounded-2xl border-2 bg-white py-3.5 text-[15px] font-semibold transition hover:bg-[#FAF8FF]"
+                  className="w-full rounded-[14px] border-2 bg-white py-3.5 text-[15px] font-bold transition hover:bg-white/90 active:scale-[0.99]"
                   style={{ borderColor: BRAND_PURPLE, color: BRAND_PURPLE }}
                 >
                   Go to home
                 </button>
               </div>
+              <p className="mt-8 text-[12px] text-[#6b7280]">
+                You&apos;re on <span style={{ color: BRAND_PURPLE }}>Day 1</span> — come back tomorrow!
+              </p>
             </div>
           )}
         </div>
