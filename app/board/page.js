@@ -197,7 +197,7 @@ export default function BoardPage() {
             )}
             {isSubmitting && (
               <p className="rounded-xl bg-[#FFFBEB] px-3 py-2 text-sm text-[#D97706]">
-                🐥 {language === "ko" ? "오구오구가 검토 중이에요..." : language === "id" ? "OguOgu sedang memeriksa postingan Anda..." : "OguOgu is reviewing your post..."}
+                🐥 {language === "ko" ? "꼬비가 검토 중이에요..." : language === "id" ? "Kkobi sedang memeriksa postingan Anda..." : "Kkobi is reviewing your post..."}
               </p>
             )}
             <button

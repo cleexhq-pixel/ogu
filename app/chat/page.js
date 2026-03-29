@@ -12,7 +12,7 @@ import {
   trackSendVoice
 } from "@/app/lib/gtag";
 import { MISSIONS } from "@/app/data/missions";
-import { OGU_MODEL_ANSWER_TOKEN, getInterviewQuestionTopicHints } from "@/app/lib/ogu-interview";
+import { KKOBI_MODEL_ANSWER_TOKEN, getInterviewQuestionTopicHints } from "@/app/lib/ogu-interview";
 
 /** 동일 AI 메시지에 TTS가 두 번 도는 것 방지 (Strict Mode 이중 effect·연속 호출) */
 let ttsLastScheduledAssistantKey = "";
@@ -46,7 +46,7 @@ async function requestMicrophoneAccess() {
 }
 
 /** 인터뷰 첫 인사: 질문 예시·모범 답변 등은 제거하고 짧은 인사 한 줄만 남김 */
-function sanitizeOguInterviewOpening(displayText) {
+function sanitizeKkobiInterviewOpening(displayText) {
   if (!displayText || typeof displayText !== "string") return displayText;
   let t = displayText.replace(/\[MISSION_COMPLETE\]/g, "").trim();
   t = t.replace(/\s*질문\s*예시\s*[:：][\s\S]*/gi, "");
@@ -258,7 +258,7 @@ function ChatContent() {
   const [pendingCorrections, setPendingCorrections] = useState(null);
   const [userCardLift, setUserCardLift] = useState(false);
   const [showStarterButtons, setShowStarterButtons] = useState(isOnboarding);
-  /** OGU 인터뷰 미션 전용 */
+  /** Kkobi 인터뷰 미션 전용 */
   const [interviewSessionStarted, setInterviewSessionStarted] = useState(false);
   const [interviewMissionSecondsLeft, setInterviewMissionSecondsLeft] = useState(null);
   const [responseWindowSec, setResponseWindowSec] = useState(null);
@@ -302,7 +302,7 @@ function ChatContent() {
     if (isInterviewMission) {
       return {
         emoji: "🎤",
-        name: "OGU",
+        name: "Kkobi",
         subtitle:
           language === "ko"
             ? "케이팝 솔로 아티스트 · 인터뷰"
@@ -312,10 +312,10 @@ function ChatContent() {
       };
     }
     const names = {
-      cafe: { ko: "카페오구", en: "Café Ogu", id: "Kafe Ogu" },
-      office: { ko: "직장오구", en: "Office Ogu", id: "Kantor Ogu" },
-      drama: { ko: "드라마오구", en: "Drama Ogu", id: "Drama Ogu" },
-      free: { ko: "자유대화오구", en: "Free Talk Ogu", id: "Obrolan Bebas Ogu" }
+      cafe: { ko: "카페꼬비", en: "Café Kkobi", id: "Kafe Kkobi" },
+      office: { ko: "직장꼬비", en: "Office Kkobi", id: "Kantor Kkobi" },
+      drama: { ko: "드라마꼬비", en: "Drama Kkobi", id: "Drama Kkobi" },
+      free: { ko: "자유대화꼬비", en: "Free Talk Kkobi", id: "Obrolan Bebas Kkobi" }
     };
     const subs = {
       free: { ko: "어떤 주제든 OK!", en: "Any topic OK!", id: "Topik apa saja!" }
@@ -864,7 +864,7 @@ function ChatContent() {
         } else {
           const { displayText, corrections } = parseAIResponse(reply);
           if (corrections.length) setAllCorrections((prev) => [...prev, ...corrections]);
-          const opening = isInterviewMission ? sanitizeOguInterviewOpening(displayText) : displayText;
+          const opening = isInterviewMission ? sanitizeKkobiInterviewOpening(displayText) : displayText;
           setMessages([
             {
               role: "assistant",
@@ -968,7 +968,7 @@ function ChatContent() {
     }
   }, []);
 
-  // OGU 인터뷰: 1분 미션 타이머
+  // Kkobi 인터뷰: 1분 미션 타이머
   useEffect(() => {
     if (!isInterviewMission || !interviewSessionStarted || interviewMissionSecondsLeft === null) return;
     if (interviewMissionSecondsLeft <= 0) return;
@@ -1121,7 +1121,7 @@ function ChatContent() {
           missionId !== "greeting-friend" &&
           (includesMissionComplete || userMsgCount >= 3);
 
-        const modelAnswerRequest = nextMessages[nextMessages.length - 1]?.content === OGU_MODEL_ANSWER_TOKEN;
+        const modelAnswerRequest = nextMessages[nextMessages.length - 1]?.content === KKOBI_MODEL_ANSWER_TOKEN;
         const assistantMsg = {
           role: "assistant",
           content: cleanedDisplay,
@@ -1217,7 +1217,7 @@ function ChatContent() {
     return null;
   }, [messages]);
 
-  // OGU 인터뷰: 답변 후 10초 카운트다운 (일시정지 중·0초에서는 감소 없음; 0초일 때만 타임아웃 버튼)
+  // Kkobi 인터뷰: 답변 후 10초 카운트다운 (일시정지 중·0초에서는 감소 없음; 0초일 때만 타임아웃 버튼)
   useEffect(() => {
     if (!isInterviewMission || responseWindowSec === null || responseWindowSec < 1) return;
     if (interviewResponseTimerPaused) return;
@@ -1229,7 +1229,7 @@ function ChatContent() {
 
   const handleInterviewModelAnswer = () => {
     setResponseWindowSec(null);
-    void handleSend(OGU_MODEL_ANSWER_TOKEN, { hiddenFromUi: true });
+    void handleSend(KKOBI_MODEL_ANSWER_TOKEN, { hiddenFromUi: true });
   };
 
   const handleInterviewRetryTimer = () => {
@@ -1311,10 +1311,10 @@ function ChatContent() {
     language === "ko" ? "홈으로" : language === "id" ? "Beranda" : "Home";
   const interviewApiLoadingLabel =
     language === "ko"
-      ? "OGU가 답하는 중…"
+      ? "꼬비가 답하는 중…"
       : language === "id"
-      ? "OGU sedang menjawab…"
-      : "OGU is replying…";
+      ? "Kkobi sedang menjawab…"
+      : "Kkobi is replying…";
 
   return (
     <main className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-[#F9FAFB] text-[#0F172A] max-sm:h-[100dvh] max-sm:max-h-[100dvh]">
@@ -1579,10 +1579,10 @@ function ChatContent() {
             <div className="mb-4 text-5xl">🎤</div>
             <p className="mb-6 text-base font-medium leading-relaxed text-[#0F172A]">
               {language === "ko"
-                ? "안녕하세요! 저는 케이팝 아티스트 OGU예요. 인터뷰 시작해볼까요? 🎤"
+                ? "안녕하세요! 저는 케이팝 아티스트 꼬비예요. 인터뷰 시작해볼까요? 🎤"
                 : language === "id"
-                ? "Halo! Aku OGU, artis solo K-pop. Mulai wawancara yuk? 🎤"
-                : "Hi! I'm OGU, a K-pop solo artist. Shall we start the interview? 🎤"}
+                ? "Halo! Aku Kkobi, artis solo K-pop. Mulai wawancara yuk? 🎤"
+                : "Hi! I'm Kkobi, a K-pop solo artist. Shall we start the interview? 🎤"}
             </p>
             <button
               type="button"
@@ -1638,7 +1638,7 @@ function ChatContent() {
                   : "border-[#E5E7EB] bg-[#F8FAFC]"
               }`}
             >
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[#94A3B8]">OGU</p>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[#94A3B8]">Kkobi</p>
               {displayAssistant?.content ? (
                 <div key={aiFadeKey} className="origin-top scale-[0.94] animate-chat-ai-fade">
                   {isViolationAssistant ? (
@@ -1728,7 +1728,7 @@ function ChatContent() {
                 <div className="max-h-12 overflow-y-auto leading-tight">
                   {visibleChatMessages.slice(-8).map((m, idx) => (
                     <div key={idx} className="truncate">
-                      {m.role === "user" ? "You: " : "OGU: "}
+                      {m.role === "user" ? "You: " : "Kkobi: "}
                       {(m.content || "").slice(0, 80)}
                     </div>
                   ))}

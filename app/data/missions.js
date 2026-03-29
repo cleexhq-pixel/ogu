@@ -32,9 +32,9 @@ export const MISSIONS = [
   {
     id: "greeting-friend",
     title: {
-      ko: "OGU 인터뷰 (1분)",
-      en: "OGU Interview (1 min)",
-      id: "Wawancara OGU (1 mnt)"
+      ko: "Kkobi 인터뷰 (1분)",
+      en: "Kkobi Interview (1 min)",
+      id: "Wawancara Kkobi (1 mnt)"
     },
     category: "daily",
     level: "beginner",
@@ -48,7 +48,7 @@ export const MISSIONS = [
       id: ["Mulai wawancara", "Bertanya", "Penutup"]
     },
     prompt:
-      "OGU K-pop solo artist interview: learner is a journalist. See system prompt for rules.",
+      "Kkobi K-pop solo artist interview: learner is a journalist. See system prompt for rules.",
     completion: {
       ko: "인터뷰 완료! 멋진 기자였어요 🎤",
       en: "Interview complete! You were a great reporter 🎤",

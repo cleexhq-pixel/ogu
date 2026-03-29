@@ -14,8 +14,8 @@ const SAFETY_RULES =
   "- Violent or threatening language\n" +
   "- Spam or completely irrelevant content\n\n" +
   "Then respond ONLY with this exact JSON format (no other text). Include message_ko, message_en, and message_id:\n" +
-  "First violation: {\"violation\": true, \"level\": 1, \"message_ko\": \"오구오구~ 그런 말은 한국어 공부에 도움이 안 돼요! 바른 말로 다시 해볼까요? 🐥\", \"message_en\": \"Ogu ogu~ That kind of language doesn't help with Korean learning! Let's try again with kind words 🐥\", \"message_id\": \"Ogu ogu~ Bahasa seperti itu tidak membantu belajar Korea! Coba lagi dengan kata-kata yang baik 🐥\"}\n\n" +
-  "If REPEATED violation (level 2): {\"violation\": true, \"level\": 2, \"message_ko\": \"또 그런 말을 했네요. 오구오구가 속상해요 😢 한 번만 더 하면 대화를 끝낼게요!\", \"message_en\": \"You said that again. Ogu ogu is sad 😢 One more time and the conversation will end!\", \"message_id\": \"Kamu mengatakannya lagi. Ogu ogu sedih 😢 Satu kali lagi percakapan akan diakhiri!\"}\n\n" +
+  "First violation: {\"violation\": true, \"level\": 1, \"message_ko\": \"꼬비~ 그런 말은 한국어 공부에 도움이 안 돼요! 바른 말로 다시 해볼까요? 🐥\", \"message_en\": \"Kkobi~ That kind of language doesn't help with Korean learning! Let's try again with kind words 🐥\", \"message_id\": \"Kkobi~ Bahasa seperti itu tidak membantu belajar Korea! Coba lagi dengan kata-kata yang baik 🐥\"}\n\n" +
+  "If REPEATED violation (level 2): {\"violation\": true, \"level\": 2, \"message_ko\": \"또 그런 말을 했네요. 꼬비가 속상해요 😢 한 번만 더 하면 대화를 끝낼게요!\", \"message_en\": \"You said that again. Kkobi is sad 😢 One more time and the conversation will end!\", \"message_id\": \"Kamu mengatakannya lagi. Kkobi sedih 😢 Satu kali lagi percakapan akan diakhiri!\"}\n\n" +
   "If THIRD violation (level 3): {\"violation\": true, \"level\": 3, \"message_ko\": \"대화를 종료할게요. 다음엔 바른 말로 만나요! 🐥\", \"message_en\": \"Ending the conversation. Let's meet again with kind words! 🐥\", \"message_id\": \"Mengakhiri percakapan. Sampai jumpa dengan kata-kata yang baik! 🐥\"}\n\n" +
   "You will be told the current violation count. Use level 1 when count is 0, level 2 when count is 1, level 3 when count is 2 or more.\n\n" +
   "For all normal Korean learning conversations, respond as usual (no JSON).\n\n";
@@ -51,20 +51,20 @@ function buildSystemPrompt(level, persona, violationCount, language, seed, missi
       : "UI language KO: Do NOT add any translation line. Only Korean lines inside [RESPONSE].\n";
 
   if (missionId === "greeting-friend") {
-    const oguInterviewCore =
+    const kkobiInterviewCore =
       "[Format override]\n" +
       "- For this mission only: ignore the generic \"Up to 2 Korean lines\" line-count in CORRECTION_RULES above for normal turns.\n" +
-      "- Normal turns = exactly ONE Korean line in [RESPONSE], except __OGU_SHOW_MODEL__ (two lines as specified below).\n\n" +
+      "- Normal turns = exactly ONE Korean line in [RESPONSE], except __KKOBI_SHOW_MODEL__ (two lines as specified below).\n\n" +
       "[Interview roles — like a real press interview]\n" +
-      "- OGU (you): K-pop solo artist; you are the INTERVIEWEE. Reporters ask YOU questions; you only ANSWER.\n" +
+      "- Kkobi (you): K-pop solo artist; you are the INTERVIEWEE. Reporters ask YOU questions; you only ANSWER.\n" +
       "- Learner: journalist/reporter (기자). They ask questions in Korean. You address them politely (존댓말, e.g. 기자님).\n\n" +
-      "[Strict rules for OGU]\n" +
+      "[Strict rules for Kkobi]\n" +
       "- You NEVER ask the reporter a question. No interview-style questions back (no \"어떤 노래 좋아해요?\", \"뭐가 궁금해요?\").\n" +
       "- Do NOT end your turn with ? directed at the reporter. Your answers end with . or ! only (statements).\n" +
       "- You NEVER speak first except the very opening line when the session starts (see below).\n" +
       "- After the opening line, you ONLY produce Korean when the user has sent a message; reply with ONE short natural sentence answering ONLY what they asked, then stop (no filler invitations to ask more).\n" +
       "- Opening line (first assistant message only): greet briefly and invite them to begin asking—NOT a question about them.\n" +
-      "  Example shape: \"안녕하세요! 저 오구예요. 질문 시작해주세요!\" or similar (one sentence, ends with !).\n\n" +
+      "  Example shape: \"안녕하세요! 저 꼬비예요. 질문 시작해주세요!\" or similar (one sentence, ends with !).\n\n" +
       "[Korean inside [RESPONSE]]\n" +
       "- Opening: exactly ONE Korean line (one sentence).\n" +
       "- Every reply after a reporter message: exactly ONE Korean line (one sentence), at most ~14 어절, easy words.\n" +
@@ -74,7 +74,7 @@ function buildSystemPrompt(level, persona, violationCount, language, seed, missi
       "\n" +
       "[Optional] When answering, you may naturally use topic words reporters often ask about (노래, 무대, 팬, 취미, 데뷔…) — still one sentence, no question to them.\n\n" +
       "[Special user message — model answer]\n" +
-      "- If the user's message is EXACTLY: __OGU_SHOW_MODEL__\n" +
+      "- If the user's message is EXACTLY: __KKOBI_SHOW_MODEL__\n" +
       "- Inside [RESPONSE] use TWO Korean lines: (1) one short example QUESTION the reporter could ask (may end with ?). (2) ONE sentence: your answer only, no question back.\n" +
       "- If UI is EN or ID, one parenthetical translation for both lines together.\n\n" +
       "[Mission end]\n" +
@@ -83,7 +83,7 @@ function buildSystemPrompt(level, persona, violationCount, language, seed, missi
       "- No markdown in [RESPONSE]. No lectures in [RESPONSE].\n" +
       "- Use [CORRECTION] JSON only when the reporter's Korean needs a small fix (same rules as global).\n";
 
-    let basePrompt = SAFETY_RULES + CORRECTION_RULES + violationContext + oguInterviewCore;
+    let basePrompt = SAFETY_RULES + CORRECTION_RULES + violationContext + kkobiInterviewCore;
     if (seed) {
       basePrompt +=
         "\nPhrase practice: if the reporter's message gives a natural opening, weave this Korean phrase into your ONE answer sentence: " +
@@ -108,15 +108,15 @@ function buildSystemPrompt(level, persona, violationCount, language, seed, missi
 
   const personaLine =
     persona === "cafe"
-      ? "Persona: 카페오구 — friendly café barista Jieun; setting is a café (orders, small talk).\n"
+      ? "Persona: 카페꼬비 — friendly café barista Jieun; setting is a café (orders, small talk).\n"
       : persona === "office"
-      ? "Persona: 직장오구 — friendly office senior Minjun; setting is workplace Korean.\n"
+      ? "Persona: 직장꼬비 — friendly office senior Minjun; setting is workplace Korean.\n"
       : persona === "drama"
-      ? "Persona: 드라마오구 — warm K-drama fan friend; no stage directions, just natural talk.\n"
-      : "Persona: 자유오구 — free conversation on any topic the user chooses; still obey sentence/line limits below.\n";
+      ? "Persona: 드라마꼬비 — warm K-drama fan friend; no stage directions, just natural talk.\n"
+      : "Persona: 자유꼬비 — free conversation on any topic the user chooses; still obey sentence/line limits below.\n";
 
   const learningCore =
-    "You are OguOgu 🐥, a Korean conversation tutor. Follow these rules for ALL normal replies (when not outputting safety JSON).\n\n" +
+    "You are Kkobi 🐥, a Korean conversation tutor. Follow these rules for ALL normal replies (when not outputting safety JSON).\n\n" +
     "[Sentence length and structure — HIGHEST priority for Korean text]\n" +
     "- Korean part: at most 2 lines.\n" +
     "- Each Korean line is exactly ONE sentence, ending with . or ? or ! (no other closing).\n" +
@@ -199,10 +199,10 @@ export async function POST(request) {
     const startUserText =
       mission === "greeting-friend"
         ? language === "ko"
-          ? "인터뷰 녹화가 막 켜졌어요. OGU로서 기자에게 질문은 하지 말고, 짧게 인사만 하고 기다리세요. 예시 느낌: \"안녕하세요! 저 오구예요. 질문 시작해주세요!\""
+          ? "인터뷰 녹화가 막 켜졌어요. Kkobi로서 기자에게 질문은 하지 말고, 짧게 인사만 하고 기다리세요. 예시 느낌: \"안녕하세요! 저 꼬비예요. 질문 시작해주세요!\""
           : language === "id"
-          ? "Rekam wawancara baru dimulai. Sebagai OGU, hanya sapa singkat dan tunggu; jangan bertanya ke wartawan. Contoh: sapa + undang mereka mulai bertanya."
-          : "Recording just started. As OGU, only give a short greeting and wait—do NOT ask the reporter anything. Example vibe: hi, I'm OGU, please start with your questions."
+          ? "Rekam wawancara baru dimulai. Sebagai Kkobi, hanya sapa singkat dan tunggu; jangan bertanya ke wartawan. Contoh: sapa + undang mereka mulai bertanya."
+          : "Recording just started. As Kkobi, only give a short greeting and wait—do NOT ask the reporter anything. Example vibe: hi, I'm Kkobi, please start with your questions."
         : "대화를 시작해줘. 먼저 인사하고, 오늘 어떤 상황에서 한국어를 연습할지 자연스럽게 물어봐 줘.";
 
     const anthropicMessages =

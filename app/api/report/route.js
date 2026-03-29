@@ -41,7 +41,7 @@ export async function POST(request) {
 
     const conversationText = messages
       .map((m) => {
-        const speaker = m.role === "user" ? "USER" : "OGU";
+        const speaker = m.role === "user" ? "USER" : "Kkobi";
         return `${speaker}: ${m.content ?? ""}`;
       })
       .join("\n");

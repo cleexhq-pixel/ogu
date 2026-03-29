@@ -1,7 +1,7 @@
 /**
- * OGU K-pop 인터뷰 미션: 모범 답변 요청 시 API에 보내는 고정 토큰 (UI에 숨김)
+ * Kkobi K-pop 인터뷰 미션: 모범 답변 요청 시 API에 보내는 고정 토큰 (UI에 숨김)
  */
-export const OGU_MODEL_ANSWER_TOKEN = "__OGU_SHOW_MODEL__";
+export const KKOBI_MODEL_ANSWER_TOKEN = "__KKOBI_SHOW_MODEL__";
 
 const ROMAJA = {
   이름: "i-reum",
@@ -65,7 +65,7 @@ export function getInterviewQuestionTopicHints(assistantTurnIndex = 1) {
 }
 
 /**
- * 마지막 OGU 발화에서 힌트용 단어(한글) + 로마자 최대 3개 추출 (레거시·다른 용도)
+ * 마지막 Kkobi 발화에서 힌트용 단어(한글) + 로마자 최대 3개 추출 (레거시·다른 용도)
  */
 export function extractInterviewHints(koreanText) {
   if (!koreanText || typeof koreanText !== "string") return [];

@@ -297,7 +297,7 @@ export default function HomePage() {
     quickMission:
       language === "ko" ? "미션 대화" : language === "id" ? "Misi Berbicara" : "Mission Talk",
     quickDrama:
-      language === "ko" ? "드라마오구" : language === "id" ? "Drama Ogu" : "Drama Ogu",
+      language === "ko" ? "드라마꼬비" : language === "id" ? "Drama Kkobi" : "Drama Kkobi",
     quickPhrases:
       language === "ko" ? "내 표현장" : language === "id" ? "Frasaku" : "My Phrases",
     quickFree:
@@ -310,16 +310,16 @@ export default function HomePage() {
         : "Start 1-Min Korean Practice 🐥",
     oneMinuteSub:
       language === "ko"
-        ? "케이팝 아티스트 OGU 인터뷰 · 1분 · 말하기 중심 · 회원가입 없음"
+        ? "케이팝 아티스트 Kkobi 인터뷰 · 1분 · 말하기 중심 · 회원가입 없음"
         : language === "id"
-        ? "Wawancara OGU (K-pop) · 1 mnt · Fokus bicara · Tanpa daftar"
-        : "Interview K-pop artist OGU · 1 min · Voice-first · No sign-up",
+        ? "Wawancara Kkobi (K-pop) · 1 mnt · Fokus bicara · Tanpa daftar"
+        : "Interview K-pop artist Kkobi · 1 min · Voice-first · No sign-up",
     onboardingTitle:
       language === "ko"
-        ? "안녕하세요! 오구오구예요 🐥"
+        ? "안녕하세요! 꼬비예요 🐥"
         : language === "id"
-        ? "Halo! Saya OguOgu 🐥"
-        : "Hello! I'm OguOgu 🐥",
+        ? "Halo! Saya Kkobi 🐥"
+        : "Hello! I'm Kkobi 🐥",
     onboardingDesc:
       language === "ko"
         ? "AI 친구와 1분 한국어 대화를 해보세요.\n회원가입 없이 바로 시작할 수 있어요!"
@@ -328,10 +328,10 @@ export default function HomePage() {
         : "Practice Korean with your AI friend in 1 minute.\nNo sign-up needed!",
     onboardingPick:
       language === "ko"
-        ? "👋 오늘의 추천: OGU 인터뷰 (1분)"
+        ? "👋 오늘의 추천: Kkobi 인터뷰 (1분)"
         : language === "id"
-        ? "👋 Rekomendasi: Wawancara OGU (1 mnt)"
-        : "👋 Today's pick: OGU interview (1 min)",
+        ? "👋 Rekomendasi: Wawancara Kkobi (1 mnt)"
+        : "👋 Today's pick: Kkobi interview (1 min)",
     onboardingStart:
       language === "ko" ? "지금 바로 시작하기 →" : language === "id" ? "Mulai Sekarang →" : "Start Right Now →",
     onboardingBrowse:
@@ -381,7 +381,7 @@ export default function HomePage() {
               <span className="text-2xl" aria-hidden>
                 🐥
               </span>
-              <span className="text-lg font-bold tracking-tight text-[#0F172A]">OguOgu</span>
+              <span className="text-lg font-bold tracking-tight text-[#0F172A]">Kkobi</span>
             </div>
             <div className="inline-flex rounded-full border border-[#E5E7EB] bg-[#FFFFFF] p-1 text-[11px] font-medium shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
               <button
@@ -434,7 +434,7 @@ export default function HomePage() {
             {language === "ko" ? "AI 한국어 회화" : language === "id" ? "Percakapan Korea AI" : "AI Korean Conversation"}
           </p>
           <h1 className="text-3xl font-extrabold tracking-tight text-[#0F172A] sm:text-4xl md:text-[2.5rem]">
-            {language === "ko" ? "오구오구 🐥" : "OguOgu 🐥"}
+            {language === "ko" ? "꼬비 🐥" : "Kkobi 🐥"}
           </h1>
           <div className="mx-auto max-w-md text-center text-base leading-relaxed text-[#64748B] sm:text-lg">
             {language === "ko" ? (

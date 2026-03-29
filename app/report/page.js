@@ -21,16 +21,16 @@ function getYesterdayLocal() {
 }
 
 const MILESTONES = {
-  3: { ko: "🔥 3일 연속! 오구오구 열심히네요!", en: "3 day streak! Keep it up!", id: "3 hari berturut-turut! Semangat!" },
+  3: { ko: "🔥 3일 연속! 꼬비 열심히네요!", en: "3 day streak! Keep it up!", id: "3 hari berturut-turut! Semangat!" },
   7: { ko: "⭐ 일주일 연속! 대단해요!", en: "7 day streak! Amazing!", id: "7 hari berturut-turut! Luar biasa!" },
-  30: { ko: "👑 한 달 연속! 오구 마스터!", en: "30 day streak! Ogu Master!", id: "30 hari berturut-turut! Master Ogu!" }
+  30: { ko: "👑 한 달 연속! 꼬비 마스터!", en: "30 day streak! Kkobi Master!", id: "30 hari berturut-turut! Master Kkobi!" }
 };
 
 const PERSONA_NAMES = {
-  cafe: { ko: "카페오구", en: "Café Ogu", id: "Kafe Ogu" },
-  office: { ko: "직장오구", en: "Office Ogu", id: "Kantor Ogu" },
-  drama: { ko: "드라마오구", en: "Drama Ogu", id: "Drama Ogu" },
-  free: { ko: "자유대화오구", en: "Free Talk Ogu", id: "Obrolan Bebas Ogu" }
+  cafe: { ko: "카페꼬비", en: "Café Kkobi", id: "Kafe Kkobi" },
+  office: { ko: "직장꼬비", en: "Office Kkobi", id: "Kantor Kkobi" },
+  drama: { ko: "드라마꼬비", en: "Drama Kkobi", id: "Drama Kkobi" },
+  free: { ko: "자유대화꼬비", en: "Free Talk Kkobi", id: "Obrolan Bebas Kkobi" }
 };
 
 function ReportContent() {
@@ -211,12 +211,12 @@ function ReportContent() {
 
   const levelLabel =
     level === "beginner"
-      ? language === "ko" ? "왕초보 오구" : language === "id" ? "Pemula" : "Beginner"
+      ? language === "ko" ? "왕초보 꼬비" : language === "id" ? "Pemula" : "Beginner"
       : level === "elementary"
-      ? language === "ko" ? "초급 오구" : language === "id" ? "Dasar" : "Elementary"
-      : language === "ko" ? "중급 오구" : language === "id" ? "Menengah" : "Intermediate";
+      ? language === "ko" ? "초급 꼬비" : language === "id" ? "Dasar" : "Elementary"
+      : language === "ko" ? "중급 꼬비" : language === "id" ? "Menengah" : "Intermediate";
 
-  const personaLabel = PERSONA_NAMES[persona] ? (language === "ko" ? PERSONA_NAMES[persona].ko : language === "id" ? PERSONA_NAMES[persona].id : PERSONA_NAMES[persona].en) : (language === "ko" ? "오구" : language === "id" ? "Ogu" : "Ogu");
+  const personaLabel = PERSONA_NAMES[persona] ? (language === "ko" ? PERSONA_NAMES[persona].ko : language === "id" ? PERSONA_NAMES[persona].id : PERSONA_NAMES[persona].en) : (language === "ko" ? "꼬비" : language === "id" ? "Kkobi" : "Kkobi");
 
   const progressPercent =
     level === "beginner" ? 33 : level === "elementary" ? 66 : 100;
@@ -263,7 +263,7 @@ function ReportContent() {
         backgroundColor: "#F9FAFB"
       });
       const link = document.createElement("a");
-      link.download = "oguogu-card.png";
+      link.download = "kkobi-card.png";
       link.href = canvas.toDataURL("image/png");
       link.click();
       trackShareCard();
@@ -278,10 +278,10 @@ function ReportContent() {
     const lines = [];
     lines.push(
       language === "ko"
-        ? "🐥 오구오구 한국어 회화 리포트"
+        ? "🐥 꼬비 한국어 회화 리포트"
         : language === "id"
-        ? "🐥 Laporan Percakapan Korea OguOgu"
-        : "🐥 OguOgu Korean Conversation Report"
+        ? "🐥 Laporan Percakapan Korea Kkobi"
+        : "🐥 Kkobi Korean Conversation Report"
     );
     lines.push(
       language === "ko" ? `레벨: ${levelLabel}` : language === "id" ? `Level: ${levelLabel}` : `Level: ${levelLabel}`
@@ -434,10 +434,10 @@ function ReportContent() {
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748B]">
-                {language === "ko" ? "오늘의 오구 리포트" : language === "id" ? "Laporan Ogu Hari Ini" : "Today's Ogu Report"}
+                {language === "ko" ? "오늘의 꼬비 리포트" : language === "id" ? "Laporan Kkobi Hari Ini" : "Today's Kkobi Report"}
               </p>
               <h1 className="text-2xl font-extrabold text-[#4F46E5] sm:text-3xl">
-                {language === "ko" ? "오구오구~ 잘했어요! 🎉" : language === "id" ? "Ogu ogu~ Kerja bagus! 🎉" : "Ogu ogu~ Great job! 🎉"}
+                {language === "ko" ? "꼬비~ 잘했어요! 🎉" : language === "id" ? "Kkobi~ Kerja bagus! 🎉" : "Kkobi~ Great job! 🎉"}
               </h1>
               <p className="text-sm text-[#64748B]">{language === "ko" ? "수고했어요!" : language === "id" ? "Kerja bagus hari ini!" : "Great job today!"}</p>
               <p className="text-[12px] text-[#64748B]">{durationText}</p>
@@ -558,7 +558,7 @@ function ReportContent() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-[#0F172A]">
-                {language === "ko" ? "나의 오구 레벨" : language === "id" ? "Level Ogu Saya" : "My Ogu Level"}
+                {language === "ko" ? "나의 꼬비 레벨" : language === "id" ? "Level Kkobi Saya" : "My Kkobi Level"}
               </h2>
               <p className="mt-0.5 text-[11px] text-[#64748B]">
                 {language === "ko"
@@ -581,10 +581,10 @@ function ReportContent() {
             </div>
             <p className="text-[11px] text-[#64748B]">
               {language === "ko"
-                ? "내일도 오구오구와 연습해볼까요?"
+                ? "내일도 꼬비와 연습해볼까요?"
                 : language === "id"
-                ? "Sampai jumpa lagi besok untuk berlatih dengan Ogu!"
-                : "Come back and practice with Ogu again tomorrow!"}
+                ? "Sampai jumpa lagi besok untuk berlatih dengan Kkobi!"
+                : "Come back and practice with Kkobi again tomorrow!"}
             </p>
           </div>
         </section>
@@ -712,7 +712,7 @@ function ReportContent() {
             >
               {/* 상단: 로고 + URL */}
               <div className="flex items-center justify-between border-b border-[#E5E7EB] px-5 py-3">
-                <span className="text-lg font-bold text-[#4F46E5]">🐥 OguOgu</span>
+                <span className="text-lg font-bold text-[#4F46E5]">🐥 Kkobi</span>
                 <span className="text-[9px] text-[#64748B]">ogu-three.vercel.app</span>
               </div>
               {/* 중앙: 완료 문구 + 페르소나/레벨 + 표현 3개 */}

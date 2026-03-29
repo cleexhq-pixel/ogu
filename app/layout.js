@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "오구오구 (OguOgu)",
+  title: "꼬비 (Kkobi)",
   description: "한국어 AI 회화 학습 앱"
 };
 
