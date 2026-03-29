@@ -1,9 +1,18 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { pageview, trackSendVoice } from "@/app/lib/gtag";
 import Analytics from "@/app/components/Analytics";
+import {
+  isValidLang,
+  LANG_CODES,
+  LANG_PILL_LABEL,
+  normalizeLang,
+  OGU_LANG_KEY,
+  resolveLangFromUrlAndStorage,
+  tx
+} from "@/app/lib/i18n";
 
 const BRAND_PURPLE = "#6c2eff";
 const BRAND_GOLD = "#ffd84d";
@@ -44,41 +53,41 @@ function readStoredCurrentDay() {
   return Math.min(n, 4);
 }
 
-function journeyDayToContent(dayNum) {
+const J_TITLE_KEYS = /** @type {const} */ (["j1_title", "j2_title", "j3_title"]);
+const J_EN_KEYS = /** @type {const} */ (["j1_en", "j2_en", "j3_en"]);
+
+/** @param {number} dayNum */
+function journeyDayToContent(dayNum, lang) {
   const row = JOURNEY_DAYS[dayNum - 1];
   if (!row) return null;
+  const L = normalizeLang(lang);
+  const i = dayNum - 1;
   return {
     id: "idol",
-    cardLabel: `👑 Day ${dayNum}`,
-    headerLabel: `Day ${dayNum} · ${row.journeyTitle}`,
+    cardLabel: tx(L, "j_card", { n: dayNum }),
+    headerLabel: tx(L, "j_dayHeader", { n: dayNum, title: tx(L, J_TITLE_KEYS[i]) }),
     ko: row.ko,
-    en: row.en
+    en: tx(L, J_EN_KEYS[i])
   };
 }
 
-const CATEGORIES = {
-  idol: {
-    id: "idol",
-    cardLabel: "👑 My favorite idol",
-    headerLabel: "My favorite idol",
-    ko: "제 최애는 BTS예요.",
-    en: "My favorite is BTS."
-  },
-  drama: {
-    id: "drama",
-    cardLabel: "🎬 K-drama line",
-    headerLabel: "K-drama line",
-    ko: "보고 싶었어요.",
-    en: "I missed you."
-  },
-  trip: {
-    id: "trip",
-    cardLabel: "✈️ Korea trip",
-    headerLabel: "Korea trip",
-    ko: "여기 어떻게 가요?",
-    en: "How do I get there?"
-  }
+const CATEGORY_KO = {
+  idol: { ko: "제 최애는 BTS예요." },
+  drama: { ko: "보고 싶었어요." },
+  trip: { ko: "여기 어떻게 가요?" }
 };
+
+/** @param {"idol"|"drama"|"trip"} cat */
+function categoryToContent(cat, lang) {
+  const L = normalizeLang(lang);
+  return {
+    id: cat,
+    cardLabel: tx(L, `cat_${cat}_card`),
+    headerLabel: tx(L, `cat_${cat}_header`),
+    ko: CATEGORY_KO[cat].ko,
+    en: tx(L, `cat_${cat}_sub`)
+  };
+}
 
 function normalizeKorean(s) {
   return String(s || "")
@@ -111,7 +120,12 @@ async function requestMicrophoneAccess() {
 
 function FirstLineFlow() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const uiLang = normalizeLang(searchParams.get("lang") || "en");
+  const uiLangRef = useRef(uiLang);
+  uiLangRef.current = uiLang;
+
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState(null);
   const [userInput, setUserInput] = useState("");
@@ -129,8 +143,8 @@ function FirstLineFlow() {
   const hydratedFromUrl = useRef(false);
 
   const journeyActive = journeyDay >= 1 && journeyDay <= 3;
-  const journeyContent = journeyActive ? journeyDayToContent(journeyDay) : null;
-  const categoryContent = category ? CATEGORIES[category] : null;
+  const journeyContent = journeyActive ? journeyDayToContent(journeyDay, uiLang) : null;
+  const categoryContent = category ? categoryToContent(category, uiLang) : null;
   const content = journeyActive && journeyContent ? journeyContent : categoryContent;
 
   useEffect(() => {
@@ -139,6 +153,17 @@ function FirstLineFlow() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const urlLang = searchParams.get("lang");
+    const stored = window.localStorage.getItem(OGU_LANG_KEY);
+    const lang = resolveLangFromUrlAndStorage(urlLang, stored);
+    window.localStorage.setItem(OGU_LANG_KEY, lang);
+    if (!isValidLang(urlLang)) {
+      const p = new URLSearchParams(searchParams.toString());
+      p.set("lang", lang);
+      router.replace(`${pathname}?${p.toString()}`);
+      return;
+    }
     if (hydratedFromUrl.current) return;
     hydratedFromUrl.current = true;
     const d = readStoredCurrentDay();
@@ -155,7 +180,7 @@ function FirstLineFlow() {
       setStep(2);
       setUserInput("");
     }
-  }, [searchParams]);
+  }, [searchParams, router, pathname]);
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
@@ -194,11 +219,21 @@ function FirstLineFlow() {
   }, [content, stopAudio]);
 
   const buildQs = useCallback(() => {
-    const lang = searchParams.get("lang");
     const qs = new URLSearchParams();
-    if (lang && ["ko", "en", "id"].includes(lang)) qs.set("lang", lang);
+    qs.set("lang", normalizeLang(searchParams.get("lang") || "en"));
     return qs;
   }, [searchParams]);
+
+  const setLang = (code) => {
+    const lang = normalizeLang(code);
+    if (typeof window !== "undefined") window.localStorage.setItem(OGU_LANG_KEY, lang);
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("lang", lang);
+    router.replace(`${pathname}?${p.toString()}`);
+  };
+
+  const langPillBase =
+    "rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition-colors duration-200 sm:px-3 sm:text-[12px]";
 
   const selectCategory = (key) => {
     setCategory(key);
@@ -279,9 +314,9 @@ function FirstLineFlow() {
       setIsRequestingMic(false);
       setIsListening(false);
       if (event.error === "not-allowed" || event.error === "denied" || event.error === "service-not-allowed") {
-        setMicHint("Please allow microphone access");
+        setMicHint(tx(uiLangRef.current, "fl_micAllow"));
       } else if (event.error !== "aborted") {
-        setMicHint("Voice input failed. Try again.");
+        setMicHint(tx(uiLangRef.current, "fl_micFail"));
       }
     };
 
@@ -333,7 +368,7 @@ function FirstLineFlow() {
       if (navigator.permissions?.query) {
         const result = await navigator.permissions.query({ name: "microphone" });
         if (result.state === "denied") {
-          setMicHint("Please allow microphone access");
+          setMicHint(tx(uiLangRef.current, "fl_micAllow"));
           return;
         }
       }
@@ -345,7 +380,7 @@ function FirstLineFlow() {
       const mic = await requestMicrophoneAccess();
       if (!mic.ok && mic.denied) {
         setIsRequestingMic(false);
-        setMicHint("Please allow microphone access");
+        setMicHint(tx(uiLangRef.current, "fl_micAllow"));
         return;
       }
       userStoppedMicRef.current = false;
@@ -355,7 +390,7 @@ function FirstLineFlow() {
     } catch (e) {
       console.warn("SpeechRecognition start failed", e);
       setIsRequestingMic(false);
-      setMicHint("Please allow microphone access");
+      setMicHint(tx(uiLangRef.current, "fl_micAllow"));
     }
   }, [isListening]);
 
@@ -392,9 +427,14 @@ function FirstLineFlow() {
     "w-full transition-all duration-300 ease-out motion-reduce:transition-none animate-fade-in-up";
 
   const successContent =
-    completedJourneyDay != null ? journeyDayToContent(completedJourneyDay) : content;
+    completedJourneyDay != null ? journeyDayToContent(completedJourneyDay, uiLang) : content;
   const nextJourneyPreview =
-    completedJourneyDay != null && completedJourneyDay < 3 ? JOURNEY_DAYS[completedJourneyDay] : null;
+    completedJourneyDay != null && completedJourneyDay < 3
+      ? {
+          ko: JOURNEY_DAYS[completedJourneyDay].ko,
+          en: tx(uiLang, J_EN_KEYS[completedJourneyDay])
+        }
+      : null;
   const nextDayNumber = completedJourneyDay != null ? completedJourneyDay + 1 : null;
 
   return (
@@ -405,16 +445,34 @@ function FirstLineFlow() {
         style={{ backgroundColor: LAVENDER_BG, color: TEXT_PRIMARY }}
       >
         <div className="mx-auto w-full max-w-[480px]">
+          <div className="mb-6 flex flex-wrap justify-end gap-1">
+            {LANG_CODES.map((code) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => setLang(code)}
+                className={langPillBase}
+                style={
+                  uiLang === code
+                    ? { backgroundColor: BRAND_PURPLE, color: "#fff" }
+                    : { backgroundColor: "transparent", color: "#64748B" }
+                }
+              >
+                {LANG_PILL_LABEL[code]}
+              </button>
+            ))}
+          </div>
+
           {step === 1 && (
             <div key="s1" className={stepClass}>
               <h1
                 className="text-center text-xl font-bold leading-snug sm:text-2xl"
                 style={{ color: TEXT_PRIMARY }}
               >
-                What&apos;s your vibe today?
+                {tx(uiLang, "fl_vibeHeading")}
               </h1>
               <p className="mt-2 text-center text-sm text-[#64748B] sm:text-[15px]">
-                Pick a topic to say your first Korean sentence.
+                {tx(uiLang, "fl_vibeSub")}
               </p>
               <div className="mt-8 flex flex-col gap-4">
                 {["idol", "drama", "trip"].map((key) => (
@@ -424,7 +482,7 @@ function FirstLineFlow() {
                     onClick={() => selectCategory(key)}
                     className="w-full rounded-2xl border-2 border-[#DDD6FE] bg-white px-6 py-5 text-left text-lg font-bold text-[#0f172a] transition hover:border-[#6c2eff] active:scale-[0.99]"
                   >
-                    {CATEGORIES[key].cardLabel}
+                    {categoryToContent(key, uiLang).cardLabel}
                   </button>
                 ))}
               </div>
@@ -458,7 +516,7 @@ function FirstLineFlow() {
                   style={{ borderColor: BRAND_PURPLE, color: BRAND_PURPLE }}
                 >
                   <span aria-hidden>🔊</span>
-                  {ttsLoading ? "Loading…" : "Listen"}
+                  {ttsLoading ? tx(uiLang, "fl_loading") : tx(uiLang, "fl_listen")}
                 </button>
                 <button
                   type="button"
@@ -466,7 +524,7 @@ function FirstLineFlow() {
                   className="mt-4 w-full rounded-2xl py-4 text-[17px] font-bold text-white transition hover:brightness-110 active:scale-[0.98]"
                   style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
                 >
-                  Say it now
+                  {tx(uiLang, "fl_sayItNow")}
                 </button>
               </div>
               {!journeyActive ? (
@@ -475,7 +533,7 @@ function FirstLineFlow() {
                   onClick={goChooseTopic}
                   className="mt-6 w-full text-center text-xs font-medium text-[#94A3B8] transition hover:text-[#64748B]"
                 >
-                  ← Choose another topic
+                  {tx(uiLang, "fl_chooseOtherTopic")}
                 </button>
               ) : null}
             </div>
@@ -487,7 +545,7 @@ function FirstLineFlow() {
                 className="text-center text-lg font-bold sm:text-xl"
                 style={{ color: TEXT_PRIMARY }}
               >
-                Now, say it in Korean! 🗣️
+                {tx(uiLang, "fl_nowSayKorean")}
               </h2>
               <p className="font-korean mt-6 text-center text-lg text-[#94A3B8]/50 sm:text-xl">
                 {content.ko}
@@ -497,7 +555,7 @@ function FirstLineFlow() {
                   <textarea
                     value={userInput}
                     onChange={(e) => setUserInput(e.target.value)}
-                    placeholder="Type in Korean..."
+                    placeholder={tx(uiLang, "fl_placeholder")}
                     rows={4}
                     className="font-korean min-h-[120px] min-w-0 flex-1 resize-none rounded-[14px] border-2 border-[#DDD6FE] bg-white px-4 py-3 text-[15px] text-[#0f172a] outline-none transition placeholder:text-[#94A3B8] focus:border-[#6c2eff] focus:ring-2 focus:ring-[#6c2eff]/20"
                     autoComplete="off"
@@ -516,7 +574,9 @@ function FirstLineFlow() {
                       color: BRAND_PURPLE
                     }}
                     aria-pressed={isListening}
-                    aria-label={isListening ? "Stop listening" : "Start voice input"}
+                    aria-label={
+                      isListening ? tx(uiLang, "fl_stopListening") : tx(uiLang, "fl_startVoice")
+                    }
                   >
                     <span aria-hidden>🗣️</span>
                     {isRequestingMic && !isListening ? (
@@ -533,7 +593,7 @@ function FirstLineFlow() {
                   className="w-full rounded-2xl py-4 text-[16px] font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                   style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
                 >
-                  Submit
+                  {tx(uiLang, "fl_submit")}
                 </button>
               </form>
               <button
@@ -544,7 +604,7 @@ function FirstLineFlow() {
                 }}
                 className="mt-6 w-full text-center text-xs font-medium text-[#94A3B8] transition hover:text-[#64748B]"
               >
-                ← Listen again
+                {tx(uiLang, "fl_listenAgain")}
               </button>
             </div>
           )}
@@ -555,23 +615,20 @@ function FirstLineFlow() {
                 className="inline-flex items-center justify-center rounded-[20px] px-4 py-2 text-[11px] font-bold text-white"
                 style={{ backgroundColor: BRAND_PURPLE }}
               >
-                🎉 FIRST LINE COMPLETE
+                {tx(uiLang, "fl_successBadge")}
               </div>
               <h2
                 className="mt-5 text-[26px] font-bold leading-tight tracking-[-0.5px] text-[#0f172a]"
               >
-                You just spoke{" "}
-                <span style={{ color: BRAND_PURPLE }}>Korean!</span>
+                {tx(uiLang, "fl_youJustSpoke")}
+                <span style={{ color: BRAND_PURPLE }}>{tx(uiLang, "fl_koreanExclaim")}</span>
+                {tx(uiLang, "fl_youJustSpokeAfter")}
               </h2>
               <p className="mt-3 text-[14px] text-[#6b7280]">
                 {completedJourneyDay != null ? (
-                  <>
-                    That&apos;s Day {completedJourneyDay}. Keep the streak!
-                  </>
+                  <>{tx(uiLang, "fl_streak", { day: completedJourneyDay })}</>
                 ) : (
-                  <>
-                    That&apos;s your first sentence. Keep going.
-                  </>
+                  <>{tx(uiLang, "fl_firstSentence")}</>
                 )}
               </p>
               <div
@@ -583,7 +640,7 @@ function FirstLineFlow() {
                     className="text-[10px] font-bold uppercase tracking-[0.12em]"
                     style={{ color: BRAND_PURPLE }}
                   >
-                    YOU SAID
+                    {tx(uiLang, "fl_youSaid")}
                   </p>
                   <p className="font-korean mt-2 text-[20px] font-bold leading-snug" style={{ color: TEXT_PRIMARY }}>
                     {userInput.trim()}
@@ -607,7 +664,7 @@ function FirstLineFlow() {
                     className="mt-5 rounded-full py-2.5 text-sm font-bold text-[#0f172a]"
                     style={{ backgroundColor: BRAND_GOLD }}
                   >
-                    ✨ Perfect match!
+                    {tx(uiLang, "fl_perfectMatch")}
                   </p>
                 ) : null}
               </div>
@@ -626,7 +683,7 @@ function FirstLineFlow() {
                     style={{ border: "2px dashed rgba(108, 46, 255, 0.3)" }}
                   >
                     <p className="text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: BRAND_PURPLE }}>
-                      DAY {nextDayNumber}
+                      {tx(uiLang, "fl_dayBadge", { n: nextDayNumber })}
                     </p>
                     <p className="font-korean mt-3 text-lg font-bold text-[#0f172a]">{nextJourneyPreview.ko}</p>
                     <p className="mt-2 text-[13px] text-[#6b7280]">{nextJourneyPreview.en}</p>
@@ -645,7 +702,7 @@ function FirstLineFlow() {
               {completedJourneyDay === 3 ? (
                 <>
                   <div className="my-8 h-px w-full max-w-[360px] mx-auto" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
-                  <p className="text-[15px] font-bold text-[#0f172a]">🎉 3-Day Challenge Complete!</p>
+                  <p className="text-[15px] font-bold text-[#0f172a]">{tx(uiLang, "fl_challengeComplete")}</p>
                 </>
               ) : null}
 
@@ -656,7 +713,7 @@ function FirstLineFlow() {
                   className="w-full rounded-[14px] py-4 text-[15px] font-bold text-white transition hover:brightness-110 active:scale-[0.99]"
                   style={{ backgroundColor: BRAND_PURPLE }}
                 >
-                  Try another one
+                  {tx(uiLang, "fl_tryAnother")}
                 </button>
                 <button
                   type="button"
@@ -664,21 +721,24 @@ function FirstLineFlow() {
                   className="w-full rounded-[14px] border-2 bg-white py-3.5 text-[15px] font-bold transition hover:bg-white/90 active:scale-[0.99]"
                   style={{ borderColor: BRAND_PURPLE, color: BRAND_PURPLE }}
                 >
-                  Go to home
+                  {tx(uiLang, "fl_goHome")}
                 </button>
               </div>
               <p className="mt-8 text-[12px] text-[#6b7280]">
                 {completedJourneyDay != null ? (
                   journeyDay <= 3 ? (
                     <>
-                      You&apos;re on <span style={{ color: BRAND_PURPLE }}>Day {journeyDay}</span> — come back
-                      tomorrow!
+                      {tx(uiLang, "fl_footerStreakBefore")}
+                      <span style={{ color: BRAND_PURPLE }}>
+                        {tx(uiLang, "fl_footerStreakHighlight", { day: journeyDay })}
+                      </span>
+                      {tx(uiLang, "fl_footerStreakAfter")}
                     </>
                   ) : (
-                    <>You finished all 3 days — come back tomorrow!</>
+                    <>{tx(uiLang, "fl_footerAllDone")}</>
                   )
                 ) : (
-                  <>Keep practicing — come back tomorrow!</>
+                  <>{tx(uiLang, "fl_footerKeep")}</>
                 )}
               </p>
             </div>
