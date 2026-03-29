@@ -112,21 +112,18 @@ export default function HomePage() {
     }
   };
 
-  const handleSayItNow = () => {
-    if (!line) return;
+  const goFirstLine = (category) => {
     trackStartDailyPhrase();
     const params = new URLSearchParams();
-    params.set("seed", encodeURIComponent(line.ko));
     params.set("lang", language);
-    params.set("mode", "phrase");
-    router.push(`/chat?${params.toString()}`);
+    if (category === "idol" || category === "drama" || category === "trip") {
+      params.set("category", category);
+    }
+    router.push(`/first-line?${params.toString()}`);
   };
 
-  const goVibeMission = (missionId) => {
-    const params = new URLSearchParams();
-    params.set("mission", missionId);
-    params.set("lang", language);
-    router.push(`/chat?${params.toString()}`);
+  const handleSayItNow = () => {
+    goFirstLine(null);
   };
 
   const goMissionList = () => {
@@ -208,7 +205,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => {
                     setShowOnboardingModal(false);
-                    handleSayItNow();
+                    goFirstLine(null);
                   }}
                   className="mt-6 w-full rounded-2xl py-3.5 text-[15px] font-semibold text-white shadow-[0_12px_32px_rgba(108,46,255,0.35)] transition hover:opacity-95 active:scale-[0.99]"
                   style={{ backgroundColor: BRAND_PURPLE }}
@@ -309,21 +306,21 @@ export default function HomePage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
               <button
                 type="button"
-                onClick={() => goVibeMission("greeting-friend")}
+                onClick={() => goFirstLine("idol")}
                 className="flex-1 rounded-2xl border border-[#E8E6E0] bg-white px-3 py-3 text-center text-[12px] font-semibold leading-tight text-[#334155] shadow-sm transition hover:border-[#d4d0c8] hover:bg-[#FAFAF8] sm:text-[13px]"
               >
                 {t.vibeIdol}
               </button>
               <button
                 type="button"
-                onClick={() => goVibeMission("drama-scene")}
+                onClick={() => goFirstLine("drama")}
                 className="flex-1 rounded-2xl border border-[#E8E6E0] bg-white px-3 py-3 text-center text-[12px] font-semibold leading-tight text-[#334155] shadow-sm transition hover:border-[#d4d0c8] hover:bg-[#FAFAF8] sm:text-[13px]"
               >
                 {t.vibeDrama}
               </button>
               <button
                 type="button"
-                onClick={() => goVibeMission("cafe-order")}
+                onClick={() => goFirstLine("trip")}
                 className="flex-1 rounded-2xl border border-[#E8E6E0] bg-white px-3 py-3 text-center text-[12px] font-semibold leading-tight text-[#334155] shadow-sm transition hover:border-[#d4d0c8] hover:bg-[#FAFAF8] sm:text-[13px]"
               >
                 {t.vibeTrip}
