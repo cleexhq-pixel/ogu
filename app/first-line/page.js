@@ -7,6 +7,9 @@ import Analytics from "@/app/components/Analytics";
 
 const BRAND_PURPLE = "#6c2eff";
 const BRAND_GOLD = "#ffd84d";
+const LAVENDER_BG = "#EDE9FE";
+const CARD_BORDER = "#DDD6FE";
+const TEXT_PRIMARY = "#0f172a";
 
 const CATEGORIES = {
   idol: {
@@ -312,13 +315,16 @@ function FirstLineFlow() {
     <>
       <Analytics />
       <main
-        className="min-h-screen px-4 py-8 font-jakarta text-[#0F172A]"
-        style={{ backgroundColor: "#f7f6f2" }}
+        className="min-h-screen px-4 py-8 font-jakarta"
+        style={{ backgroundColor: LAVENDER_BG, color: TEXT_PRIMARY }}
       >
         <div className="mx-auto w-full max-w-[480px]">
           {step === 1 && (
             <div key="s1" className={stepClass}>
-              <h1 className="text-center text-xl font-bold leading-snug text-[#0F172A] sm:text-2xl">
+              <h1
+                className="text-center text-xl font-bold leading-snug sm:text-2xl"
+                style={{ color: TEXT_PRIMARY }}
+              >
                 What&apos;s your vibe today?
               </h1>
               <p className="mt-2 text-center text-sm text-[#64748B] sm:text-[15px]">
@@ -330,7 +336,7 @@ function FirstLineFlow() {
                     key={key}
                     type="button"
                     onClick={() => selectCategory(key)}
-                    className="w-full rounded-2xl border border-[#E8E6E0] bg-white px-6 py-5 text-left text-lg font-semibold text-[#0F172A] shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition hover:border-[#d4d0c8] hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)] active:scale-[0.99]"
+                    className="w-full rounded-2xl border-2 border-[#DDD6FE] bg-white px-6 py-5 text-left text-lg font-bold text-[#0f172a] transition hover:border-[#6c2eff] active:scale-[0.99]"
                   >
                     {CATEGORIES[key].cardLabel}
                   </button>
@@ -341,20 +347,29 @@ function FirstLineFlow() {
 
           {step === 2 && content && (
             <div key="s2" className={stepClass}>
-              <p className="text-center text-xs font-semibold uppercase tracking-[0.14em] text-[#6c2eff]">
+              <p
+                className="text-center text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[11px]"
+                style={{ color: BRAND_PURPLE }}
+              >
                 {content.headerLabel}
               </p>
-              <div className="mt-6 rounded-2xl bg-white px-6 py-8 shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
-                <p className="font-korean text-center text-2xl font-bold leading-relaxed text-[#0F172A] sm:text-[1.65rem]">
+              <div
+                className="mt-5 rounded-[18px] border-2 bg-white px-6 py-8"
+                style={{ borderColor: CARD_BORDER, boxShadow: "0 10px 32px rgba(109, 40, 255, 0.06)" }}
+              >
+                <p
+                  className="font-korean text-center text-2xl font-bold leading-relaxed sm:text-[1.65rem]"
+                  style={{ color: TEXT_PRIMARY }}
+                >
                   {content.ko}
                 </p>
-                <p className="mt-4 text-center text-sm italic text-[#94A3B8] sm:text-base">{content.en}</p>
+                <p className="mt-4 text-center text-sm text-[#94A3B8] sm:text-base">{content.en}</p>
                 <button
                   type="button"
                   onClick={() => void playKoreanTts()}
                   disabled={ttsLoading}
-                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border-2 bg-white py-3 text-sm font-semibold transition disabled:opacity-50"
-                  style={{ borderColor: BRAND_GOLD, color: "#0F172A" }}
+                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border-2 bg-white py-3 text-sm font-semibold transition hover:bg-[#FAF8FF] disabled:opacity-50"
+                  style={{ borderColor: BRAND_PURPLE, color: BRAND_PURPLE }}
                 >
                   <span aria-hidden>🔊</span>
                   {ttsLoading ? "Loading…" : "Listen"}
@@ -362,10 +377,10 @@ function FirstLineFlow() {
                 <button
                   type="button"
                   onClick={() => setStep(3)}
-                  className="mt-4 w-full rounded-2xl py-4 text-[17px] font-bold text-white shadow-[0_12px_32px_rgba(108,46,255,0.35)] transition hover:brightness-110 active:scale-[0.98]"
-                  style={{ backgroundColor: BRAND_PURPLE }}
+                  className="mt-4 w-full rounded-2xl py-4 text-[17px] font-bold text-white transition hover:brightness-110 active:scale-[0.98]"
+                  style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
                 >
-                  Say it now →
+                  Say it now
                 </button>
               </div>
               <button
@@ -380,10 +395,13 @@ function FirstLineFlow() {
 
           {step === 3 && content && (
             <div key="s3" className={stepClass}>
-              <h2 className="text-center text-lg font-bold text-[#0F172A] sm:text-xl">
+              <h2
+                className="text-center text-lg font-bold sm:text-xl"
+                style={{ color: TEXT_PRIMARY }}
+              >
                 Now, say it in Korean! 🗣️
               </h2>
-              <p className="font-korean mt-6 text-center text-lg text-[#94A3B8]/45 sm:text-xl">
+              <p className="font-korean mt-6 text-center text-lg text-[#94A3B8]/50 sm:text-xl">
                 {content.ko}
               </p>
               <form onSubmit={handleSubmit} className="mt-8 space-y-4">
@@ -393,7 +411,7 @@ function FirstLineFlow() {
                     onChange={(e) => setUserInput(e.target.value)}
                     placeholder="Type in Korean..."
                     rows={4}
-                    className="font-korean min-h-[120px] min-w-0 flex-1 resize-none rounded-2xl border border-[#E8E6E0] bg-white px-4 py-3 text-[15px] text-[#0F172A] shadow-sm outline-none ring-[#6c2eff]/20 placeholder:text-[#94A3B8] focus:border-[#6c2eff] focus:ring-2"
+                    className="font-korean min-h-[120px] min-w-0 flex-1 resize-none rounded-[14px] border-2 border-[#DDD6FE] bg-white px-4 py-3 text-[15px] text-[#0f172a] outline-none transition placeholder:text-[#94A3B8] focus:border-[#6c2eff] focus:ring-2 focus:ring-[#6c2eff]/20"
                     autoComplete="off"
                     spellCheck={false}
                   />
@@ -402,18 +420,21 @@ function FirstLineFlow() {
                     onClick={() => void toggleVoiceInput()}
                     disabled={!getSpeechRecognition() || isRequestingMic}
                     title={getSpeechRecognition() ? "Voice input" : "Voice input not supported"}
-                    className={`flex h-[120px] w-[52px] shrink-0 flex-col items-center justify-center rounded-2xl border-2 text-xl transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                      isListening
-                        ? "border-transparent text-white shadow-[0_8px_24px_rgba(108,46,255,0.45)] ring-2 ring-[#6c2eff] ring-offset-2"
-                        : "border-[#E8E6E0] bg-white text-[#0F172A] hover:border-[#6c2eff]/40 hover:bg-[#FAF8FF]"
+                    className={`flex h-[120px] w-[52px] shrink-0 flex-col items-center justify-center rounded-[14px] border-2 bg-white text-xl transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                      isListening ? "shadow-[0_4px_16px_rgba(108,46,255,0.2)]" : "hover:bg-[#FAF8FF]"
                     }`}
-                    style={isListening ? { backgroundColor: BRAND_PURPLE } : undefined}
+                    style={{
+                      borderColor: isListening ? BRAND_PURPLE : CARD_BORDER,
+                      color: BRAND_PURPLE
+                    }}
                     aria-pressed={isListening}
                     aria-label={isListening ? "Stop listening" : "Start voice input"}
                   >
                     <span aria-hidden>🗣️</span>
                     {isRequestingMic && !isListening ? (
-                      <span className="mt-1 text-[9px] font-semibold leading-tight text-[#64748B]">…</span>
+                      <span className="mt-1 text-[9px] font-semibold leading-tight" style={{ color: BRAND_PURPLE }}>
+                        …
+                      </span>
                     ) : null}
                   </button>
                 </div>
@@ -421,10 +442,10 @@ function FirstLineFlow() {
                 <button
                   type="submit"
                   disabled={!userInput.trim() || isListening}
-                  className="w-full rounded-2xl py-4 text-[16px] font-bold text-white shadow-[0_12px_32px_rgba(108,46,255,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-                  style={{ backgroundColor: BRAND_PURPLE }}
+                  className="w-full rounded-2xl py-4 text-[16px] font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                  style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
                 >
-                  Submit →
+                  Submit
                 </button>
               </form>
               <button
@@ -442,21 +463,41 @@ function FirstLineFlow() {
 
           {step === 4 && content && (
             <div key="s4" className={stepClass}>
-              <p className="text-center text-5xl" aria-hidden>
+              <p className="text-center text-6xl leading-none" aria-hidden>
                 🎉
               </p>
-              <h2 className="mt-4 text-center text-2xl font-extrabold leading-tight text-[#0F172A] sm:text-[1.65rem]">
+              <h2
+                className="mt-5 text-center text-2xl font-extrabold leading-tight sm:text-[1.65rem]"
+                style={{ color: TEXT_PRIMARY }}
+              >
                 You just said your first Korean sentence!
               </h2>
-              <div className="mt-8 space-y-4 rounded-2xl bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.06)]">
+              <div
+                className="mt-8 space-y-4 rounded-[18px] border-2 bg-white p-5"
+                style={{ borderColor: CARD_BORDER, boxShadow: "0 10px 32px rgba(109, 40, 255, 0.06)" }}
+              >
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">You typed</p>
-                  <p className="font-korean mt-1 text-lg font-semibold text-[#0F172A]">{userInput.trim()}</p>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-[0.14em] sm:text-[11px]"
+                    style={{ color: BRAND_PURPLE }}
+                  >
+                    You typed
+                  </p>
+                  <p className="font-korean mt-2 text-lg font-semibold" style={{ color: TEXT_PRIMARY }}>
+                    {userInput.trim()}
+                  </p>
                 </div>
-                <div className="border-t border-[#F1F5F9] pt-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6c2eff]">Model line</p>
-                  <p className="font-korean mt-1 text-lg font-semibold text-[#0F172A]">{content.ko}</p>
-                  <p className="mt-1 text-sm italic text-[#94A3B8]">{content.en}</p>
+                <div className="border-t pt-4" style={{ borderColor: CARD_BORDER }}>
+                  <p
+                    className="text-[10px] font-bold uppercase tracking-[0.14em] sm:text-[11px]"
+                    style={{ color: BRAND_PURPLE }}
+                  >
+                    Model line
+                  </p>
+                  <p className="font-korean mt-2 text-lg font-semibold" style={{ color: TEXT_PRIMARY }}>
+                    {content.ko}
+                  </p>
+                  <p className="mt-1 text-sm text-[#94A3B8]">{content.en}</p>
                 </div>
                 {normalizeKorean(userInput) === normalizeKorean(content.ko) ? (
                   <p
@@ -471,15 +512,16 @@ function FirstLineFlow() {
                 <button
                   type="button"
                   onClick={tryAnother}
-                  className="w-full rounded-2xl py-4 text-[15px] font-bold text-white shadow-[0_12px_32px_rgba(108,46,255,0.35)] transition hover:brightness-110"
-                  style={{ backgroundColor: BRAND_PURPLE }}
+                  className="w-full rounded-2xl py-4 text-[15px] font-bold text-white transition hover:brightness-110"
+                  style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
                 >
-                  Try another one →
+                  Try another one
                 </button>
                 <button
                   type="button"
                   onClick={goHome}
-                  className="w-full rounded-2xl border-2 border-[#E8E6E0] bg-white py-3.5 text-[15px] font-semibold text-[#475569] transition hover:bg-[#FAFAF8]"
+                  className="w-full rounded-2xl border-2 bg-white py-3.5 text-[15px] font-semibold transition hover:bg-[#FAF8FF]"
+                  style={{ borderColor: BRAND_PURPLE, color: BRAND_PURPLE }}
                 >
                   Go to home
                 </button>
@@ -494,7 +536,7 @@ function FirstLineFlow() {
 
 function FirstLineFallback() {
   return (
-    <main className="min-h-screen" style={{ backgroundColor: "#f7f6f2" }}>
+    <main className="min-h-screen font-jakarta" style={{ backgroundColor: LAVENDER_BG }}>
       <div className="mx-auto max-w-[480px] px-4 py-16 text-center text-sm text-[#94A3B8]">Loading…</div>
     </main>
   );
