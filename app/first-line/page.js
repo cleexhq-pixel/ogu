@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { pageview } from "@/app/lib/gtag";
+import { pageview, trackSendVoice } from "@/app/lib/gtag";
 import Analytics from "@/app/components/Analytics";
 
 const BRAND_PURPLE = "#6c2eff";
@@ -39,6 +39,28 @@ function normalizeKorean(s) {
     .trim();
 }
 
+function getSpeechRecognition() {
+  if (typeof window === "undefined") return null;
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+async function requestMicrophoneAccess() {
+  if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    return { ok: true };
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((t) => t.stop());
+    return { ok: true };
+  } catch (err) {
+    const name = err && err.name;
+    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+      return { ok: false, denied: true };
+    }
+    return { ok: true };
+  }
+}
+
 function FirstLineFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -46,7 +68,14 @@ function FirstLineFlow() {
   const [category, setCategory] = useState(null);
   const [userInput, setUserInput] = useState("");
   const [ttsLoading, setTtsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isRequestingMic, setIsRequestingMic] = useState(false);
+  const [micHint, setMicHint] = useState(null);
   const audioRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const sttTranscriptRef = useRef("");
+  const userStoppedMicRef = useRef(false);
+  const completeStep3Ref = useRef(() => {});
   const hydratedFromUrl = useRef(false);
 
   const content = category ? CATEGORIES[category] : null;
@@ -136,12 +165,134 @@ function FirstLineFlow() {
     router.push(tail ? `/?${tail}` : "/");
   };
 
+  const completeStep3WithText = useCallback(
+    (text) => {
+      const trimmed = String(text || "").trim();
+      if (!trimmed) return;
+      stopAudio();
+      setUserInput(trimmed);
+      setStep(4);
+    },
+    [stopAudio]
+  );
+
+  completeStep3Ref.current = completeStep3WithText;
+
+  useEffect(() => {
+    const SpeechRecognition = getSpeechRecognition();
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "ko-KR";
+
+    recognition.onresult = (event) => {
+      let text = "";
+      for (let i = 0; i < event.results.length; i++) {
+        text += event.results[i][0].transcript;
+      }
+      const t = text.trim();
+      sttTranscriptRef.current = t;
+      setUserInput(t);
+    };
+
+    recognition.onstart = () => {
+      setIsRequestingMic(false);
+      setIsListening(true);
+      setMicHint(null);
+      sttTranscriptRef.current = "";
+    };
+
+    recognition.onerror = (event) => {
+      setIsRequestingMic(false);
+      setIsListening(false);
+      if (event.error === "not-allowed" || event.error === "denied" || event.error === "service-not-allowed") {
+        setMicHint("Please allow microphone access");
+      } else if (event.error !== "aborted") {
+        setMicHint("Voice input failed. Try again.");
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setIsRequestingMic(false);
+      if (userStoppedMicRef.current) {
+        userStoppedMicRef.current = false;
+        return;
+      }
+      const t = sttTranscriptRef.current.trim();
+      if (t) {
+        completeStep3Ref.current(t);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    return () => {
+      try {
+        recognition.abort();
+      } catch (_) {}
+      recognitionRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (step === 3) return;
+    try {
+      recognitionRef.current?.stop();
+    } catch (_) {}
+    setIsListening(false);
+    setIsRequestingMic(false);
+  }, [step]);
+
+  const toggleVoiceInput = useCallback(async () => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    if (isListening) {
+      userStoppedMicRef.current = true;
+      try {
+        recognition.stop();
+      } catch (_) {}
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      if (navigator.permissions?.query) {
+        const result = await navigator.permissions.query({ name: "microphone" });
+        if (result.state === "denied") {
+          setMicHint("Please allow microphone access");
+          return;
+        }
+      }
+    } catch (_) {}
+
+    setMicHint(null);
+    setIsRequestingMic(true);
+    try {
+      const mic = await requestMicrophoneAccess();
+      if (!mic.ok && mic.denied) {
+        setIsRequestingMic(false);
+        setMicHint("Please allow microphone access");
+        return;
+      }
+      userStoppedMicRef.current = false;
+      sttTranscriptRef.current = "";
+      recognition.start();
+      trackSendVoice();
+    } catch (e) {
+      console.warn("SpeechRecognition start failed", e);
+      setIsRequestingMic(false);
+      setMicHint("Please allow microphone access");
+    }
+  }, [isListening]);
+
   const handleSubmit = (e) => {
     e?.preventDefault?.();
     const trimmed = userInput.trim();
     if (!trimmed) return;
-    stopAudio();
-    setStep(4);
+    completeStep3WithText(trimmed);
   };
 
   const tryAnother = () => {
@@ -230,24 +381,46 @@ function FirstLineFlow() {
           {step === 3 && content && (
             <div key="s3" className={stepClass}>
               <h2 className="text-center text-lg font-bold text-[#0F172A] sm:text-xl">
-                Now, say it in Korean! 🎤
+                Now, say it in Korean! 🗣️
               </h2>
               <p className="font-korean mt-6 text-center text-lg text-[#94A3B8]/45 sm:text-xl">
                 {content.ko}
               </p>
               <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-                <textarea
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  placeholder="Type in Korean..."
-                  rows={4}
-                  className="font-korean w-full resize-none rounded-2xl border border-[#E8E6E0] bg-white px-4 py-3 text-[15px] text-[#0F172A] shadow-sm outline-none ring-[#6c2eff]/20 placeholder:text-[#94A3B8] focus:border-[#6c2eff] focus:ring-2"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
+                <div className="flex gap-3">
+                  <textarea
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    placeholder="Type in Korean..."
+                    rows={4}
+                    className="font-korean min-h-[120px] min-w-0 flex-1 resize-none rounded-2xl border border-[#E8E6E0] bg-white px-4 py-3 text-[15px] text-[#0F172A] shadow-sm outline-none ring-[#6c2eff]/20 placeholder:text-[#94A3B8] focus:border-[#6c2eff] focus:ring-2"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void toggleVoiceInput()}
+                    disabled={!getSpeechRecognition() || isRequestingMic}
+                    title={getSpeechRecognition() ? "Voice input" : "Voice input not supported"}
+                    className={`flex h-[120px] w-[52px] shrink-0 flex-col items-center justify-center rounded-2xl border-2 text-xl transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                      isListening
+                        ? "border-transparent text-white shadow-[0_8px_24px_rgba(108,46,255,0.45)] ring-2 ring-[#6c2eff] ring-offset-2"
+                        : "border-[#E8E6E0] bg-white text-[#0F172A] hover:border-[#6c2eff]/40 hover:bg-[#FAF8FF]"
+                    }`}
+                    style={isListening ? { backgroundColor: BRAND_PURPLE } : undefined}
+                    aria-pressed={isListening}
+                    aria-label={isListening ? "Stop listening" : "Start voice input"}
+                  >
+                    <span aria-hidden>🗣️</span>
+                    {isRequestingMic && !isListening ? (
+                      <span className="mt-1 text-[9px] font-semibold leading-tight text-[#64748B]">…</span>
+                    ) : null}
+                  </button>
+                </div>
+                {micHint ? <p className="text-center text-xs text-red-600/90">{micHint}</p> : null}
                 <button
                   type="submit"
-                  disabled={!userInput.trim()}
+                  disabled={!userInput.trim() || isListening}
                   className="w-full rounded-2xl py-4 text-[16px] font-bold text-white shadow-[0_12px_32px_rgba(108,46,255,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                   style={{ backgroundColor: BRAND_PURPLE }}
                 >
