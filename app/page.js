@@ -134,40 +134,75 @@ export default function HomePage() {
         <div className="mx-auto flex w-full max-w-[480px] flex-col gap-8 text-[#0F172A]">
           {showOnboardingModal && (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 font-jakarta"
+              style={{ backgroundColor: "rgba(15, 23, 42, 0.5)" }}
               role="dialog"
               aria-modal="true"
+              aria-labelledby="onboarding-modal-title"
             >
-              <div
-                className="w-full max-w-sm rounded-[18px] border bg-white p-8 shadow-lg"
-                style={{ borderColor: CARD_BORDER }}
-              >
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-[9px] text-xl" style={{ backgroundColor: BRAND_PURPLE }}>
-                  <span aria-hidden>🪄</span>
+              <div className="w-full max-w-[360px] rounded-[24px] bg-white px-7 py-8 shadow-lg">
+                <div
+                  className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-[28px] leading-none"
+                  style={{ backgroundColor: LAVENDER_BG }}
+                  aria-hidden
+                >
+                  🪄
                 </div>
-                <h2 className="mt-4 text-center text-lg font-bold leading-snug text-[#0F172A]">
-                  Say your first Korean line with Kkobi
+                <h2
+                  id="onboarding-modal-title"
+                  className="mt-5 text-center text-[22px] font-bold leading-snug text-[#0f172a]"
+                >
+                  Say your first{" "}
+                  <span style={{ color: BRAND_PURPLE }}>Korean sentence</span> in 30 seconds.
                 </h2>
-                <p className="mt-2 text-center text-sm text-[#64748B]">No sign-up — start right away.</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowOnboardingModal(false);
-                    goFirstLine(null);
-                  }}
-                  className="mt-6 w-full rounded-2xl py-3.5 text-[15px] font-semibold text-white transition hover:opacity-95 active:scale-[0.99]"
-                  style={{ backgroundColor: BRAND_PURPLE }}
-                >
-                  🗣️ Say it now
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowOnboardingModal(false)}
-                  className="mt-3 w-full text-center text-xs font-medium text-[#94A3B8] hover:text-[#64748B]"
-                >
-                  Close
-                </button>
+                <div className="mt-3 space-y-0.5 text-center text-[14px] leading-relaxed text-[#6b7280]">
+                  <p>Pick a topic and start speaking.</p>
+                  <p>No sign-up needed.</p>
+                </div>
+                <div className="mt-6 flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowOnboardingModal(false);
+                      goFirstLine("idol");
+                    }}
+                    className="w-full rounded-[14px] border-2 border-[#DDD6FE] bg-[#EDE9FE] px-4 py-3.5 text-center text-[14px] font-bold text-[#0f172a] transition hover:border-[#6c2eff] active:scale-[0.99]"
+                  >
+                    👑 My favorite idol
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowOnboardingModal(false);
+                      goFirstLine("drama");
+                    }}
+                    className="w-full rounded-[14px] border-2 border-[#DDD6FE] bg-[#EDE9FE] px-4 py-3.5 text-center text-[14px] font-bold text-[#0f172a] transition hover:border-[#6c2eff] active:scale-[0.99]"
+                  >
+                    🎬 K-drama line
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowOnboardingModal(false);
+                      goFirstLine("trip");
+                    }}
+                    className="w-full rounded-[14px] border-2 border-[#DDD6FE] bg-[#EDE9FE] px-4 py-3.5 text-center text-[14px] font-bold text-[#0f172a] transition hover:border-[#6c2eff] active:scale-[0.99]"
+                  >
+                    ✈️ Korea trip
+                  </button>
+                </div>
+                <div className="mt-5 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowOnboardingModal(false)}
+                    className="text-[14px] text-[#6b7280] transition hover:opacity-80"
+                  >
+                    or <span style={{ color: BRAND_PURPLE }}>browse first</span>
+                  </button>
+                </div>
+                <p className="mt-3 text-center text-[11px] text-[#9ca3af]">
+                  No account required · Free to try
+                </p>
               </div>
             </div>
           )}
