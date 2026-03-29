@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { pageview, trackAppOpen, trackStartDailyPhrase } from "@/app/lib/gtag";
 import Analytics from "@/app/components/Analytics";
@@ -15,10 +15,26 @@ const DIVIDER_COLOR = "#E4DDF7";
 const GOLD_UNDERLINE = "border-b-[3px] pb-0.5";
 const goldUnderlineStyle = { borderColor: BRAND_GOLD };
 
+const HOME_JOURNEY_DAYS = [
+  { day: 1, title: "My favorite", ko: "제 최애는 ___예요." },
+  { day: 2, title: "I like this", ko: "저는 ___를 좋아해요." },
+  { day: 3, title: "I'm learning", ko: "저는 한국어를 배우고 있어요." }
+];
+
+function readJourneyCurrentFromStorage() {
+  if (typeof window === "undefined") return 1;
+  const raw = window.localStorage.getItem("ogu_current_day");
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(n, 4);
+}
+
 export default function HomePage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [language, setLanguage] = useState("en");
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [journeyCurrent, setJourneyCurrent] = useState(1);
   const activeUserIdRef = useRef(null);
 
   useEffect(() => {
@@ -37,6 +53,24 @@ export default function HomePage() {
       // ignore
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sync = () => setJourneyCurrent(readJourneyCurrentFromStorage());
+    sync();
+    const onVis = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    const onFocus = () => sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [pathname]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -123,6 +157,13 @@ export default function HomePage() {
     const qs = new URLSearchParams();
     qs.set("lang", language);
     router.push(`/first-line?${qs.toString()}`);
+  };
+
+  const openActiveJourneyDay = () => {
+    trackStartDailyPhrase();
+    const params = new URLSearchParams();
+    params.set("lang", language);
+    router.push(`/first-line?${params.toString()}`);
   };
 
   const langPillBase = "rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors duration-200";
@@ -300,6 +341,109 @@ export default function HomePage() {
               >
                 🗣️ Say it now
               </button>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <p
+              className="text-center text-[9px] font-bold uppercase tracking-[0.16em]"
+              style={{ color: BRAND_PURPLE }}
+            >
+              YOUR 3-DAY JOURNEY
+            </p>
+            <div className="flex flex-col gap-3">
+              {HOME_JOURNEY_DAYS.map((row) => {
+                const isDone = row.day < journeyCurrent;
+                const isActive = row.day === journeyCurrent && journeyCurrent <= 3;
+                const isLocked = !isDone && !isActive;
+                const baseCard =
+                  "flex w-full gap-3 rounded-xl border-2 bg-white p-4 text-left transition";
+                const cardClass = isActive
+                  ? `${baseCard} ring-0`
+                  : `${baseCard} border-[#DDD6FE]`;
+                const cardStyle = isActive
+                  ? { borderColor: BRAND_PURPLE, boxShadow: "0 0 0 1px rgba(108,46,255,0.15)" }
+                  : undefined;
+
+                const inner = (
+                  <>
+                    <div className="flex shrink-0 flex-col items-center justify-start pt-0.5">
+                      {isDone ? (
+                        <span
+                          className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
+                          style={{ backgroundColor: BRAND_PURPLE }}
+                          aria-hidden
+                        >
+                          ✓
+                        </span>
+                      ) : isActive ? (
+                        <span
+                          className="flex h-10 w-10 items-center justify-center rounded-full text-base font-bold text-[#0f172a]"
+                          style={{ backgroundColor: BRAND_GOLD }}
+                          aria-hidden
+                        >
+                          {row.day}
+                        </span>
+                      ) : (
+                        <span
+                          className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#d1d5db] bg-[#f3f4f6] text-sm font-bold text-[#9ca3af]"
+                          aria-hidden
+                        >
+                          {row.day}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={`text-[15px] font-bold ${isLocked ? "text-[#9ca3af]" : "text-[#0f172a]"}`}
+                      >
+                        {row.title}
+                      </p>
+                      <p
+                        className={`font-korean mt-1 text-sm font-semibold ${isLocked ? "text-[#c4c4c4]" : "text-[#334155]"}`}
+                      >
+                        {row.ko}
+                      </p>
+                      <p
+                        className={`mt-2 text-[11px] font-bold uppercase tracking-wide ${
+                          isDone
+                            ? "text-[#6c2eff]"
+                            : isActive
+                              ? "text-[#6c2eff]"
+                              : "text-[#9ca3af]"
+                        }`}
+                      >
+                        {isDone ? "Done!" : isActive ? "Today" : "Locked"}
+                      </p>
+                    </div>
+                  </>
+                );
+
+                if (isActive) {
+                  return (
+                    <button
+                      key={row.day}
+                      type="button"
+                      onClick={openActiveJourneyDay}
+                      className={cardClass}
+                      style={cardStyle}
+                    >
+                      {inner}
+                    </button>
+                  );
+                }
+
+                return (
+                  <div
+                    key={row.day}
+                    className={cardClass}
+                    style={cardStyle}
+                    aria-disabled={isLocked}
+                  >
+                    {inner}
+                  </div>
+                );
+              })}
             </div>
           </section>
 

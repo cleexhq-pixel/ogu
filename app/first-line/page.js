@@ -10,6 +10,51 @@ const BRAND_GOLD = "#ffd84d";
 const LAVENDER_BG = "#EDE9FE";
 const CARD_BORDER = "#DDD6FE";
 const TEXT_PRIMARY = "#0f172a";
+const OGU_CURRENT_DAY_KEY = "ogu_current_day";
+
+const JOURNEY_DAYS = [
+  {
+    day: 1,
+    ko: "제 최애는 BTS예요.",
+    en: "My favorite is BTS.",
+    journeyTitle: "My favorite",
+    journeyKoLine: "제 최애는 ___예요."
+  },
+  {
+    day: 2,
+    ko: "저는 K-pop을 좋아해요.",
+    en: "I like K-pop.",
+    journeyTitle: "I like this",
+    journeyKoLine: "저는 ___를 좋아해요."
+  },
+  {
+    day: 3,
+    ko: "저는 한국어를 배우고 있어요.",
+    en: "I'm learning Korean.",
+    journeyTitle: "I'm learning",
+    journeyKoLine: "저는 한국어를 배우고 있어요."
+  }
+];
+
+function readStoredCurrentDay() {
+  if (typeof window === "undefined") return 1;
+  const raw = window.localStorage.getItem(OGU_CURRENT_DAY_KEY);
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(n, 4);
+}
+
+function journeyDayToContent(dayNum) {
+  const row = JOURNEY_DAYS[dayNum - 1];
+  if (!row) return null;
+  return {
+    id: "idol",
+    cardLabel: `👑 Day ${dayNum}`,
+    headerLabel: `Day ${dayNum} · ${row.journeyTitle}`,
+    ko: row.ko,
+    en: row.en
+  };
+}
 
 const CATEGORIES = {
   idol: {
@@ -74,6 +119,8 @@ function FirstLineFlow() {
   const [isListening, setIsListening] = useState(false);
   const [isRequestingMic, setIsRequestingMic] = useState(false);
   const [micHint, setMicHint] = useState(null);
+  const [journeyDay, setJourneyDay] = useState(1);
+  const [completedJourneyDay, setCompletedJourneyDay] = useState(null);
   const audioRef = useRef(null);
   const recognitionRef = useRef(null);
   const sttTranscriptRef = useRef("");
@@ -81,7 +128,10 @@ function FirstLineFlow() {
   const completeStep3Ref = useRef(() => {});
   const hydratedFromUrl = useRef(false);
 
-  const content = category ? CATEGORIES[category] : null;
+  const journeyActive = journeyDay >= 1 && journeyDay <= 3;
+  const journeyContent = journeyActive ? journeyDayToContent(journeyDay) : null;
+  const categoryContent = category ? CATEGORIES[category] : null;
+  const content = journeyActive && journeyContent ? journeyContent : categoryContent;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -90,13 +140,21 @@ function FirstLineFlow() {
 
   useEffect(() => {
     if (hydratedFromUrl.current) return;
+    hydratedFromUrl.current = true;
+    const d = readStoredCurrentDay();
+    setJourneyDay(d);
     const cat = searchParams.get("category");
+    if (d <= 3) {
+      setCategory("idol");
+      setStep(2);
+      setUserInput("");
+      return;
+    }
     if (cat === "idol" || cat === "drama" || cat === "trip") {
       setCategory(cat);
       setStep(2);
       setUserInput("");
     }
-    hydratedFromUrl.current = true;
   }, [searchParams]);
 
   const stopAudio = useCallback(() => {
@@ -173,10 +231,20 @@ function FirstLineFlow() {
       const trimmed = String(text || "").trim();
       if (!trimmed) return;
       stopAudio();
+      if (journeyDay >= 1 && journeyDay <= 3) {
+        setCompletedJourneyDay(journeyDay);
+        const next = Math.min(journeyDay + 1, 4);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(OGU_CURRENT_DAY_KEY, String(next));
+        }
+        setJourneyDay(next);
+      } else {
+        setCompletedJourneyDay(null);
+      }
       setUserInput(trimmed);
       setStep(4);
     },
-    [stopAudio]
+    [stopAudio, journeyDay]
   );
 
   completeStep3Ref.current = completeStep3WithText;
@@ -300,16 +368,34 @@ function FirstLineFlow() {
 
   const tryAnother = () => {
     stopAudio();
-    setCategory(null);
+    setCompletedJourneyDay(null);
     setUserInput("");
+    if (journeyDay <= 3) {
+      setStep(2);
+      return;
+    }
+    setCategory(null);
     setStep(1);
     const qs = buildQs();
     const tail = qs.toString();
     router.replace(tail ? `/first-line?${tail}` : "/first-line");
   };
 
+  const startNextJourneyDay = () => {
+    stopAudio();
+    setCompletedJourneyDay(null);
+    setUserInput("");
+    setStep(2);
+  };
+
   const stepClass =
     "w-full transition-all duration-300 ease-out motion-reduce:transition-none animate-fade-in-up";
+
+  const successContent =
+    completedJourneyDay != null ? journeyDayToContent(completedJourneyDay) : content;
+  const nextJourneyPreview =
+    completedJourneyDay != null && completedJourneyDay < 3 ? JOURNEY_DAYS[completedJourneyDay] : null;
+  const nextDayNumber = completedJourneyDay != null ? completedJourneyDay + 1 : null;
 
   return (
     <>
@@ -383,13 +469,15 @@ function FirstLineFlow() {
                   Say it now
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={goChooseTopic}
-                className="mt-6 w-full text-center text-xs font-medium text-[#94A3B8] transition hover:text-[#64748B]"
-              >
-                ← Choose another topic
-              </button>
+              {!journeyActive ? (
+                <button
+                  type="button"
+                  onClick={goChooseTopic}
+                  className="mt-6 w-full text-center text-xs font-medium text-[#94A3B8] transition hover:text-[#64748B]"
+                >
+                  ← Choose another topic
+                </button>
+              ) : null}
             </div>
           )}
 
@@ -461,7 +549,7 @@ function FirstLineFlow() {
             </div>
           )}
 
-          {step === 4 && content && (
+          {step === 4 && successContent && (
             <div key="s4" className={`${stepClass} mx-auto w-full max-w-[400px] text-center`}>
               <div
                 className="inline-flex items-center justify-center rounded-[20px] px-4 py-2 text-[11px] font-bold text-white"
@@ -476,7 +564,15 @@ function FirstLineFlow() {
                 <span style={{ color: BRAND_PURPLE }}>Korean!</span>
               </h2>
               <p className="mt-3 text-[14px] text-[#6b7280]">
-                That&apos;s your first sentence. Keep going.
+                {completedJourneyDay != null ? (
+                  <>
+                    That&apos;s Day {completedJourneyDay}. Keep the streak!
+                  </>
+                ) : (
+                  <>
+                    That&apos;s your first sentence. Keep going.
+                  </>
+                )}
               </p>
               <div
                 className="mt-8 rounded-[20px] border-2 bg-white px-5 py-6 text-center"
@@ -502,11 +598,11 @@ function FirstLineFlow() {
                     MODEL LINE
                   </p>
                   <p className="font-korean mt-2 text-[20px] font-bold leading-snug" style={{ color: TEXT_PRIMARY }}>
-                    {content.ko}
+                    {successContent.ko}
                   </p>
-                  <p className="mt-2 text-[13px] text-[#6b7280]">{content.en}</p>
+                  <p className="mt-2 text-[13px] text-[#6b7280]">{successContent.en}</p>
                 </div>
-                {normalizeKorean(userInput) === normalizeKorean(content.ko) ? (
+                {normalizeKorean(userInput) === normalizeKorean(successContent.ko) ? (
                   <p
                     className="mt-5 rounded-full py-2.5 text-sm font-bold text-[#0f172a]"
                     style={{ backgroundColor: BRAND_GOLD }}
@@ -515,6 +611,44 @@ function FirstLineFlow() {
                   </p>
                 ) : null}
               </div>
+
+              {nextJourneyPreview && nextDayNumber != null ? (
+                <>
+                  <div className="my-8 h-px w-full max-w-[360px] mx-auto" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
+                  <p
+                    className="text-[11px] font-bold uppercase tracking-[0.14em]"
+                    style={{ color: BRAND_PURPLE }}
+                  >
+                    Up next — Day {nextDayNumber}
+                  </p>
+                  <div
+                    className="mt-4 rounded-[14px] bg-white px-4 py-5 text-center"
+                    style={{ border: "2px dashed rgba(108, 46, 255, 0.3)" }}
+                  >
+                    <p className="text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: BRAND_PURPLE }}>
+                      DAY {nextDayNumber}
+                    </p>
+                    <p className="font-korean mt-3 text-lg font-bold text-[#0f172a]">{nextJourneyPreview.ko}</p>
+                    <p className="mt-2 text-[13px] text-[#6b7280]">{nextJourneyPreview.en}</p>
+                    <button
+                      type="button"
+                      onClick={startNextJourneyDay}
+                      className="mt-5 w-full rounded-[14px] py-3.5 text-[14px] font-bold text-white transition hover:brightness-110 active:scale-[0.99]"
+                      style={{ backgroundColor: BRAND_PURPLE }}
+                    >
+                      Start Day {nextDayNumber} now
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
+              {completedJourneyDay === 3 ? (
+                <>
+                  <div className="my-8 h-px w-full max-w-[360px] mx-auto" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
+                  <p className="text-[15px] font-bold text-[#0f172a]">🎉 3-Day Challenge Complete!</p>
+                </>
+              ) : null}
+
               <div className="mt-8 flex flex-col gap-3">
                 <button
                   type="button"
@@ -534,7 +668,18 @@ function FirstLineFlow() {
                 </button>
               </div>
               <p className="mt-8 text-[12px] text-[#6b7280]">
-                You&apos;re on <span style={{ color: BRAND_PURPLE }}>Day 1</span> — come back tomorrow!
+                {completedJourneyDay != null ? (
+                  journeyDay <= 3 ? (
+                    <>
+                      You&apos;re on <span style={{ color: BRAND_PURPLE }}>Day {journeyDay}</span> — come back
+                      tomorrow!
+                    </>
+                  ) : (
+                    <>You finished all 3 days — come back tomorrow!</>
+                  )
+                ) : (
+                  <>Keep practicing — come back tomorrow!</>
+                )}
               </p>
             </div>
           )}
