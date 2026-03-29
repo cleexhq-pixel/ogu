@@ -304,10 +304,10 @@ export default function HomePage() {
       language === "ko" ? "자유 대화" : language === "id" ? "Bebas Bicara" : "Free Talk",
     oneMinuteCta:
       language === "ko"
-        ? "한국어 1분 체험 시작 🐥"
+        ? "한국어 1분 체험 시작 🪄"
         : language === "id"
-        ? "Mulai Praktik 1 Menit 🐥"
-        : "Start 1-Min Korean Practice 🐥",
+        ? "Mulai Praktik 1 Menit 🪄"
+        : "Start 1-Min Korean Practice 🪄",
     oneMinuteSub:
       language === "ko"
         ? "케이팝 아티스트 Kkobi 인터뷰 · 1분 · 말하기 중심 · 회원가입 없음"
@@ -316,10 +316,10 @@ export default function HomePage() {
         : "Interview K-pop artist Kkobi · 1 min · Voice-first · No sign-up",
     onboardingTitle:
       language === "ko"
-        ? "안녕하세요! 꼬비예요 🐥"
+        ? "안녕하세요! 꼬비예요 🪄"
         : language === "id"
-        ? "Halo! Saya Kkobi 🐥"
-        : "Hello! I'm Kkobi 🐥",
+        ? "Halo! Saya Kkobi 🪄"
+        : "Hello! I'm Kkobi 🪄",
     onboardingDesc:
       language === "ko"
         ? "AI 친구와 1분 한국어 대화를 해보세요.\n회원가입 없이 바로 시작할 수 있어요!"
@@ -351,7 +351,7 @@ export default function HomePage() {
             aria-modal="true"
           >
             <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-              <p className="text-center text-4xl">🐥</p>
+              <p className="text-center text-4xl">🪄</p>
               <h2 className="mt-3 text-center text-lg font-bold text-[#0F172A]">{t.onboardingTitle}</h2>
               <p className="mt-2 whitespace-pre-line text-center text-sm text-[#64748B]">{t.onboardingDesc}</p>
               <p className="mt-3 rounded-xl bg-[#EEF2FF] px-3 py-2 text-center text-sm font-medium text-[#4F46E5]">
@@ -379,7 +379,7 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="text-2xl" aria-hidden>
-                🐥
+                🪄
               </span>
               <span className="text-lg font-bold tracking-tight text-[#0F172A]">Kkobi</span>
             </div>
@@ -434,7 +434,7 @@ export default function HomePage() {
             {language === "ko" ? "AI 한국어 회화" : language === "id" ? "Percakapan Korea AI" : "AI Korean Conversation"}
           </p>
           <h1 className="text-3xl font-extrabold tracking-tight text-[#0F172A] sm:text-4xl md:text-[2.5rem]">
-            {language === "ko" ? "꼬비 🐥" : "Kkobi 🐥"}
+            {language === "ko" ? "꼬비 🪄" : "Kkobi 🪄"}
           </h1>
           <div className="mx-auto max-w-md text-center text-base leading-relaxed text-[#64748B] sm:text-lg">
             {language === "ko" ? (
@@ -466,7 +466,7 @@ export default function HomePage() {
               <p className="korean-text mt-2 text-lg font-bold text-[#0F172A]">{todayPhrase.korean}</p>
               <p className="mt-1 text-[13px] text-[#64748B]">{phraseTranslation}</p>
               <p className="korean-body mt-2 text-[12px] text-[#64748B]">
-                🐥 {todayPhrase.context}
+                🪄 {todayPhrase.context}
               </p>
               <button
                 type="button"

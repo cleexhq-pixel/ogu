@@ -87,10 +87,10 @@ export default function MissionPage() {
           : "Steps preview",
       recommendedTitle:
         language === "ko"
-          ? "🐥 지금 바로 시작하세요!"
+          ? "🪄 지금 바로 시작하세요!"
           : language === "id"
-          ? "🐥 Mulai sekarang!"
-          : "🐥 Start right now!",
+          ? "🪄 Mulai sekarang!"
+          : "🪄 Start right now!",
       recommendedBadge:
         language === "ko" ? "추천" : language === "id" ? "Rekomendasi" : "Recommended",
       moreMissions:
@@ -144,7 +144,7 @@ export default function MissionPage() {
           </button>
           <div className="flex items-center gap-2">
             <span className="text-xl" aria-hidden>
-              🐥
+              🪄
             </span>
             <h1 className="text-lg font-bold">{labels.header}</h1>
           </div>

@@ -14,9 +14,9 @@ const SAFETY_RULES =
   "- Violent or threatening language\n" +
   "- Spam or completely irrelevant content\n\n" +
   "Then respond ONLY with this exact JSON format (no other text). Include message_ko, message_en, and message_id:\n" +
-  "First violation: {\"violation\": true, \"level\": 1, \"message_ko\": \"꼬비~ 그런 말은 한국어 공부에 도움이 안 돼요! 바른 말로 다시 해볼까요? 🐥\", \"message_en\": \"Kkobi~ That kind of language doesn't help with Korean learning! Let's try again with kind words 🐥\", \"message_id\": \"Kkobi~ Bahasa seperti itu tidak membantu belajar Korea! Coba lagi dengan kata-kata yang baik 🐥\"}\n\n" +
+  "First violation: {\"violation\": true, \"level\": 1, \"message_ko\": \"꼬비~ 그런 말은 한국어 공부에 도움이 안 돼요! 바른 말로 다시 해볼까요? 🪄\", \"message_en\": \"Kkobi~ That kind of language doesn't help with Korean learning! Let's try again with kind words 🪄\", \"message_id\": \"Kkobi~ Bahasa seperti itu tidak membantu belajar Korea! Coba lagi dengan kata-kata yang baik 🪄\"}\n\n" +
   "If REPEATED violation (level 2): {\"violation\": true, \"level\": 2, \"message_ko\": \"또 그런 말을 했네요. 꼬비가 속상해요 😢 한 번만 더 하면 대화를 끝낼게요!\", \"message_en\": \"You said that again. Kkobi is sad 😢 One more time and the conversation will end!\", \"message_id\": \"Kamu mengatakannya lagi. Kkobi sedih 😢 Satu kali lagi percakapan akan diakhiri!\"}\n\n" +
-  "If THIRD violation (level 3): {\"violation\": true, \"level\": 3, \"message_ko\": \"대화를 종료할게요. 다음엔 바른 말로 만나요! 🐥\", \"message_en\": \"Ending the conversation. Let's meet again with kind words! 🐥\", \"message_id\": \"Mengakhiri percakapan. Sampai jumpa dengan kata-kata yang baik! 🐥\"}\n\n" +
+  "If THIRD violation (level 3): {\"violation\": true, \"level\": 3, \"message_ko\": \"대화를 종료할게요. 다음엔 바른 말로 만나요! 🪄\", \"message_en\": \"Ending the conversation. Let's meet again with kind words! 🪄\", \"message_id\": \"Mengakhiri percakapan. Sampai jumpa dengan kata-kata yang baik! 🪄\"}\n\n" +
   "You will be told the current violation count. Use level 1 when count is 0, level 2 when count is 1, level 3 when count is 2 or more.\n\n" +
   "For all normal Korean learning conversations, respond as usual (no JSON).\n\n";
 
@@ -116,7 +116,7 @@ function buildSystemPrompt(level, persona, violationCount, language, seed, missi
       : "Persona: 자유꼬비 — free conversation on any topic the user chooses; still obey sentence/line limits below.\n";
 
   const learningCore =
-    "You are Kkobi 🐥, a Korean conversation tutor. Follow these rules for ALL normal replies (when not outputting safety JSON).\n\n" +
+    "You are Kkobi 🪄, a Korean conversation tutor. Follow these rules for ALL normal replies (when not outputting safety JSON).\n\n" +
     "[Sentence length and structure — HIGHEST priority for Korean text]\n" +
     "- Korean part: at most 2 lines.\n" +
     "- Each Korean line is exactly ONE sentence, ending with . or ? or ! (no other closing).\n" +

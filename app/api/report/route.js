@@ -82,7 +82,7 @@ export async function POST(request) {
       return NextResponse.json({
         expressions: [],
         corrections: [],
-        encouragement: "잘 하셨어요! 🐥"
+        encouragement: "잘 하셨어요! 🪄"
       });
     }
 

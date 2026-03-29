@@ -278,10 +278,10 @@ function ReportContent() {
     const lines = [];
     lines.push(
       language === "ko"
-        ? "🐥 꼬비 한국어 회화 리포트"
+        ? "🪄 꼬비 한국어 회화 리포트"
         : language === "id"
-        ? "🐥 Laporan Percakapan Korea Kkobi"
-        : "🐥 Kkobi Korean Conversation Report"
+        ? "🪄 Laporan Percakapan Korea Kkobi"
+        : "🪄 Kkobi Korean Conversation Report"
     );
     lines.push(
       language === "ko" ? `레벨: ${levelLabel}` : language === "id" ? `Level: ${levelLabel}` : `Level: ${levelLabel}`
@@ -443,7 +443,7 @@ function ReportContent() {
               <p className="text-[12px] text-[#64748B]">{durationText}</p>
             </div>
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FFFFFF] text-3xl shadow-[0_8px_24px_rgba(79,70,229,0.12)]">
-              🐥
+              🪄
             </div>
           </div>
         </section>
@@ -548,7 +548,7 @@ function ReportContent() {
               ))}
             </div>
             <p className="text-center text-[12px] font-medium text-[#D97706]">
-              {language === "ko" ? "이 표현들을 기억해두세요! 🐥" : language === "id" ? "Ingat ini! 🐥" : "Remember these! 🐥"}
+              {language === "ko" ? "이 표현들을 기억해두세요! 🪄" : language === "id" ? "Ingat ini! 🪄" : "Remember these! 🪄"}
             </p>
           </section>
         )}
@@ -596,7 +596,7 @@ function ReportContent() {
             onClick={() => router.push("/")}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#4F46E5] px-5 py-3.5 text-[14px] font-semibold text-white shadow-[0_12px_32px_rgba(79,70,229,0.35)] transition hover:bg-[#4338CA] hover:shadow-[0_16px_40px_rgba(79,70,229,0.4)] active:scale-[0.98] sm:w-auto"
           >
-            {language === "ko" ? "다시 대화하기 🐥" : language === "id" ? "Mulai Lagi 🐥" : "Talk Again 🐥"}
+            {language === "ko" ? "다시 대화하기 🪄" : language === "id" ? "Mulai Lagi 🪄" : "Talk Again 🪄"}
           </button>
           <button
             type="button"
@@ -621,19 +621,19 @@ function ReportContent() {
             {feedbackThanks ? (
               <p className="text-center text-sm font-semibold text-[#4F46E5]">
                 {language === "ko"
-                  ? "소중한 의견 감사해요! 🐥"
+                  ? "소중한 의견 감사해요! 🪄"
                   : language === "id"
-                  ? "Terima kasih atas masukan Anda! 🐥"
-                  : "Thank you for your feedback! 🐥"}
+                  ? "Terima kasih atas masukan Anda! 🪄"
+                  : "Thank you for your feedback! 🪄"}
               </p>
             ) : (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-[#0F172A]">
                   {language === "ko"
-                    ? "이번 학습 어떠셨나요? 🐥"
+                    ? "이번 학습 어떠셨나요? 🪄"
                     : language === "id"
-                    ? "Bagaimana latihannya? 🐥"
-                    : "How was your practice? 🐥"}
+                    ? "Bagaimana latihannya? 🪄"
+                    : "How was your practice? 🪄"}
                 </h3>
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -712,7 +712,7 @@ function ReportContent() {
             >
               {/* 상단: 로고 + URL */}
               <div className="flex items-center justify-between border-b border-[#E5E7EB] px-5 py-3">
-                <span className="text-lg font-bold text-[#4F46E5]">🐥 Kkobi</span>
+                <span className="text-lg font-bold text-[#4F46E5]">🪄 Kkobi</span>
                 <span className="text-[9px] text-[#64748B]">ogu-three.vercel.app</span>
               </div>
               {/* 중앙: 완료 문구 + 페르소나/레벨 + 표현 3개 */}
@@ -825,7 +825,7 @@ export default function ReportPage() {
     <Suspense
       fallback={
         <main className="flex min-h-screen items-center justify-center bg-[#F9FAFB] px-4 py-8 text-[#0F172A]">
-          <span className="animate-pulse-soft">🐥</span>
+          <span className="animate-pulse-soft">🪄</span>
         </main>
       }
     >

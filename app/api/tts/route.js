@@ -18,7 +18,7 @@ function sanitizeTextForTts(raw) {
 
   s = s.replace(/[\uFE0F\u200D]/g, "");
 
-  // 괄호 안 이모티콘/이모지 설명 (예: (🐥), (병아리), (이모지) — 이모지는 위에서 제거된 뒤 빈 괄호·텍스트만 남을 수 있음)
+  // 괄호 안 이모티콘/이모지 설명 (예: (🪄), (마법 지팡이), (이모지) — 이모지는 위에서 제거된 뒤 빈 괄호·텍스트만 남을 수 있음)
   const parenEmoticonPattern =
     /\(\s*(?:병아리|이모지|이모티콘|emoji|emoticon|chick|smile|smiley|하트|heart|thumbs|OK|ok)\s*\)/gi;
   let prev;

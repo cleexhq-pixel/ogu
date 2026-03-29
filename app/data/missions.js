@@ -9,9 +9,9 @@ export const MISSIONS = [
     prompt:
       "You are a friendly café worker named Jieun. Guide the user through ordering a drink in Korean. Keep each response to 1-2 sentences. Encourage warmly after every attempt.",
     completion: {
-      ko: "카페 주문 완료! 정말 자연스러웠어요 🐥",
-      en: "Café order complete! That was so natural 🐥",
-      id: "Pesanan kafe selesai! Sangat alami 🐥"
+      ko: "카페 주문 완료! 정말 자연스러웠어요 🪄",
+      en: "Café order complete! That was so natural 🪄",
+      id: "Pesanan kafe selesai! Sangat alami 🪄"
     }
   },
   {
@@ -24,9 +24,9 @@ export const MISSIONS = [
     prompt:
       "Help the user practice self-introduction in Korean. Be warm and ask follow-up questions naturally. Keep responses short and encouraging.",
     completion: {
-      ko: "자기소개 완료! 멋진 소개였어요 🐥",
-      en: "Intro complete! Great introduction 🐥",
-      id: "Perkenalan selesai! Luar biasa 🐥"
+      ko: "자기소개 완료! 멋진 소개였어요 🪄",
+      en: "Intro complete! Great introduction 🪄",
+      id: "Perkenalan selesai! Luar biasa 🪄"
     }
   },
   {
@@ -65,9 +65,9 @@ export const MISSIONS = [
     prompt:
       "You are a senior Korean colleague named Minjun. Guide the user in formal workplace Korean. Be patient and professional. Keep responses brief.",
     completion: {
-      ko: "직장 대화 완료! 매우 프로답게 말했어요 🐥",
-      en: "Work talk done! Very professional 🐥",
-      id: "Percakapan kerja selesai! Sangat profesional 🐥"
+      ko: "직장 대화 완료! 매우 프로답게 말했어요 🪄",
+      en: "Work talk done! Very professional 🪄",
+      id: "Percakapan kerja selesai! Sangat profesional 🪄"
     }
   },
   {
@@ -80,9 +80,9 @@ export const MISSIONS = [
     prompt:
       "Have a warm emotional conversation in Korean. Help the user express feelings naturally. Be supportive and empathetic. Keep responses short.",
     completion: {
-      ko: "감정 표현 완료! 마음이 따뜻해지는 대화였어요 🐥",
-      en: "Feelings shared! That was a heartwarming chat 🐥",
-      id: "Perasaan terungkap! Percakapan yang menghangatkan hati 🐥"
+      ko: "감정 표현 완료! 마음이 따뜻해지는 대화였어요 🪄",
+      en: "Feelings shared! That was a heartwarming chat 🪄",
+      id: "Perasaan terungkap! Percakapan yang menghangatkan hati 🪄"
     }
   },
   {
@@ -95,9 +95,9 @@ export const MISSIONS = [
     prompt:
       "Chat casually about daily schedules in Korean. Ask and answer questions about the user's day. Keep it light and encouraging.",
     completion: {
-      ko: "일정 대화 완료! 일상 표현을 잘 썼어요 🐥",
-      en: "Schedule chat done! Great use of daily expressions 🐥",
-      id: "Obrolan jadwal selesai! Ekspresi sehari-hari bagus 🐥"
+      ko: "일정 대화 완료! 일상 표현을 잘 썼어요 🪄",
+      en: "Schedule chat done! Great use of daily expressions 🪄",
+      id: "Obrolan jadwal selesai! Ekspresi sehari-hari bagus 🪄"
     }
   },
   {
@@ -110,9 +110,9 @@ export const MISSIONS = [
     prompt:
       "Act out a short K-drama style scene in Korean. Be dramatic but warm. Guide the user through emotional Korean expressions. Keep it fun.",
     completion: {
-      ko: "드라마 장면 완료! 완전 배우 같았어요 🐥",
-      en: "Drama scene complete! You were like a real actor 🐥",
-      id: "Adegan drama selesai! Seperti aktor sungguhan 🐥"
+      ko: "드라마 장면 완료! 완전 배우 같았어요 🪄",
+      en: "Drama scene complete! You were like a real actor 🪄",
+      id: "Adegan drama selesai! Seperti aktor sungguhan 🪄"
     }
   }
 ];

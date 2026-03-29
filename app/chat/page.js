@@ -1014,10 +1014,10 @@ function ChatContent() {
             trackReachDailyLimit();
             const blockMessage =
               language === "ko"
-                ? "오늘의 무료 연습 5회를 모두 사용했어요 🐥\n내일 다시 만나요!"
+                ? "오늘의 무료 연습 5회를 모두 사용했어요 🪄\n내일 다시 만나요!"
                 : language === "id"
-                ? "Sesi gratis hari ini sudah habis 🐥\nSampai jumpa besok!"
-                : "You've used all 5 free sessions today 🐥\nSee you tomorrow!";
+                ? "Sesi gratis hari ini sudah habis 🪄\nSampai jumpa besok!"
+                : "You've used all 5 free sessions today 🪄\nSee you tomorrow!";
             setMessages((prev) => [...prev, { role: "assistant", content: blockMessage }]);
             setInput("");
             return;
@@ -1044,10 +1044,10 @@ function ChatContent() {
               trackReachDailyLimit();
               const blockMessage =
                 language === "ko"
-                  ? "오늘의 무료 연습 5회를 모두 사용했어요 🐥\n내일 다시 만나요!"
+                  ? "오늘의 무료 연습 5회를 모두 사용했어요 🪄\n내일 다시 만나요!"
                   : language === "id"
-                  ? "Sesi gratis hari ini sudah habis 🐥\nSampai jumpa besok!"
-                  : "You've used all 5 free sessions today 🐥\nSee you tomorrow!";
+                  ? "Sesi gratis hari ini sudah habis 🪄\nSampai jumpa besok!"
+                  : "You've used all 5 free sessions today 🪄\nSee you tomorrow!";
               setMessages((prev) => [
                 ...prev,
                 { role: "assistant", content: blockMessage }
@@ -1847,7 +1847,7 @@ function ChatContent() {
                 : "border border-solid border-[#E5E7EB] bg-[#F8FAFC]"
             }`}
           >
-            <span className="absolute left-3 top-3 text-lg leading-none max-sm:left-3 max-sm:top-3 max-sm:text-base">🐥</span>
+            <span className="absolute left-3 top-3 text-lg leading-none max-sm:left-3 max-sm:top-3 max-sm:text-base">🪄</span>
             <div className="mt-7 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-0.5 max-sm:mt-6 max-sm:pr-0">
               {displayAssistant?.content ? (
                 <div key={aiFadeKey} className="animate-chat-ai-fade">
@@ -2054,10 +2054,10 @@ function ChatContent() {
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center">
               <p className="text-sm font-medium text-[#991B1B]">
                 {language === "ko"
-                  ? "오늘의 무료 연습 5회를 모두 사용했어요 🐥"
+                  ? "오늘의 무료 연습 5회를 모두 사용했어요 🪄"
                   : language === "id"
-                  ? "Sesi gratis hari ini sudah habis 🐥"
-                  : "You've used all 5 free sessions today 🐥"}
+                  ? "Sesi gratis hari ini sudah habis 🪄"
+                  : "You've used all 5 free sessions today 🪄"}
               </p>
               <button
                 type="button"
@@ -2119,7 +2119,7 @@ export default function ChatPage() {
     <Suspense
       fallback={
         <main className="flex h-[100dvh] max-h-[100dvh] items-center justify-center overflow-hidden bg-[#F9FAFB] text-[#0F172A]">
-          <span className="animate-pulse-soft">🐥</span>
+          <span className="animate-pulse-soft">🪄</span>
         </main>
       }
     >

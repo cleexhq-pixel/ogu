@@ -46,10 +46,10 @@ function PhrasesContent() {
         : "My Phrases 📚",
     empty:
       language === "ko"
-        ? "아직 저장된 표현이 없어요.\n리포트에서 표현을 저장해보세요! 🐥"
+        ? "아직 저장된 표현이 없어요.\n리포트에서 표현을 저장해보세요! 🪄"
         : language === "id"
-        ? "Belum ada frasa tersimpan.\nSimpan dari laporan kamu! 🐥"
-        : "No saved phrases yet.\nSave expressions from your report! 🐥",
+        ? "Belum ada frasa tersimpan.\nSimpan dari laporan kamu! 🪄"
+        : "No saved phrases yet.\nSave expressions from your report! 🪄",
     back:
       language === "ko"
         ? "← 뒤로가기"
@@ -197,7 +197,7 @@ export default function PhrasesPage() {
     <Suspense
       fallback={
         <main className="flex min-h-screen items-center justify-center bg-[#F9FAFB] px-4 py-6 text-[#0F172A]">
-          <span className="animate-pulse-soft">🐥</span>
+          <span className="animate-pulse-soft">🪄</span>
         </main>
       }
     >
