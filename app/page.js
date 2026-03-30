@@ -90,6 +90,7 @@ export default function HomePage() {
   const [journeyCurrent, setJourneyCurrent] = useState(1);
   const [authUser, setAuthUser] = useState(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileAvatarBroken, setProfileAvatarBroken] = useState(false);
   const activeUserIdRef = useRef(null);
   const langReady = useRef(false);
   const profileMenuRef = useRef(null);
@@ -137,14 +138,18 @@ export default function HomePage() {
   useEffect(() => {
     const supabase = getSupabase();
     if (!supabase) return undefined;
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setAuthUser(session?.user ?? null);
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (!error) setAuthUser(user ?? null);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthUser(session?.user ?? null);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    setProfileAvatarBroken(false);
+  }, [authUser?.id]);
 
   useEffect(() => {
     if (!profileMenuOpen) return;
@@ -276,14 +281,25 @@ export default function HomePage() {
       ? tx(L, "home_yourFirstLine")
       : tx(L, "home_todaysLine");
 
-  const profileLetter = authUser?.email
-    ? authUser.email[0].toUpperCase()
-    : authUser?.user_metadata?.full_name?.[0]?.toUpperCase() || "?";
+  const profileAvatarUrl =
+    authUser?.user_metadata?.avatar_url || authUser?.user_metadata?.picture || null;
+  const profileLetter =
+    authUser?.email?.[0]?.toUpperCase() ||
+    authUser?.user_metadata?.full_name?.[0]?.toUpperCase() ||
+    authUser?.user_metadata?.name?.[0]?.toUpperCase() ||
+    "?";
+  const profileDisplayLine =
+    authUser?.user_metadata?.full_name ||
+    authUser?.user_metadata?.name ||
+    authUser?.email ||
+    "";
 
   const signOut = async () => {
     const supabase = getSupabase();
-    await supabase?.auth.signOut();
+    if (!supabase) return;
+    await supabase.auth.signOut();
     setProfileMenuOpen(false);
+    if (typeof window !== "undefined") window.location.reload();
   };
 
   return (
@@ -378,40 +394,6 @@ export default function HomePage() {
               <span className="text-lg font-bold tracking-tight text-[#0F172A]">Kkobi</span>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-              {authUser ? (
-                <div className="relative shrink-0" ref={profileMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() => setProfileMenuOpen((o) => !o)}
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
-                    style={{ backgroundColor: BRAND_PURPLE }}
-                    aria-expanded={profileMenuOpen}
-                    aria-haspopup="true"
-                    title={authUser.email || "Account"}
-                  >
-                    {profileLetter}
-                  </button>
-                  {profileMenuOpen ? (
-                    <div
-                      className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-xl border bg-white py-1 shadow-lg"
-                      style={{ borderColor: CARD_BORDER }}
-                    >
-                      {authUser.email ? (
-                        <p className="truncate border-b px-3 py-2 text-left text-xs text-[#64748B]" style={{ borderColor: DIVIDER_COLOR }}>
-                          {authUser.email}
-                        </p>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => void signOut()}
-                        className="w-full px-3 py-2.5 text-left text-sm font-semibold text-[#0f172a] transition hover:bg-[#f8fafc]"
-                      >
-                        Log out
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
               <div className="flex max-w-[200px] shrink-0 flex-wrap justify-end gap-1 sm:max-w-none">
                 {LANG_CODES.map((code) => (
                   <button
@@ -429,6 +411,58 @@ export default function HomePage() {
                   </button>
                 ))}
               </div>
+              {authUser ? (
+                <div className="relative shrink-0" ref={profileMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setProfileMenuOpen((o) => !o)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold text-white shadow-sm"
+                    style={{
+                      backgroundColor: BRAND_PURPLE
+                    }}
+                    aria-expanded={profileMenuOpen}
+                    aria-haspopup="true"
+                    aria-label={profileDisplayLine || "Profile"}
+                    title={profileDisplayLine || undefined}
+                  >
+                    {profileAvatarUrl && !profileAvatarBroken ? (
+                      <img
+                        src={profileAvatarUrl}
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="h-full w-full object-cover"
+                        onError={() => setProfileAvatarBroken(true)}
+                      />
+                    ) : (
+                      profileLetter
+                    )}
+                  </button>
+                  {profileMenuOpen ? (
+                    <div
+                      className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-[12px] border bg-white py-1 shadow-lg"
+                      style={{ borderColor: "#e5e7eb" }}
+                      role="menu"
+                    >
+                      {profileDisplayLine ? (
+                        <>
+                          <p className="truncate px-3 py-2 text-left text-xs text-[#64748B]">{profileDisplayLine}</p>
+                          <div className="mx-3 h-px bg-[#e5e7eb]" aria-hidden />
+                        </>
+                      ) : null}
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => void signOut()}
+                        className="w-full px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-[#f8fafc]"
+                        style={{ color: "#ef4444" }}
+                      >
+                        {tx(L, "home_logOut")}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </header>
 
