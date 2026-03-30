@@ -13,6 +13,12 @@ import {
   resolveLangFromUrlAndStorage,
   tx
 } from "@/app/lib/i18n";
+import {
+  getJourneyRow,
+  getJourneyWindowDays,
+  JOURNEY_DONE_MARKER,
+  MAX_JOURNEY_DAY
+} from "@/lib/journey-data";
 
 const BRAND_PURPLE = "#6c2eff";
 const BRAND_GOLD = "#ffd84d";
@@ -23,18 +29,27 @@ const DIVIDER_COLOR = "#E4DDF7";
 const GOLD_UNDERLINE = "border-b-[3px] pb-0.5";
 const goldUnderlineStyle = { borderColor: BRAND_GOLD };
 
-const JOURNEY_DAY_KEYS = [
-  { day: 1, titleKey: "home_journeyDay1Title", ko: "제 최애는 ___예요." },
-  { day: 2, titleKey: "home_journeyDay2Title", ko: "저는 ___를 좋아해요." },
-  { day: 3, titleKey: "home_journeyDay3Title", ko: "저는 한국어를 배우고 있어요." }
-];
-
 function readJourneyCurrentFromStorage() {
   if (typeof window === "undefined") return 1;
   const raw = window.localStorage.getItem("ogu_current_day");
   const n = parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1) return 1;
-  return Math.min(n, 4);
+  return Math.min(n, JOURNEY_DONE_MARKER);
+}
+
+/** @param {string} L normalized lang */
+function homeJourneyCardTitle(L, day) {
+  if (day === JOURNEY_DONE_MARKER) return tx(L, "home_journeyMoreSoon");
+  if (day <= 3) {
+    const keys = ["home_journeyDay1Title", "home_journeyDay2Title", "home_journeyDay3Title"];
+    return tx(L, keys[day - 1]);
+  }
+  return getJourneyRow(day)?.homeTitle ?? `Day ${day}`;
+}
+
+function homeJourneyCardKo(day) {
+  if (day === JOURNEY_DONE_MARKER) return "···";
+  return getJourneyRow(day)?.homeKo ?? "";
 }
 
 export default function HomePage() {
@@ -413,12 +428,16 @@ export default function HomePage() {
               className="text-center text-[9px] font-bold uppercase tracking-[0.16em]"
               style={{ color: BRAND_PURPLE }}
             >
-              {tx(L, "home_journeyTitle")}
+              {journeyCurrent >= 4 ? tx(L, "home_speakingJourney") : tx(L, "home_journeyTitle")}
             </p>
             <div className="flex flex-col gap-3">
-              {JOURNEY_DAY_KEYS.map((row) => {
-                const isDone = row.day < journeyCurrent;
-                const isActive = row.day === journeyCurrent && journeyCurrent <= 3;
+              {getJourneyWindowDays(journeyCurrent).map((d) => {
+                const isPlaceholder = d === JOURNEY_DONE_MARKER;
+                const isDone =
+                  (!isPlaceholder && d < journeyCurrent) ||
+                  (journeyCurrent >= JOURNEY_DONE_MARKER && !isPlaceholder);
+                const isActive =
+                  !isPlaceholder && d === journeyCurrent && journeyCurrent <= MAX_JOURNEY_DAY;
                 const isLocked = !isDone && !isActive;
                 const baseCard =
                   "flex w-full gap-3 rounded-xl border-2 bg-white p-4 text-left transition";
@@ -426,7 +445,8 @@ export default function HomePage() {
                 const cardStyle = isActive
                   ? { borderColor: BRAND_PURPLE, boxShadow: "0 0 0 1px rgba(108,46,255,0.15)" }
                   : undefined;
-                const title = tx(L, row.titleKey);
+                const title = homeJourneyCardTitle(L, d);
+                const koLine = homeJourneyCardKo(d);
 
                 const inner = (
                   <>
@@ -445,14 +465,14 @@ export default function HomePage() {
                           style={{ backgroundColor: BRAND_GOLD }}
                           aria-hidden
                         >
-                          {row.day}
+                          {d}
                         </span>
                       ) : (
                         <span
                           className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#d1d5db] bg-[#f3f4f6] text-sm font-bold text-[#9ca3af]"
                           aria-hidden
                         >
-                          {row.day}
+                          {isPlaceholder ? "…" : d}
                         </span>
                       )}
                     </div>
@@ -465,7 +485,7 @@ export default function HomePage() {
                       <p
                         className={`font-korean mt-1 text-sm font-semibold ${isLocked ? "text-[#c4c4c4]" : "text-[#334155]"}`}
                       >
-                        {row.ko}
+                        {koLine}
                       </p>
                       <p
                         className={`mt-2 text-[11px] font-bold uppercase tracking-wide ${
@@ -481,7 +501,7 @@ export default function HomePage() {
                 if (isActive) {
                   return (
                     <button
-                      key={row.day}
+                      key={d}
                       type="button"
                       onClick={openActiveJourneyDay}
                       className={cardClass}
@@ -493,7 +513,7 @@ export default function HomePage() {
                 }
 
                 return (
-                  <div key={row.day} className={cardClass} style={cardStyle} aria-disabled={isLocked}>
+                  <div key={d} className={cardClass} style={cardStyle} aria-disabled={isLocked}>
                     {inner}
                   </div>
                 );

@@ -14,6 +14,11 @@ import {
 } from "@/app/lib/i18n";
 import { getSupabase } from "@/lib/supabase";
 import { getOAuthRedirectUrl } from "@/lib/auth-config";
+import {
+  JOURNEY_DAYS,
+  JOURNEY_DONE_MARKER,
+  MAX_JOURNEY_DAY
+} from "@/lib/journey-data";
 
 const BRAND_PURPLE = "#6c2eff";
 const BRAND_GOLD = "#ffd84d";
@@ -22,36 +27,12 @@ const CARD_BORDER = "#DDD6FE";
 const TEXT_PRIMARY = "#0f172a";
 const OGU_CURRENT_DAY_KEY = "ogu_current_day";
 
-const JOURNEY_DAYS = [
-  {
-    day: 1,
-    ko: "제 최애는 BTS예요.",
-    en: "My favorite is BTS.",
-    journeyTitle: "My favorite",
-    journeyKoLine: "제 최애는 ___예요."
-  },
-  {
-    day: 2,
-    ko: "저는 K-pop을 좋아해요.",
-    en: "I like K-pop.",
-    journeyTitle: "I like this",
-    journeyKoLine: "저는 ___를 좋아해요."
-  },
-  {
-    day: 3,
-    ko: "저는 한국어를 배우고 있어요.",
-    en: "I'm learning Korean.",
-    journeyTitle: "I'm learning",
-    journeyKoLine: "저는 한국어를 배우고 있어요."
-  }
-];
-
 function readStoredCurrentDay() {
   if (typeof window === "undefined") return 1;
   const raw = window.localStorage.getItem(OGU_CURRENT_DAY_KEY);
   const n = parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1) return 1;
-  return Math.min(n, 4);
+  return Math.min(n, JOURNEY_DONE_MARKER);
 }
 
 const J_TITLE_KEYS = /** @type {const} */ (["j1_title", "j2_title", "j3_title"]);
@@ -63,12 +44,21 @@ function journeyDayToContent(dayNum, lang) {
   if (!row) return null;
   const L = normalizeLang(lang);
   const i = dayNum - 1;
+  if (dayNum <= 3) {
+    return {
+      id: "idol",
+      cardLabel: tx(L, "j_card", { n: dayNum }),
+      headerLabel: tx(L, "j_dayHeader", { n: dayNum, title: tx(L, J_TITLE_KEYS[i]) }),
+      ko: row.ko,
+      en: tx(L, J_EN_KEYS[i])
+    };
+  }
   return {
     id: "idol",
     cardLabel: tx(L, "j_card", { n: dayNum }),
-    headerLabel: tx(L, "j_dayHeader", { n: dayNum, title: tx(L, J_TITLE_KEYS[i]) }),
+    headerLabel: tx(L, "j_dayHeader", { n: dayNum, title: row.homeTitle }),
     ko: row.ko,
-    en: tx(L, J_EN_KEYS[i])
+    en: row.en
   };
 }
 
@@ -146,7 +136,7 @@ function FirstLineFlow() {
   const completeStep3Ref = useRef(() => {});
   const hydratedFromUrl = useRef(false);
 
-  const journeyActive = journeyDay >= 1 && journeyDay <= 3;
+  const journeyActive = journeyDay >= 1 && journeyDay <= MAX_JOURNEY_DAY;
   const journeyContent = journeyActive ? journeyDayToContent(journeyDay, uiLang) : null;
   const categoryContent = category ? categoryToContent(category, uiLang) : null;
   const content = journeyActive && journeyContent ? journeyContent : categoryContent;
@@ -173,7 +163,7 @@ function FirstLineFlow() {
     const d = readStoredCurrentDay();
     setJourneyDay(d);
     const cat = searchParams.get("category");
-    if (d <= 3) {
+    if (d <= MAX_JOURNEY_DAY) {
       setCategory("idol");
       setStep(2);
       setUserInput("");
@@ -270,9 +260,9 @@ function FirstLineFlow() {
       const trimmed = String(text || "").trim();
       if (!trimmed) return;
       stopAudio();
-      if (journeyDay >= 1 && journeyDay <= 3) {
+      if (journeyDay >= 1 && journeyDay <= MAX_JOURNEY_DAY) {
         setCompletedJourneyDay(journeyDay);
-        const next = Math.min(journeyDay + 1, 4);
+        const next = Math.min(journeyDay + 1, JOURNEY_DONE_MARKER);
         if (typeof window !== "undefined") {
           window.localStorage.setItem(OGU_CURRENT_DAY_KEY, String(next));
         }
@@ -409,7 +399,7 @@ function FirstLineFlow() {
     stopAudio();
     setCompletedJourneyDay(null);
     setUserInput("");
-    if (journeyDay <= 3) {
+    if (journeyDay <= MAX_JOURNEY_DAY) {
       setStep(2);
       return;
     }
@@ -453,10 +443,13 @@ function FirstLineFlow() {
   const successContent =
     completedJourneyDay != null ? journeyDayToContent(completedJourneyDay, uiLang) : content;
   const nextJourneyPreview =
-    completedJourneyDay != null && completedJourneyDay < 3
+    completedJourneyDay != null && completedJourneyDay < MAX_JOURNEY_DAY
       ? {
           ko: JOURNEY_DAYS[completedJourneyDay].ko,
-          en: tx(uiLang, J_EN_KEYS[completedJourneyDay])
+          en:
+            completedJourneyDay < 3
+              ? tx(uiLang, J_EN_KEYS[completedJourneyDay])
+              : JOURNEY_DAYS[completedJourneyDay].en
         }
       : null;
   const nextDayNumber = completedJourneyDay != null ? completedJourneyDay + 1 : null;
@@ -838,7 +831,7 @@ function FirstLineFlow() {
               </div>
               <p className="mt-8 text-[12px] text-[#6b7280]">
                 {completedJourneyDay != null ? (
-                  journeyDay <= 3 ? (
+                  journeyDay <= MAX_JOURNEY_DAY ? (
                     <>
                       {tx(uiLang, "fl_footerStreakBefore")}
                       <span style={{ color: BRAND_PURPLE }}>
