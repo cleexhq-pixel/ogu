@@ -426,11 +426,10 @@ function FirstLineFlow() {
     }
     setSignupBusy(true);
     setSignupError(null);
-    const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || "https://talk.kkobi.app"}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo
+        redirectTo: "https://talk.kkobi.app/auth/callback"
       }
     });
     setSignupBusy(false);
