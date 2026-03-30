@@ -137,8 +137,6 @@ function FirstLineFlow() {
   const [journeyDay, setJourneyDay] = useState(1);
   const [completedJourneyDay, setCompletedJourneyDay] = useState(null);
   const [signupModalDismissed, setSignupModalDismissed] = useState(false);
-  const [signupPanel, setSignupPanel] = useState("main");
-  const [signupEmail, setSignupEmail] = useState("");
   const [signupBusy, setSignupBusy] = useState(false);
   const [signupError, setSignupError] = useState(null);
   const audioRef = useRef(null);
@@ -449,30 +447,6 @@ function FirstLineFlow() {
     if (error) setSignupError(error.message);
   }, []);
 
-  const sendMagicLink = useCallback(async () => {
-    const email = signupEmail.trim();
-    if (!email) return;
-    const supabase = getSupabase();
-    if (!supabase) {
-      setSignupError("Unable to connect. Try again later.");
-      return;
-    }
-    setSignupBusy(true);
-    setSignupError(null);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: getOAuthRedirectUrl(),
-      },
-    });
-    setSignupBusy(false);
-    if (error) {
-      setSignupError(error.message);
-      return;
-    }
-    setSignupPanel("emailSent");
-  }, [signupEmail]);
-
   const stepClass =
     "w-full transition-all duration-300 ease-out motion-reduce:transition-none animate-fade-in-up";
 
@@ -534,108 +508,37 @@ function FirstLineFlow() {
               </div>
             </div>
 
-            {signupPanel === "main" ? (
-              <div className="mt-6 flex flex-col gap-3">
-                <button
-                  type="button"
-                  onClick={() => void continueWithGoogle()}
-                  disabled={signupBusy}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white py-3.5 text-[14px] font-semibold text-[#3c4043] transition hover:bg-[#f8f9fa] disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  Continue with Google
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSignupError(null);
-                    setSignupPanel("email");
-                  }}
-                  disabled={signupBusy}
-                  className="w-full rounded-xl py-3.5 text-[14px] font-bold text-white transition hover:brightness-110 disabled:opacity-50"
-                  style={{ backgroundColor: BRAND_PURPLE }}
-                >
-                  Sign up with email
-                </button>
-              </div>
-            ) : null}
-
-            {signupPanel === "email" ? (
-              <form
-                className="mt-6 flex flex-col gap-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void sendMagicLink();
-                }}
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => void continueWithGoogle()}
+                disabled={signupBusy}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#dadce0] bg-white py-3.5 text-[14px] font-semibold text-[#3c4043] transition hover:bg-[#f8f9fa] disabled:opacity-50"
               >
-                <input
-                  type="email"
-                  required
-                  value={signupEmail}
-                  onChange={(e) => setSignupEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full rounded-xl border-2 border-[#e5e7eb] px-4 py-3 text-[15px] text-[#0f172a] outline-none focus:border-[#6c2eff]"
-                  autoComplete="email"
-                />
-                {signupError ? <p className="text-center text-xs text-red-600">{signupError}</p> : null}
-                <button
-                  type="submit"
-                  disabled={signupBusy || !signupEmail.trim()}
-                  className="w-full rounded-xl py-3.5 text-[14px] font-bold text-white transition hover:brightness-110 disabled:opacity-50"
-                  style={{ backgroundColor: BRAND_PURPLE }}
-                >
-                  {signupBusy ? "Sending…" : "Send magic link"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSignupPanel("main");
-                    setSignupError(null);
-                  }}
-                  className="text-center text-[13px] text-[#6b7280] hover:text-[#0f172a]"
-                >
-                  ← Back
-                </button>
-              </form>
-            ) : null}
-
-            {signupPanel === "emailSent" ? (
-              <div className="mt-6 text-center">
-                <p className="text-[15px] font-semibold text-[#0f172a]">Check your email!</p>
-                <p className="mt-2 text-[13px] text-[#6b7280]">We sent a sign-in link to {signupEmail.trim()}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSignupPanel("main");
-                    setSignupEmail("");
-                  }}
-                  className="mt-4 text-[13px] font-medium text-[#6c2eff]"
-                >
-                  Use a different email
-                </button>
-              </div>
-            ) : null}
-
-            {signupError && signupPanel === "main" ? (
-              <p className="mt-3 text-center text-xs text-red-600">{signupError}</p>
-            ) : null}
+                <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+                Continue with Google
+              </button>
+              {signupError ? (
+                <p className="mt-3 text-center text-xs text-red-600">{signupError}</p>
+              ) : null}
+            </div>
 
             <div className="mt-5 text-center">
               <button
