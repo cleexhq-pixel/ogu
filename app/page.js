@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
+import { getOAuthRedirectUrl } from "@/lib/auth-config";
 import { pageview, trackAppOpen, trackStartDailyPhrase } from "@/app/lib/gtag";
 import Analytics from "@/app/components/Analytics";
 import {
@@ -91,6 +92,8 @@ export default function HomePage() {
   const [authUser, setAuthUser] = useState(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileAvatarBroken, setProfileAvatarBroken] = useState(false);
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [loginError, setLoginError] = useState(null);
   const activeUserIdRef = useRef(null);
   const langReady = useRef(false);
   const profileMenuRef = useRef(null);
@@ -281,6 +284,8 @@ export default function HomePage() {
       ? tx(L, "home_yourFirstLine")
       : tx(L, "home_todaysLine");
 
+  const showSignInBanner = !authUser && journeyCurrent >= 3;
+
   const profileAvatarUrl =
     authUser?.user_metadata?.avatar_url || authUser?.user_metadata?.picture || null;
   const profileLetter =
@@ -301,6 +306,24 @@ export default function HomePage() {
     setProfileMenuOpen(false);
     if (typeof window !== "undefined") window.location.reload();
   };
+
+  const signInWithGoogle = useCallback(async () => {
+    const supabase = getSupabase();
+    if (!supabase) {
+      setLoginError("Unable to connect. Try again later.");
+      return;
+    }
+    setLoginBusy(true);
+    setLoginError(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: getOAuthRedirectUrl()
+      }
+    });
+    setLoginBusy(false);
+    if (error) setLoginError(error.message);
+  }, []);
 
   return (
     <>
@@ -394,6 +417,22 @@ export default function HomePage() {
               <span className="text-lg font-bold tracking-tight text-[#0F172A]">Kkobi</span>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+              {!authUser ? (
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => void signInWithGoogle()}
+                    disabled={loginBusy}
+                    className="shrink-0 rounded-[20px] border-2 bg-white px-3 py-1.5 text-[11px] font-semibold transition hover:bg-[#FAF8FF] disabled:opacity-50 sm:text-[12px]"
+                    style={{ borderColor: BRAND_PURPLE, color: BRAND_PURPLE }}
+                  >
+                    {tx(L, "home_logIn")}
+                  </button>
+                  {loginError ? (
+                    <p className="max-w-[140px] text-right text-[10px] text-red-600">{loginError}</p>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="flex max-w-[200px] shrink-0 flex-wrap justify-end gap-1 sm:max-w-none">
                 {LANG_CODES.map((code) => (
                   <button
@@ -511,6 +550,29 @@ export default function HomePage() {
               ) : null}
             </div>
           </section>
+
+          {showSignInBanner ? (
+            <div
+              className="rounded-[14px] border-2 px-4 py-4 sm:px-5 sm:py-5"
+              style={{ backgroundColor: "#EDE9FE", borderColor: CARD_BORDER }}
+            >
+              <p className="text-center text-[15px] font-bold leading-snug text-[#0f172a] sm:text-base">
+                {tx(L, "home_signInBannerTitle")}
+              </p>
+              <p className="mt-2 text-center text-[13px] leading-relaxed text-[#64748B] sm:text-[14px]">
+                {tx(L, "home_signInBannerSub")}
+              </p>
+              <button
+                type="button"
+                onClick={() => void signInWithGoogle()}
+                disabled={loginBusy}
+                className="mt-4 w-full rounded-xl py-3.5 text-[14px] font-bold text-white transition hover:brightness-110 disabled:opacity-50 active:scale-[0.99]"
+                style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 8px 20px rgba(108, 46, 255, 0.25)" }}
+              >
+                {tx(L, "home_signInWithGoogle")}
+              </button>
+            </div>
+          ) : null}
 
           <section className="space-y-3">
             <p
