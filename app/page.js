@@ -29,6 +29,36 @@ const DIVIDER_COLOR = "#E4DDF7";
 const GOLD_UNDERLINE = "border-b-[3px] pb-0.5";
 const goldUnderlineStyle = { borderColor: BRAND_GOLD };
 
+const HERO_J_EN_KEYS = /** @type {const} */ (["j1_en", "j2_en", "j3_en"]);
+
+/** @param {string} L normalized lang @param {number} day 1…30 */
+function heroJourneyEnglish(L, day) {
+  if (day <= 3) return tx(L, HERO_J_EN_KEYS[day - 1]);
+  return getJourneyRow(day)?.en ?? "";
+}
+
+/** Renders Korean line; gold-underlines `___` when present. */
+function HeroKoreanLine({ ko }) {
+  if (!ko.includes("___")) {
+    return <>{ko}</>;
+  }
+  const parts = ko.split("___");
+  return (
+    <>
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {i < parts.length - 1 ? (
+            <span className={GOLD_UNDERLINE} style={goldUnderlineStyle}>
+              ___
+            </span>
+          ) : null}
+        </span>
+      ))}
+    </>
+  );
+}
+
 function readJourneyCurrentFromStorage() {
   if (typeof window === "undefined") return 1;
   const raw = window.localStorage.getItem("ogu_current_day");
@@ -220,9 +250,31 @@ export default function HomePage() {
     router.push(`/first-line?${params.toString()}`);
   };
 
+  /** Hero CTA: journey days use idol category to match /first-line journey flow. */
+  const goHeroSayItNow = () => {
+    if (journeyCurrent >= JOURNEY_DONE_MARKER) return;
+    trackStartDailyPhrase();
+    const params = new URLSearchParams();
+    params.set("lang", language);
+    if (journeyCurrent >= 1 && journeyCurrent <= MAX_JOURNEY_DAY) {
+      params.set("category", "idol");
+    }
+    router.push(`/first-line?${params.toString()}`);
+  };
+
   const langPillBase =
     "rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition-colors duration-200 sm:px-3 sm:text-[12px]";
   const L = normalizeLang(language);
+
+  const heroJourneyComplete = journeyCurrent >= JOURNEY_DONE_MARKER;
+  const heroDay =
+    !heroJourneyComplete && journeyCurrent >= 1 && journeyCurrent <= MAX_JOURNEY_DAY ? journeyCurrent : null;
+  const heroRow = heroDay != null ? getJourneyRow(heroDay) : null;
+  const heroLineLabel = heroJourneyComplete
+    ? tx(L, "home_journeyCompleteBadge")
+    : journeyCurrent === 1
+      ? tx(L, "home_yourFirstLine")
+      : tx(L, "home_todaysLine");
 
   const profileLetter = authUser?.email
     ? authUser.email[0].toUpperCase()
@@ -385,41 +437,44 @@ export default function HomePage() {
               className="text-center text-[10px] font-bold uppercase tracking-[0.2em] sm:text-[11px]"
               style={{ color: BRAND_PURPLE }}
             >
-              {tx(L, "home_yourFirstLine")}
+              {heroLineLabel}
             </p>
             <div
               className="mt-4 rounded-[18px] border bg-white px-5 py-8 sm:px-7 sm:py-9"
               style={{ borderColor: CARD_BORDER, boxShadow: "0 10px 32px rgba(109, 40, 255, 0.06)" }}
             >
-              <p className="font-korean text-center text-[1.35rem] font-bold leading-relaxed text-[#0F172A] sm:text-[1.5rem]">
-                제 최애는{" "}
-                <span className={GOLD_UNDERLINE} style={goldUnderlineStyle}>
-                  ___
-                </span>{" "}
-                예요.
-              </p>
-              <p className="mt-5 text-center text-sm leading-relaxed text-[#94A3B8] sm:text-[15px]">
-                {(() => {
-                  const segs = tx(L, "home_myFavoriteIs").split("___");
-                  return (
-                    <>
-                      {segs[0]}
-                      <span className={`font-jakarta ${GOLD_UNDERLINE}`} style={goldUnderlineStyle}>
-                        ___
-                      </span>
-                      {segs[1] ?? ""}
-                    </>
-                  );
-                })()}
-              </p>
-              <button
-                type="button"
-                onClick={() => goFirstLine(null)}
-                className="mt-8 w-full rounded-2xl py-4 text-[16px] font-bold text-white transition hover:brightness-110 active:scale-[0.98]"
-                style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
-              >
-                {tx(L, "home_sayItNow")}
-              </button>
+              {heroJourneyComplete ? (
+                <>
+                  <p className="font-korean text-center text-[1.35rem] font-bold leading-relaxed text-[#0F172A] sm:text-[1.5rem]">
+                    {tx(L, "home_journeyCompleteMessage")}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={goBrowseFirstLine}
+                    className="mt-8 w-full rounded-2xl py-4 text-[16px] font-bold text-white transition hover:brightness-110 active:scale-[0.98]"
+                    style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
+                  >
+                    {tx(L, "home_browseMissions")}
+                  </button>
+                </>
+              ) : heroRow ? (
+                <>
+                  <p className="font-korean text-center text-[1.35rem] font-bold leading-relaxed text-[#0F172A] sm:text-[1.5rem]">
+                    <HeroKoreanLine ko={heroRow.ko} />
+                  </p>
+                  <p className="mt-5 text-center text-sm leading-relaxed text-[#94A3B8] sm:text-[15px]">
+                    {heroJourneyEnglish(L, heroDay)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={goHeroSayItNow}
+                    className="mt-8 w-full rounded-2xl py-4 text-[16px] font-bold text-white transition hover:brightness-110 active:scale-[0.98]"
+                    style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
+                  >
+                    {tx(L, "home_sayItNow")}
+                  </button>
+                </>
+              ) : null}
             </div>
           </section>
 

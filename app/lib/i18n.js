@@ -65,6 +65,9 @@ export function tx(lang, key, vars) {
 const STR = {
   ko: {
     home_yourFirstLine: "🪄 첫 한마디",
+    home_todaysLine: "🪄 오늘의 한마디",
+    home_journeyCompleteBadge: "🎉 30일 여정 완료",
+    home_journeyCompleteMessage: "대단해요! 30일 완료!",
     home_myFavoriteIs: "내 최애는 ___이에요.",
     home_sayItNow: "지금 말해보기",
     home_vibeTitle: "오늘 무드는 뭐예요?",
@@ -145,6 +148,9 @@ const STR = {
   },
   en: {
     home_yourFirstLine: "🪄 YOUR FIRST LINE",
+    home_todaysLine: "🪄 TODAY'S LINE",
+    home_journeyCompleteBadge: "🎉 30-DAY JOURNEY COMPLETE",
+    home_journeyCompleteMessage: "Amazing — you finished all 30 days!",
     home_myFavoriteIs: "My favorite is ___.",
     home_sayItNow: "🗣️ Say it now",
     home_vibeTitle: "WHAT'S YOUR VIBE TODAY?",
@@ -225,6 +231,9 @@ const STR = {
   },
   id: {
     home_yourFirstLine: "🪄 KALIMAT PERTAMAMU",
+    home_todaysLine: "🪄 KALIMAT HARI INI",
+    home_journeyCompleteBadge: "🎉 PERJALANAN 30 HARI SELESAI",
+    home_journeyCompleteMessage: "Hebat — kamu menyelesaikan 30 hari!",
     home_myFavoriteIs: "Favoritku adalah ___.",
     home_sayItNow: "🗣️ Ucapkan sekarang",
     home_vibeTitle: "SUASANA HARI INI?",
@@ -305,6 +314,9 @@ const STR = {
   },
   fr: {
     home_yourFirstLine: "🪄 TA PREMIÈRE PHRASE",
+    home_todaysLine: "🪄 LA PHRASE DU JOUR",
+    home_journeyCompleteBadge: "🎉 PARCOURS DE 30 JOURS TERMINÉ",
+    home_journeyCompleteMessage: "Bravo — tu as terminé les 30 jours !",
     home_myFavoriteIs: "Mon favori, c’est ___.",
     home_sayItNow: "🗣️ Dis-la maintenant",
     home_vibeTitle: "QUEL EST TON MOOD AUJOURD’HUI ?",
@@ -385,6 +397,9 @@ const STR = {
   },
   pt: {
     home_yourFirstLine: "🪄 SUA PRIMEIRA FRASE",
+    home_todaysLine: "🪄 A FRASE DE HOJE",
+    home_journeyCompleteBadge: "🎉 JORNADA DE 30 DIAS COMPLETA",
+    home_journeyCompleteMessage: "Incrível — você completou os 30 dias!",
     home_myFavoriteIs: "Meu favorito é ___.",
     home_sayItNow: "🗣️ Fale agora",
     home_vibeTitle: "QUAL É SEU VIBE HOJE?",
