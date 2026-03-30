@@ -13,7 +13,6 @@ import {
   tx
 } from "@/app/lib/i18n";
 import { getSupabase } from "@/lib/supabase";
-import { getOAuthRedirectUrl } from "@/lib/auth-config";
 import {
   JOURNEY_DAYS,
   JOURNEY_DONE_MARKER,
@@ -427,11 +426,12 @@ function FirstLineFlow() {
     }
     setSignupBusy(true);
     setSignupError(null);
+    const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || "https://talk.kkobi.app"}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: getOAuthRedirectUrl(),
-      },
+        redirectTo
+      }
     });
     setSignupBusy(false);
     if (error) setSignupError(error.message);

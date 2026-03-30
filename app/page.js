@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
-import { getOAuthRedirectUrl } from "@/lib/auth-config";
 import { pageview, trackAppOpen, trackStartDailyPhrase } from "@/app/lib/gtag";
 import Analytics from "@/app/components/Analytics";
 import {
@@ -315,10 +314,11 @@ export default function HomePage() {
     }
     setLoginBusy(true);
     setLoginError(null);
+    const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || "https://talk.kkobi.app"}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: getOAuthRedirectUrl()
+        redirectTo
       }
     });
     setLoginBusy(false);
