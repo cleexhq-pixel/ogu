@@ -43,8 +43,11 @@ export default function HomePage() {
   const [language, setLanguage] = useState("en");
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [journeyCurrent, setJourneyCurrent] = useState(1);
+  const [authUser, setAuthUser] = useState(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const activeUserIdRef = useRef(null);
   const langReady = useRef(false);
+  const profileMenuRef = useRef(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -85,6 +88,29 @@ export default function HomePage() {
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [pathname]);
+
+  useEffect(() => {
+    const supabase = getSupabase();
+    if (!supabase) return undefined;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthUser(session?.user ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUser(session?.user ?? null);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const close = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [profileMenuOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -183,6 +209,16 @@ export default function HomePage() {
     "rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition-colors duration-200 sm:px-3 sm:text-[12px]";
   const L = normalizeLang(language);
 
+  const profileLetter = authUser?.email
+    ? authUser.email[0].toUpperCase()
+    : authUser?.user_metadata?.full_name?.[0]?.toUpperCase() || "?";
+
+  const signOut = async () => {
+    const supabase = getSupabase();
+    await supabase?.auth.signOut();
+    setProfileMenuOpen(false);
+  };
+
   return (
     <>
       <Analytics />
@@ -274,22 +310,58 @@ export default function HomePage() {
               </span>
               <span className="text-lg font-bold tracking-tight text-[#0F172A]">Kkobi</span>
             </div>
-            <div className="flex max-w-[220px] shrink-0 flex-wrap justify-end gap-1 sm:max-w-none">
-              {LANG_CODES.map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => setLang(code)}
-                  className={langPillBase}
-                  style={
-                    language === code
-                      ? { backgroundColor: BRAND_PURPLE, color: "#fff" }
-                      : { backgroundColor: "transparent", color: "#64748B" }
-                  }
-                >
-                  {code.toUpperCase()}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+              {authUser ? (
+                <div className="relative shrink-0" ref={profileMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setProfileMenuOpen((o) => !o)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
+                    style={{ backgroundColor: BRAND_PURPLE }}
+                    aria-expanded={profileMenuOpen}
+                    aria-haspopup="true"
+                    title={authUser.email || "Account"}
+                  >
+                    {profileLetter}
+                  </button>
+                  {profileMenuOpen ? (
+                    <div
+                      className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-xl border bg-white py-1 shadow-lg"
+                      style={{ borderColor: CARD_BORDER }}
+                    >
+                      {authUser.email ? (
+                        <p className="truncate border-b px-3 py-2 text-left text-xs text-[#64748B]" style={{ borderColor: DIVIDER_COLOR }}>
+                          {authUser.email}
+                        </p>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void signOut()}
+                        className="w-full px-3 py-2.5 text-left text-sm font-semibold text-[#0f172a] transition hover:bg-[#f8fafc]"
+                      >
+                        Log out
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className="flex max-w-[200px] shrink-0 flex-wrap justify-end gap-1 sm:max-w-none">
+                {LANG_CODES.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setLang(code)}
+                    className={langPillBase}
+                    style={
+                      language === code
+                        ? { backgroundColor: BRAND_PURPLE, color: "#fff" }
+                        : { backgroundColor: "transparent", color: "#64748B" }
+                    }
+                  >
+                    {code.toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </div>
           </header>
 
