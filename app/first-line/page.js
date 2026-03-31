@@ -18,6 +18,7 @@ import {
   JOURNEY_DONE_MARKER,
   MAX_JOURNEY_DAY
 } from "@/lib/journey-data";
+import { trackEvent } from "@/lib/analytics";
 
 const BRAND_PURPLE = "#6c2eff";
 const BRAND_GOLD = "#ffd84d";
@@ -417,6 +418,44 @@ function FirstLineFlow() {
   };
 
   const showDay3SignupModal = step === 4 && completedJourneyDay === 3 && !signupModalDismissed;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!showDay3SignupModal) {
+      signupModalShownGaArmed = false;
+      return;
+    }
+    if (!signupModalShownGaArmed) {
+      trackEvent("signup_modal_shown", { day_number: 3 });
+      signupModalShownGaArmed = true;
+    }
+  }, [showDay3SignupModal]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (step !== 4 || !userInput.trim()) return;
+
+    const sig = `${completedJourneyDay ?? "browse"}:${category ?? ""}:${userInput.trim()}`;
+    if (lastStep4GaSignature === sig) return;
+    lastStep4GaSignature = sig;
+
+    const raw = window.localStorage.getItem(OGU_CURRENT_DAY_KEY);
+    const parsed = Number.parseInt(raw, 10);
+    const day = Number.isFinite(parsed) && parsed >= 1 ? parsed : 1;
+
+    const gaCategory =
+      category === "drama" ? "kdrama" : category === "trip" ? "trip" : "idol";
+
+    trackEvent("first_line_complete", { category: gaCategory, day });
+
+    if (
+      completedJourneyDay != null &&
+      completedJourneyDay >= 1 &&
+      completedJourneyDay <= MAX_JOURNEY_DAY
+    ) {
+      trackEvent("day_complete", { day_number: completedJourneyDay });
+    }
+  }, [step, completedJourneyDay, category, userInput]);
 
   const continueWithGoogle = useCallback(async () => {
     const supabase = getSupabase();

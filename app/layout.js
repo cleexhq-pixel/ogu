@@ -1,4 +1,5 @@
 import "./globals.css";
+import OAuthCompleteTracker from "./components/OAuthCompleteTracker";
 
 export const metadata = {
   title: "꼬비 (Kkobi)",
@@ -25,6 +26,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="min-h-screen">
+        <OAuthCompleteTracker />
         {children}
       </body>
     </html>

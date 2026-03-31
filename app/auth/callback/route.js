@@ -18,7 +18,9 @@ export async function GET(request) {
     return NextResponse.redirect(`${origin}${safeNext}`);
   }
 
-  const redirectResponse = NextResponse.redirect(`${origin}${safeNext}`);
+  const successUrl = new URL(safeNext, origin);
+  successUrl.searchParams.set("oauth_complete", "1");
+  const redirectResponse = NextResponse.redirect(successUrl.toString());
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
