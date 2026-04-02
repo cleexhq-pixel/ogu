@@ -19,6 +19,7 @@ import {
   JOURNEY_DONE_MARKER,
   MAX_JOURNEY_DAY
 } from "@/lib/journey-data";
+import { useActiveSession } from "@/hooks/useActiveSession";
 
 const BRAND_PURPLE = "#6c2eff";
 const BRAND_GOLD = "#ffd84d";
@@ -82,7 +83,24 @@ function homeJourneyCardKo(day) {
   return getJourneyRow(day)?.homeKo ?? "";
 }
 
+/** @param {import("@/app/lib/i18n").UILang} lang */
+function activeSessionLine(lang, n) {
+  switch (lang) {
+    case "ko":
+      return `🟢 지금 ${n}명이 한국어 말하는 중`;
+    case "id":
+      return `🟢 ${n} orang sedang berbicara bahasa Korea`;
+    case "fr":
+      return `🟢 ${n} personnes parlent coréen en ce moment`;
+    case "pt":
+      return `🟢 ${n} pessoas falando coreano agora`;
+    default:
+      return `🟢 ${n} people speaking Korean right now`;
+  }
+}
+
 export default function HomePage() {
+  const { count: activeSessionCount } = useActiveSession();
   const router = useRouter();
   const pathname = usePathname();
   const [language, setLanguage] = useState("en");
@@ -715,6 +733,12 @@ export default function HomePage() {
               {tx(L, "home_browseMissions")}
             </button>
           </footer>
+
+          {activeSessionCount != null ? (
+            <p className="py-4 text-center text-sm" style={{ color: "#6b7280" }}>
+              {activeSessionLine(L, activeSessionCount)}
+            </p>
+          ) : null}
         </div>
       </main>
     </>
