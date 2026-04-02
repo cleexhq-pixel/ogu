@@ -1,6 +1,7 @@
 import "./globals.css";
 import OAuthCompleteTracker from "./components/OAuthCompleteTracker";
 import { ActiveSessionProvider } from "@/hooks/useActiveSession";
+import { FeedbackExitListener } from "@/components/FeedbackModal";
 
 export const metadata = {
   title: "꼬비 (Kkobi)",
@@ -28,7 +29,10 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-screen">
         <OAuthCompleteTracker />
-        <ActiveSessionProvider>{children}</ActiveSessionProvider>
+        <ActiveSessionProvider>
+          <FeedbackExitListener />
+          {children}
+        </ActiveSessionProvider>
       </body>
     </html>
   );
