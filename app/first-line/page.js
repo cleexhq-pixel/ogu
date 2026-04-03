@@ -135,6 +135,8 @@ function FirstLineFlow() {
   const userStoppedMicRef = useRef(false);
   const completeStep3Ref = useRef(() => {});
   const hydratedFromUrl = useRef(false);
+  const signupModalShownGaArmedRef = useRef(false);
+  const lastStep4GaSignatureRef = useRef("");
 
   const journeyActive = journeyDay >= 1 && journeyDay <= MAX_JOURNEY_DAY;
   const journeyContent = journeyActive ? journeyDayToContent(journeyDay, uiLang) : null;
@@ -422,12 +424,12 @@ function FirstLineFlow() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!showDay3SignupModal) {
-      signupModalShownGaArmed = false;
+      signupModalShownGaArmedRef.current = false;
       return;
     }
-    if (!signupModalShownGaArmed) {
+    if (!signupModalShownGaArmedRef.current) {
       trackEvent("signup_modal_shown", { day_number: 3 });
-      signupModalShownGaArmed = true;
+      signupModalShownGaArmedRef.current = true;
     }
   }, [showDay3SignupModal]);
 
@@ -436,8 +438,8 @@ function FirstLineFlow() {
     if (step !== 4 || !userInput.trim()) return;
 
     const sig = `${completedJourneyDay ?? "browse"}:${category ?? ""}:${userInput.trim()}`;
-    if (lastStep4GaSignature === sig) return;
-    lastStep4GaSignature = sig;
+    if (lastStep4GaSignatureRef.current === sig) return;
+    lastStep4GaSignatureRef.current = sig;
 
     const raw = window.localStorage.getItem(OGU_CURRENT_DAY_KEY);
     const parsed = Number.parseInt(raw, 10);
