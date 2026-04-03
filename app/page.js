@@ -195,19 +195,6 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.dispatchEvent(new CustomEvent("ogu-blocking-overlay", { detail: { active: showOnboardingModal } }));
-  }, [showOnboardingModal]);
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("ogu-blocking-overlay", { detail: { active: false } }));
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     const supabase = getSupabase();
     if (!supabase) return;
 
