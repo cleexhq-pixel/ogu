@@ -149,7 +149,17 @@ const STR = {
     j3_title: "한국어 공부 중",
     j3_en: "저는 한국어를 배우고 있어요.",
     j_card: "👑 Day {n}",
-    fl_dayBadge: "DAY {n}"
+    fl_dayBadge: "DAY {n}",
+    fl_typeInstead: "말하기가 어려우신가요? 타이핑으로 입력",
+    fl_badge_perfect: "Perfect match!",
+    fl_badge_good: "Good try!",
+    fl_badge_keep: "Keep practicing!",
+    fl_evalPerfect: "완벽해요!",
+    fl_evalGood: "좋은 시도예요!",
+    fl_evalKeep: "조금만 더 연습해봐요!",
+    fl_vocabHeader: "단어 보기",
+    fl_retrySpeak: "🎙 다시 말해보기",
+    fl_mySaidLabel: "내가 말한 것"
   },
   en: {
     home_yourFirstLine: "🪄 YOUR FIRST LINE",
@@ -237,7 +247,17 @@ const STR = {
     j3_title: "I'm learning",
     j3_en: "I'm learning Korean.",
     j_card: "👑 Day {n}",
-    fl_dayBadge: "DAY {n}"
+    fl_dayBadge: "DAY {n}",
+    fl_typeInstead: "Having trouble? Type instead",
+    fl_badge_perfect: "Perfect match!",
+    fl_badge_good: "Good try!",
+    fl_badge_keep: "Keep practicing!",
+    fl_evalPerfect: "Perfect!",
+    fl_evalGood: "Good try!",
+    fl_evalKeep: "Keep going!",
+    fl_vocabHeader: "Vocabulary",
+    fl_retrySpeak: "🎙 Try speaking again",
+    fl_mySaidLabel: "What you said"
   },
   id: {
     home_yourFirstLine: "🪄 KALIMAT PERTAMAMU",
@@ -325,7 +345,17 @@ const STR = {
     j3_title: "Aku belajar bahasa Korea",
     j3_en: "Aku sedang belajar bahasa Korea.",
     j_card: "👑 Hari ke-{n}",
-    fl_dayBadge: "HARI {n}"
+    fl_dayBadge: "HARI {n}",
+    fl_typeInstead: "Kesulitan? Ketik saja",
+    fl_badge_perfect: "Perfect match!",
+    fl_badge_good: "Good try!",
+    fl_badge_keep: "Keep practicing!",
+    fl_evalPerfect: "Sempurna!",
+    fl_evalGood: "Usaha bagus!",
+    fl_evalKeep: "Terus berlatih!",
+    fl_vocabHeader: "Kosakata",
+    fl_retrySpeak: "🎙 Coba bicara lagi",
+    fl_mySaidLabel: "Yang kamu katakan"
   },
   fr: {
     home_yourFirstLine: "🪄 TA PREMIÈRE PHRASE",
@@ -413,7 +443,17 @@ const STR = {
     j3_title: "J’apprends le coréen",
     j3_en: "J’apprends le coréen.",
     j_card: "👑 Jour {n}",
-    fl_dayBadge: "JOUR {n}"
+    fl_dayBadge: "JOUR {n}",
+    fl_typeInstead: "Difficultés? Tapez à la place",
+    fl_badge_perfect: "Perfect match!",
+    fl_badge_good: "Good try!",
+    fl_badge_keep: "Keep practicing!",
+    fl_evalPerfect: "Parfait !",
+    fl_evalGood: "Bon essai !",
+    fl_evalKeep: "Continue !",
+    fl_vocabHeader: "Vocabulaire",
+    fl_retrySpeak: "🎙 Réessayer à l’oral",
+    fl_mySaidLabel: "Ce que vous avez dit"
   },
   pt: {
     home_yourFirstLine: "🪄 SUA PRIMEIRA FRASE",
@@ -501,6 +541,16 @@ const STR = {
     j3_title: "Estou aprendendo coreano",
     j3_en: "Estou aprendendo coreano.",
     j_card: "👑 Dia {n}",
-    fl_dayBadge: "DIA {n}"
+    fl_dayBadge: "DIA {n}",
+    fl_typeInstead: "Com dificuldades? Digite em vez disso",
+    fl_badge_perfect: "Perfect match!",
+    fl_badge_good: "Good try!",
+    fl_badge_keep: "Keep practicing!",
+    fl_evalPerfect: "Perfeito!",
+    fl_evalGood: "Boa tentativa!",
+    fl_evalKeep: "Continue praticando!",
+    fl_vocabHeader: "Vocabulário",
+    fl_retrySpeak: "🎙 Falar de novo",
+    fl_mySaidLabel: "O que você disse"
   }
 };

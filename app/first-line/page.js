@@ -16,12 +16,12 @@ import { getSupabase } from "@/lib/supabase";
 import {
   JOURNEY_DAYS,
   JOURNEY_DONE_MARKER,
-  MAX_JOURNEY_DAY
+  MAX_JOURNEY_DAY,
+  getJourneyRow
 } from "@/lib/journey-data";
 import { trackEvent } from "@/lib/analytics";
 
 const BRAND_PURPLE = "#6c2eff";
-const BRAND_GOLD = "#ffd84d";
 const LAVENDER_BG = "#EDE9FE";
 const CARD_BORDER = "#DDD6FE";
 const TEXT_PRIMARY = "#0f172a";
@@ -40,17 +40,21 @@ const J_EN_KEYS = /** @type {const} */ (["j1_en", "j2_en", "j3_en"]);
 
 /** @param {number} dayNum */
 function journeyDayToContent(dayNum, lang) {
-  const row = JOURNEY_DAYS[dayNum - 1];
+  const row = getJourneyRow(dayNum);
   if (!row) return null;
   const L = normalizeLang(lang);
   const i = dayNum - 1;
+  const romanization = row.romanization ?? "";
+  const vocab = row.vocab ?? [];
   if (dayNum <= 3) {
     return {
       id: "idol",
       cardLabel: tx(L, "j_card", { n: dayNum }),
       headerLabel: tx(L, "j_dayHeader", { n: dayNum, title: tx(L, J_TITLE_KEYS[i]) }),
       ko: row.ko,
-      en: tx(L, J_EN_KEYS[i])
+      en: tx(L, J_EN_KEYS[i]),
+      romanization,
+      vocab
     };
   }
   return {
@@ -58,25 +62,53 @@ function journeyDayToContent(dayNum, lang) {
     cardLabel: tx(L, "j_card", { n: dayNum }),
     headerLabel: tx(L, "j_dayHeader", { n: dayNum, title: row.homeTitle }),
     ko: row.ko,
-    en: row.en
+    en: row.en,
+    romanization,
+    vocab
   };
 }
 
-const CATEGORY_KO = {
-  idol: { ko: "제 최애는 BTS예요." },
-  drama: { ko: "보고 싶었어요." },
-  trip: { ko: "여기 어떻게 가요?" }
-};
+const CATEGORY_LINE = /** @type {const} */ ({
+  idol: {
+    ko: "제 최애는 BTS예요.",
+    romanization: "Je choe-ae-neun BTS-ye-yo.",
+    vocab: [
+      { word: "제", roman: "je", meaning: "my / as for me" },
+      { word: "최애는", roman: "choe-ae-neun", meaning: "favorite (topic)" },
+      { word: "BTS예요", roman: "BTS-ye-yo", meaning: "is BTS" }
+    ]
+  },
+  drama: {
+    ko: "보고 싶었어요.",
+    romanization: "Bo-go sip-eo-sseo-yo.",
+    vocab: [
+      { word: "보고", roman: "bo-go", meaning: "seeing / to see" },
+      { word: "싶었어요", roman: "sip-eo-sseo-yo", meaning: "missed / wanted to" }
+    ]
+  },
+  trip: {
+    ko: "여기 어떻게 가요?",
+    romanization: "Yeogi eo-tteoh-ke ga-yo?",
+    vocab: [
+      { word: "여기", roman: "yeo-gi", meaning: "here" },
+      { word: "어떻게", roman: "eo-tteoh-ke", meaning: "how" },
+      { word: "가요", roman: "ga-yo", meaning: "go?" }
+    ]
+  }
+});
 
 /** @param {"idol"|"drama"|"trip"} cat */
 function categoryToContent(cat, lang) {
   const L = normalizeLang(lang);
+  const line = CATEGORY_LINE[cat];
   return {
     id: cat,
     cardLabel: tx(L, `cat_${cat}_card`),
     headerLabel: tx(L, `cat_${cat}_header`),
-    ko: CATEGORY_KO[cat].ko,
-    en: tx(L, `cat_${cat}_sub`)
+    ko: line.ko,
+    en: tx(L, `cat_${cat}_sub`),
+    romanization: line.romanization,
+    vocab: line.vocab
   };
 }
 
@@ -85,6 +117,23 @@ function normalizeKorean(s) {
     .replace(/\s+/g, "")
     .replace(/[.?!。…]/g, "")
     .trim();
+}
+
+/** @param {string} userRaw @param {string} referenceRaw @returns {"perfect"|"good"|"keep"} */
+function computeMatchTier(userRaw, referenceRaw) {
+  const u = normalizeKorean(userRaw);
+  const r = normalizeKorean(referenceRaw);
+  if (!r) return "keep";
+  if (u === r) return "perfect";
+  if (u.includes(r) || r.includes(u)) return "good";
+  let inter = 0;
+  const uSet = new Set([...u]);
+  for (const ch of r) {
+    if (uSet.has(ch)) inter += 1;
+  }
+  const ratio = inter / Math.max(r.length, 1);
+  if (ratio >= 0.58) return "good";
+  return "keep";
 }
 
 function getSpeechRecognition() {
@@ -129,6 +178,7 @@ function FirstLineFlow() {
   const [signupModalDismissed, setSignupModalDismissed] = useState(false);
   const [signupBusy, setSignupBusy] = useState(false);
   const [signupError, setSignupError] = useState(null);
+  const [showTypeInput, setShowTypeInput] = useState(false);
   const audioRef = useRef(null);
   const recognitionRef = useRef(null);
   const sttTranscriptRef = useRef("");
@@ -347,6 +397,10 @@ function FirstLineFlow() {
     setIsRequestingMic(false);
   }, [step]);
 
+  useEffect(() => {
+    if (step === 3) setShowTypeInput(false);
+  }, [step]);
+
   const toggleVoiceInput = useCallback(async () => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
@@ -419,6 +473,13 @@ function FirstLineFlow() {
     setStep(2);
   };
 
+  const goRetrySpeak = () => {
+    stopAudio();
+    setUserInput("");
+    setShowTypeInput(false);
+    setStep(3);
+  };
+
   const showDay3SignupModal = step === 4 && completedJourneyDay === 3 && !signupModalDismissed;
 
   useEffect(() => {
@@ -482,6 +543,9 @@ function FirstLineFlow() {
 
   const successContent =
     completedJourneyDay != null ? journeyDayToContent(completedJourneyDay, uiLang) : content;
+  const matchTier =
+    step === 4 && successContent ? computeMatchTier(userInput, successContent.ko) : "keep";
+  const vocabForResult = successContent?.vocab ?? [];
   const nextJourneyPreview =
     completedJourneyDay != null && completedJourneyDay < MAX_JOURNEY_DAY
       ? {
@@ -643,15 +707,26 @@ function FirstLineFlow() {
                 {content.headerLabel}
               </p>
               <div
-                className="mt-5 rounded-[18px] border-2 bg-white px-6 py-8"
-                style={{ borderColor: CARD_BORDER, boxShadow: "0 10px 32px rgba(109, 40, 255, 0.06)" }}
+                className="mt-5 rounded-[18px] border-[1.5px] bg-white px-6 py-8"
+                style={{ borderColor: "#d4c8ff", boxShadow: "0 10px 32px rgba(109, 40, 255, 0.06)" }}
               >
                 <p
-                  className="font-korean text-center text-2xl font-bold leading-relaxed sm:text-[1.65rem]"
+                  className="font-korean text-center text-[20px] font-bold leading-[1.5] [word-break:keep-all]"
                   style={{ color: TEXT_PRIMARY }}
                 >
                   {content.ko}
                 </p>
+                {content.romanization ? (
+                  <>
+                    <div className="my-5 h-px w-full" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
+                    <p
+                      className="text-center text-[12px] italic leading-[1.6] [word-break:break-word]"
+                      style={{ color: BRAND_PURPLE }}
+                    >
+                      {content.romanization}
+                    </p>
+                  </>
+                ) : null}
                 <p className="mt-4 text-center text-sm text-[#94A3B8] sm:text-base">{content.en}</p>
                 <button
                   type="button"
@@ -686,68 +761,107 @@ function FirstLineFlow() {
 
           {step === 3 && content && (
             <div key="s3" className={stepClass}>
+              <button
+                type="button"
+                onClick={() => void playKoreanTts()}
+                disabled={ttsLoading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 bg-white py-3 text-sm font-semibold transition hover:bg-[#FAF8FF] disabled:opacity-50"
+                style={{ borderColor: BRAND_PURPLE, color: BRAND_PURPLE }}
+              >
+                <span aria-hidden>🔊</span>
+                {ttsLoading ? (
+                  tx(uiLang, "fl_loading")
+                ) : (
+                  <>
+                    <span aria-hidden>🔊</span>
+                    {tx(uiLang, "fl_listenAgain").replace(/^\s*←\s*/, "")}
+                  </>
+                )}
+              </button>
               <h2
-                className="text-center text-lg font-bold sm:text-xl"
+                className="mt-6 text-center text-lg font-bold sm:text-xl"
                 style={{ color: TEXT_PRIMARY }}
               >
                 {tx(uiLang, "fl_nowSayKorean")}
               </h2>
-              <p className="font-korean mt-6 text-center text-lg text-[#94A3B8]/50 sm:text-xl">
+              <p className="font-korean mt-4 text-center text-base leading-[1.5] text-[#64748B] [word-break:keep-all] sm:text-lg">
                 {content.ko}
               </p>
-              <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-                <div className="flex gap-3">
+              {content.romanization ? (
+                <p
+                  className="mt-2 text-center text-[11px] italic leading-snug sm:text-xs"
+                  style={{ color: BRAND_PURPLE }}
+                >
+                  {content.romanization}
+                </p>
+              ) : null}
+
+              <div className="mt-10 flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={() => void toggleVoiceInput()}
+                  disabled={!getSpeechRecognition() || isRequestingMic}
+                  className="flex w-full max-w-[320px] items-center justify-center gap-2 rounded-[18px] px-5 py-[18px] text-[17px] font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 active:scale-[0.99]"
+                  style={{
+                    backgroundColor: BRAND_PURPLE,
+                    boxShadow: isListening ? "0 8px 24px rgba(108, 46, 255, 0.45)" : "0 12px 28px rgba(108, 46, 255, 0.35)"
+                  }}
+                  aria-pressed={isListening}
+                  aria-label={
+                    isListening ? tx(uiLang, "fl_stopListening") : tx(uiLang, "fl_startVoice")
+                  }
+                >
+                  <span aria-hidden className="text-xl">
+                    🎤
+                  </span>
+                  {isListening ? tx(uiLang, "fl_stopListening") : tx(uiLang, "fl_sayItNow")}
+                </button>
+                <p className="mt-5 text-center text-[13px] text-[#64748B]">
+                  <button
+                    type="button"
+                    onClick={() => setShowTypeInput((v) => !v)}
+                    className="font-medium underline decoration-[1.5px] underline-offset-2 transition hover:opacity-80"
+                    style={{ color: BRAND_PURPLE }}
+                  >
+                    {tx(uiLang, "fl_typeInstead")}
+                  </button>
+                </p>
+              </div>
+
+              {showTypeInput ? (
+                <form onSubmit={handleSubmit} className="mt-6 space-y-3">
                   <textarea
                     value={userInput}
                     onChange={(e) => setUserInput(e.target.value)}
                     placeholder={tx(uiLang, "fl_placeholder")}
                     rows={4}
-                    className="font-korean min-h-[120px] min-w-0 flex-1 resize-none rounded-[14px] border-2 border-[#DDD6FE] bg-white px-4 py-3 text-[15px] text-[#0f172a] outline-none transition placeholder:text-[#94A3B8] focus:border-[#6c2eff] focus:ring-2 focus:ring-[#6c2eff]/20"
+                    className="font-korean min-h-[120px] w-full resize-none rounded-[14px] border-[1.5px] border-[#d4c8ff] bg-white px-4 py-3 text-[15px] text-[#0f172a] outline-none transition placeholder:text-[#94A3B8] focus:border-[#6c2eff] focus:ring-2 focus:ring-[#6c2eff]/20"
                     autoComplete="off"
                     spellCheck={false}
                   />
+                  {micHint ? <p className="text-center text-xs text-red-600/90">{micHint}</p> : null}
                   <button
-                    type="button"
-                    onClick={() => void toggleVoiceInput()}
-                    disabled={!getSpeechRecognition() || isRequestingMic}
-                    title={getSpeechRecognition() ? "Voice input" : "Voice input not supported"}
-                    className={`flex h-[120px] w-[52px] shrink-0 flex-col items-center justify-center rounded-[14px] border-2 bg-white text-xl transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                      isListening ? "shadow-[0_4px_16px_rgba(108,46,255,0.2)]" : "hover:bg-[#FAF8FF]"
-                    }`}
-                    style={{
-                      borderColor: isListening ? BRAND_PURPLE : CARD_BORDER,
-                      color: BRAND_PURPLE
-                    }}
-                    aria-pressed={isListening}
-                    aria-label={
-                      isListening ? tx(uiLang, "fl_stopListening") : tx(uiLang, "fl_startVoice")
-                    }
+                    type="submit"
+                    disabled={!userInput.trim() || isListening}
+                    className="w-full rounded-2xl py-4 text-[16px] font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                    style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
                   >
-                    <span aria-hidden>🗣️</span>
-                    {isRequestingMic && !isListening ? (
-                      <span className="mt-1 text-[9px] font-semibold leading-tight" style={{ color: BRAND_PURPLE }}>
-                        …
-                      </span>
-                    ) : null}
+                    {tx(uiLang, "fl_submit")}
                   </button>
-                </div>
-                {micHint ? <p className="text-center text-xs text-red-600/90">{micHint}</p> : null}
-                <button
-                  type="submit"
-                  disabled={!userInput.trim() || isListening}
-                  className="w-full rounded-2xl py-4 text-[16px] font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-                  style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
-                >
-                  {tx(uiLang, "fl_submit")}
-                </button>
-              </form>
+                </form>
+              ) : (
+                micHint ? (
+                  <p className="mt-4 text-center text-xs text-red-600/90">{micHint}</p>
+                ) : null
+              )}
+
               <button
                 type="button"
                 onClick={() => {
                   setStep(2);
                   void playKoreanTts();
                 }}
-                className="mt-6 w-full text-center text-xs font-medium text-[#94A3B8] transition hover:text-[#64748B]"
+                className="mt-8 w-full text-center text-xs font-medium text-[#94A3B8] transition hover:text-[#64748B]"
               >
                 {tx(uiLang, "fl_listenAgain")}
               </button>
@@ -755,70 +869,121 @@ function FirstLineFlow() {
           )}
 
           {step === 4 && successContent && (
-            <div key="s4" className={`${stepClass} mx-auto w-full max-w-[400px] text-center`}>
+            <div key="s4" className={`${stepClass} mx-auto w-full max-w-[480px] text-left`}>
               <div
                 className="inline-flex items-center justify-center rounded-[20px] px-4 py-2 text-[11px] font-bold text-white"
                 style={{ backgroundColor: BRAND_PURPLE }}
               >
                 {tx(uiLang, "fl_successBadge")}
               </div>
-              <h2
-                className="mt-5 text-[26px] font-bold leading-tight tracking-[-0.5px] text-[#0f172a]"
-              >
-                {tx(uiLang, "fl_youJustSpoke")}
-                <span style={{ color: BRAND_PURPLE }}>{tx(uiLang, "fl_koreanExclaim")}</span>
-                {tx(uiLang, "fl_youJustSpokeAfter")}
-              </h2>
-              <p className="mt-3 text-[14px] text-[#6b7280]">
+              <p className="mt-4 text-center text-[14px] leading-relaxed text-[#6b7280]">
                 {completedJourneyDay != null ? (
                   <>{tx(uiLang, "fl_streak", { day: completedJourneyDay })}</>
                 ) : (
                   <>{tx(uiLang, "fl_firstSentence")}</>
                 )}
               </p>
-              <div
-                className="mt-8 rounded-[20px] border-2 bg-white px-5 py-6 text-center"
-                style={{ borderColor: CARD_BORDER }}
-              >
-                <div>
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: BRAND_PURPLE }}
+
+              {(() => {
+                const tier =
+                  matchTier === "perfect"
+                    ? {
+                        border: "#22c55e",
+                        badgeBg: "#dcfce7",
+                        badgeFg: "#166534",
+                        badgeKey: "fl_badge_perfect",
+                        evalKey: "fl_evalPerfect",
+                        check: "#22c55e"
+                      }
+                    : matchTier === "good"
+                      ? {
+                          border: "#eab308",
+                          badgeBg: "#fef9c3",
+                          badgeFg: "#854d0e",
+                          badgeKey: "fl_badge_good",
+                          evalKey: "fl_evalGood",
+                          check: "#ca8a04"
+                        }
+                      : {
+                          border: "#ef4444",
+                          badgeBg: "#fee2e2",
+                          badgeFg: "#991b1b",
+                          badgeKey: "fl_badge_keep",
+                          evalKey: "fl_evalKeep",
+                          check: "#ef4444"
+                        };
+                return (
+                  <div
+                    className="mt-6 rounded-[18px] border-[1.5px] bg-white px-5 py-6"
+                    style={{ borderColor: tier.border }}
                   >
-                    {tx(uiLang, "fl_youSaid")}
+                    <div
+                      className="inline-flex rounded-full px-3 py-1.5 text-[12px] font-bold"
+                      style={{ backgroundColor: tier.badgeBg, color: tier.badgeFg }}
+                    >
+                      {tx(uiLang, tier.badgeKey)}
+                    </div>
+                    <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b7280]">
+                      {tx(uiLang, "fl_mySaidLabel")}
+                    </p>
+                    <p className="font-korean mt-2 text-[18px] font-bold leading-snug text-[#0f172a]">
+                      {userInput.trim()}
+                    </p>
+                    <div className="mt-4 flex items-start gap-2">
+                      <span className="mt-0.5 text-base font-bold" style={{ color: tier.check }} aria-hidden>
+                        ✓
+                      </span>
+                      <p className="text-[15px] font-semibold leading-snug text-[#0f172a]">
+                        {tx(uiLang, tier.evalKey)}
+                      </p>
+                    </div>
+                    <div className="my-5 h-px w-full" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b7280]">
+                      {tx(uiLang, "fl_modelLine")}
+                    </p>
+                    <p className="font-korean mt-2 text-[17px] font-bold leading-snug text-[#0f172a]">
+                      {successContent.ko}
+                    </p>
+                    <p className="mt-2 text-[13px] text-[#6b7280]">{successContent.en}</p>
+                  </div>
+                );
+              })()}
+
+              {vocabForResult.length > 0 ? (
+                <div
+                  className="mt-6 rounded-[18px] border-[1.5px] bg-white px-4 py-5"
+                  style={{ borderColor: "#d4c8ff" }}
+                >
+                  <p className="text-[15px] font-bold" style={{ color: BRAND_PURPLE }}>
+                    📚 {tx(uiLang, "fl_vocabHeader")}
                   </p>
-                  <p className="font-korean mt-2 text-[20px] font-bold leading-snug" style={{ color: TEXT_PRIMARY }}>
-                    {userInput.trim()}
-                  </p>
+                  <ul className="mt-4 flex flex-col gap-2">
+                    {vocabForResult.map((row, i) => (
+                      <li
+                        key={`${row.word}-${i}`}
+                        className="flex items-start justify-between gap-3 rounded-lg px-2 py-1.5"
+                        style={{ backgroundColor: "#f9f7ff" }}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-korean text-[14px] font-semibold text-[#0f172a]">{row.word}</p>
+                          <p className="mt-0.5 text-[10px] italic" style={{ color: BRAND_PURPLE }}>
+                            {row.roman}
+                          </p>
+                        </div>
+                        <p className="max-w-[48%] shrink-0 text-right text-[12px] leading-snug text-[#6b7280]">
+                          {row.meaning}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div className="my-5 h-px w-full" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
-                <div>
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: BRAND_PURPLE }}
-                  >
-                    {tx(uiLang, "fl_modelLine")}
-                  </p>
-                  <p className="font-korean mt-2 text-[20px] font-bold leading-snug" style={{ color: TEXT_PRIMARY }}>
-                    {successContent.ko}
-                  </p>
-                  <p className="mt-2 text-[13px] text-[#6b7280]">{successContent.en}</p>
-                </div>
-                {normalizeKorean(userInput) === normalizeKorean(successContent.ko) ? (
-                  <p
-                    className="mt-5 rounded-full py-2.5 text-sm font-bold text-[#0f172a]"
-                    style={{ backgroundColor: BRAND_GOLD }}
-                  >
-                    {tx(uiLang, "fl_perfectMatch")}
-                  </p>
-                ) : null}
-              </div>
+              ) : null}
 
               {nextJourneyPreview && nextDayNumber != null ? (
                 <>
-                  <div className="my-8 h-px w-full max-w-[360px] mx-auto" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
+                  <div className="my-8 h-px w-full" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
                   <p
-                    className="text-[11px] font-bold uppercase tracking-[0.14em]"
+                    className="text-center text-[11px] font-bold uppercase tracking-[0.14em]"
                     style={{ color: BRAND_PURPLE }}
                   >
                     {tx(uiLang, "fl_upNext", { n: nextDayNumber })}
@@ -832,26 +997,39 @@ function FirstLineFlow() {
                     </p>
                     <p className="font-korean mt-3 text-lg font-bold text-[#0f172a]">{nextJourneyPreview.ko}</p>
                     <p className="mt-2 text-[13px] text-[#6b7280]">{nextJourneyPreview.en}</p>
-                    <button
-                      type="button"
-                      onClick={startNextJourneyDay}
-                      className="mt-5 w-full rounded-[14px] py-3.5 text-[14px] font-bold text-white transition hover:brightness-110 active:scale-[0.99]"
-                      style={{ backgroundColor: BRAND_PURPLE }}
-                    >
-                      {tx(uiLang, "fl_startDayNow", { n: nextDayNumber })}
-                    </button>
                   </div>
                 </>
               ) : null}
 
               {completedJourneyDay === 3 ? (
                 <>
-                  <div className="my-8 h-px w-full max-w-[360px] mx-auto" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
-                  <p className="text-[15px] font-bold text-[#0f172a]">{tx(uiLang, "fl_challengeComplete")}</p>
+                  <div className="my-8 h-px w-full" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
+                  <p className="text-center text-[15px] font-bold text-[#0f172a]">
+                    {tx(uiLang, "fl_challengeComplete")}
+                  </p>
                 </>
               ) : null}
 
               <div className="mt-8 flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={goRetrySpeak}
+                  className="w-full rounded-[14px] border-2 bg-white py-4 text-[15px] font-bold transition hover:bg-[#FAF8FF] active:scale-[0.99]"
+                  style={{ borderColor: BRAND_PURPLE, color: BRAND_PURPLE }}
+                >
+                  {tx(uiLang, "fl_retrySpeak")}
+                </button>
+                {nextJourneyPreview && nextDayNumber != null ? (
+                  <button
+                    type="button"
+                    onClick={startNextJourneyDay}
+                    className="w-full rounded-[14px] py-4 text-[15px] font-bold text-white transition hover:brightness-110 active:scale-[0.99]"
+                    style={{ backgroundColor: BRAND_PURPLE }}
+                  >
+                    {tx(uiLang, "fl_startDayNow", { n: nextDayNumber })}
+                    {" →"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={tryAnother}
@@ -869,7 +1047,7 @@ function FirstLineFlow() {
                   {tx(uiLang, "fl_goHome")}
                 </button>
               </div>
-              <p className="mt-8 text-[12px] text-[#6b7280]">
+              <p className="mt-8 text-center text-[12px] text-[#6b7280]">
                 {completedJourneyDay != null ? (
                   journeyDay <= MAX_JOURNEY_DAY ? (
                     <>
