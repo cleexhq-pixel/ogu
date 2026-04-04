@@ -153,6 +153,9 @@ function TierCheckIcon({ fill }) {
   );
 }
 
+const STT_MAX_MS = 10000;
+const STT_SILENCE_MS = 1500;
+
 function getSpeechRecognition() {
   if (typeof window === "undefined") return null;
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -207,6 +210,19 @@ function FirstLineFlow() {
   const setSttAwaitingSubmitRef = useRef(setSttAwaitingSubmit);
   setUserInputRef.current = setUserInput;
   setSttAwaitingSubmitRef.current = setSttAwaitingSubmit;
+  const sttSilenceTimerRef = useRef(null);
+  const sttMaxTimerRef = useRef(null);
+
+  const clearSttTimers = useCallback(() => {
+    if (sttSilenceTimerRef.current != null) {
+      clearTimeout(sttSilenceTimerRef.current);
+      sttSilenceTimerRef.current = null;
+    }
+    if (sttMaxTimerRef.current != null) {
+      clearTimeout(sttMaxTimerRef.current);
+      sttMaxTimerRef.current = null;
+    }
+  }, []);
 
   const journeyActive = journeyDay >= 1 && journeyDay <= MAX_JOURNEY_DAY;
   const journeyContent = journeyActive ? journeyDayToContent(journeyDay, uiLang) : null;
@@ -365,16 +381,46 @@ function FirstLineFlow() {
       const t = text.trim();
       sttTranscriptRef.current = t;
       setUserInput(t);
+
+      const lastIdx = event.results.length - 1;
+      if (lastIdx < 0) return;
+      const lastResult = event.results[lastIdx];
+      if (lastResult.isFinal) {
+        clearSttTimers();
+        try {
+          recognition.stop();
+        } catch (_) {}
+        return;
+      }
+
+      if (sttSilenceTimerRef.current != null) {
+        clearTimeout(sttSilenceTimerRef.current);
+        sttSilenceTimerRef.current = null;
+      }
+      sttSilenceTimerRef.current = setTimeout(() => {
+        sttSilenceTimerRef.current = null;
+        try {
+          recognition.stop();
+        } catch (_) {}
+      }, STT_SILENCE_MS);
     };
 
     recognition.onstart = () => {
+      clearSttTimers();
       setIsRequestingMic(false);
       setIsListening(true);
       setMicHint(null);
       sttTranscriptRef.current = "";
+      sttMaxTimerRef.current = setTimeout(() => {
+        sttMaxTimerRef.current = null;
+        try {
+          recognition.stop();
+        } catch (_) {}
+      }, STT_MAX_MS);
     };
 
     recognition.onerror = (event) => {
+      clearSttTimers();
       setIsRequestingMic(false);
       setIsListening(false);
       if (event.error === "not-allowed" || event.error === "denied" || event.error === "service-not-allowed") {
@@ -385,6 +431,7 @@ function FirstLineFlow() {
     };
 
     recognition.onend = () => {
+      clearSttTimers();
       setIsListening(false);
       setIsRequestingMic(false);
       if (userStoppedMicRef.current) {
@@ -398,32 +445,35 @@ function FirstLineFlow() {
 
     recognitionRef.current = recognition;
     return () => {
+      clearSttTimers();
       try {
         recognition.abort();
       } catch (_) {}
       recognitionRef.current = null;
     };
-  }, []);
+  }, [clearSttTimers]);
 
   useEffect(() => {
     if (step === 3) return;
+    clearSttTimers();
     try {
       recognitionRef.current?.stop();
     } catch (_) {}
     setIsListening(false);
     setIsRequestingMic(false);
-  }, [step]);
+  }, [step, clearSttTimers]);
 
   useEffect(() => {
     if (step !== 3) setSttAwaitingSubmit(false);
   }, [step]);
 
   const resetSttPreview = useCallback(() => {
+    clearSttTimers();
     setSttAwaitingSubmit(false);
     setUserInput("");
     sttTranscriptRef.current = "";
     setMicHint(null);
-  }, []);
+  }, [clearSttTimers]);
 
   const submitSttRecognition = useCallback(() => {
     const trimmed = userInput.trim();
@@ -438,10 +488,12 @@ function FirstLineFlow() {
 
     if (isListening) {
       userStoppedMicRef.current = true;
+      clearSttTimers();
       try {
         recognition.stop();
       } catch (_) {}
       setIsListening(false);
+      setIsRequestingMic(false);
       return;
     }
 
@@ -473,10 +525,11 @@ function FirstLineFlow() {
       trackSendVoice();
     } catch (e) {
       console.warn("SpeechRecognition start failed", e);
+      clearSttTimers();
       setIsRequestingMic(false);
       setMicHint(tx(uiLangRef.current, "fl_micAllow"));
     }
-  }, [isListening]);
+  }, [isListening, clearSttTimers]);
 
   const tryAnother = () => {
     stopAudio();
