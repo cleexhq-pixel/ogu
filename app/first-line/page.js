@@ -195,15 +195,18 @@ function FirstLineFlow() {
   const [signupModalDismissed, setSignupModalDismissed] = useState(false);
   const [signupBusy, setSignupBusy] = useState(false);
   const [signupError, setSignupError] = useState(null);
-  const [showTypeInput, setShowTypeInput] = useState(false);
+  const [sttAwaitingSubmit, setSttAwaitingSubmit] = useState(false);
   const audioRef = useRef(null);
   const recognitionRef = useRef(null);
   const sttTranscriptRef = useRef("");
   const userStoppedMicRef = useRef(false);
-  const completeStep3Ref = useRef(() => {});
   const hydratedFromUrl = useRef(false);
   const signupModalShownGaArmedRef = useRef(false);
   const lastStep4GaSignatureRef = useRef("");
+  const setUserInputRef = useRef(setUserInput);
+  const setSttAwaitingSubmitRef = useRef(setSttAwaitingSubmit);
+  setUserInputRef.current = setUserInput;
+  setSttAwaitingSubmitRef.current = setSttAwaitingSubmit;
 
   const journeyActive = journeyDay >= 1 && journeyDay <= MAX_JOURNEY_DAY;
   const journeyContent = journeyActive ? journeyDayToContent(journeyDay, uiLang) : null;
@@ -345,8 +348,6 @@ function FirstLineFlow() {
     [stopAudio, journeyDay]
   );
 
-  completeStep3Ref.current = completeStep3WithText;
-
   useEffect(() => {
     const SpeechRecognition = getSpeechRecognition();
     if (!SpeechRecognition) return;
@@ -391,9 +392,8 @@ function FirstLineFlow() {
         return;
       }
       const t = sttTranscriptRef.current.trim();
-      if (t) {
-        completeStep3Ref.current(t);
-      }
+      setUserInputRef.current(t);
+      setSttAwaitingSubmitRef.current(true);
     };
 
     recognitionRef.current = recognition;
@@ -415,8 +415,22 @@ function FirstLineFlow() {
   }, [step]);
 
   useEffect(() => {
-    if (step === 3) setShowTypeInput(false);
+    if (step !== 3) setSttAwaitingSubmit(false);
   }, [step]);
+
+  const resetSttPreview = useCallback(() => {
+    setSttAwaitingSubmit(false);
+    setUserInput("");
+    sttTranscriptRef.current = "";
+    setMicHint(null);
+  }, []);
+
+  const submitSttRecognition = useCallback(() => {
+    const trimmed = userInput.trim();
+    if (!trimmed) return;
+    setSttAwaitingSubmit(false);
+    completeStep3WithText(trimmed);
+  }, [userInput, completeStep3WithText]);
 
   const toggleVoiceInput = useCallback(async () => {
     const recognition = recognitionRef.current;
@@ -442,6 +456,9 @@ function FirstLineFlow() {
     } catch (_) {}
 
     setMicHint(null);
+    setSttAwaitingSubmit(false);
+    setUserInput("");
+    sttTranscriptRef.current = "";
     setIsRequestingMic(true);
     try {
       const mic = await requestMicrophoneAccess();
@@ -460,13 +477,6 @@ function FirstLineFlow() {
       setMicHint(tx(uiLangRef.current, "fl_micAllow"));
     }
   }, [isListening]);
-
-  const handleSubmit = (e) => {
-    e?.preventDefault?.();
-    const trimmed = userInput.trim();
-    if (!trimmed) return;
-    completeStep3WithText(trimmed);
-  };
 
   const tryAnother = () => {
     stopAudio();
@@ -492,8 +502,7 @@ function FirstLineFlow() {
 
   const goRetrySpeak = () => {
     stopAudio();
-    setUserInput("");
-    setShowTypeInput(false);
+    resetSttPreview();
     setStep(3);
   };
 
@@ -822,62 +831,63 @@ function FirstLineFlow() {
                 {ttsLoading ? tx(uiLang, "fl_loading") : tx(uiLang, "fl_listenAgainBtn")}
               </button>
 
-              <div className="mt-6 flex flex-col items-center">
-                <button
-                  type="button"
-                  onClick={() => void toggleVoiceInput()}
-                  disabled={!getSpeechRecognition() || isRequestingMic}
-                  className="flex w-full max-w-[320px] items-center justify-center gap-2 rounded-[18px] px-5 py-[18px] text-[17px] font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 active:scale-[0.99]"
-                  style={{
-                    backgroundColor: BRAND_PURPLE,
-                    boxShadow: isListening ? "0 8px 24px rgba(108, 46, 255, 0.45)" : "0 12px 28px rgba(108, 46, 255, 0.35)"
-                  }}
-                  aria-pressed={isListening}
-                  aria-label={
-                    isListening ? tx(uiLang, "fl_speakListening") : tx(uiLang, "fl_speakIdle")
-                  }
-                >
-                  <span aria-hidden className="text-xl">
-                    🎙
-                  </span>
-                  {isListening ? tx(uiLang, "fl_speakListening") : tx(uiLang, "fl_speakIdle")}
-                </button>
-                <p className="mt-5 text-center text-[13px] text-[#64748B]">
+              {!sttAwaitingSubmit ? (
+                <>
+                  <div className="mt-6 flex flex-col items-center">
+                    <button
+                      type="button"
+                      onClick={() => void toggleVoiceInput()}
+                      disabled={!getSpeechRecognition() || isRequestingMic}
+                      className="flex w-full max-w-[320px] items-center justify-center gap-2 rounded-[18px] px-5 py-[18px] text-[17px] font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 active:scale-[0.99]"
+                      style={{
+                        backgroundColor: BRAND_PURPLE,
+                        boxShadow: isListening
+                          ? "0 8px 24px rgba(108, 46, 255, 0.45)"
+                          : "0 12px 28px rgba(108, 46, 255, 0.35)"
+                      }}
+                      aria-pressed={isListening}
+                      aria-label={
+                        isListening ? tx(uiLang, "fl_speakListening") : tx(uiLang, "fl_speakIdle")
+                      }
+                    >
+                      <span aria-hidden className="text-xl">
+                        🎙
+                      </span>
+                      {isListening ? tx(uiLang, "fl_speakListening") : tx(uiLang, "fl_speakIdle")}
+                    </button>
+                  </div>
+                  {micHint ? <p className="mt-4 text-center text-xs text-red-600/90">{micHint}</p> : null}
+                </>
+              ) : (
+                <div className="mt-6 flex w-full flex-col gap-3">
+                  <div
+                    className="rounded-[12px] border-[1.5px] bg-white px-4 py-4"
+                    style={{ borderColor: "#d4c8ff" }}
+                  >
+                    <p className="text-[11px] leading-snug text-[#9ca3af]">{tx(uiLang, "fl_mySaidLabel")}</p>
+                    <p className="font-korean mt-2 text-[16px] font-semibold leading-relaxed text-[#0f172a]">
+                      {userInput.trim() ? userInput.trim() : tx(uiLang, "fl_sttEmptyHint")}
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setShowTypeInput((v) => !v)}
-                    className="font-medium underline decoration-[1.5px] underline-offset-2 transition hover:opacity-80"
-                    style={{ color: BRAND_PURPLE }}
-                  >
-                    {tx(uiLang, "fl_typeInstead")}
-                  </button>
-                </p>
-              </div>
-
-              {showTypeInput ? (
-                <form onSubmit={handleSubmit} className="mt-6 space-y-3">
-                  <textarea
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    placeholder={tx(uiLang, "fl_placeholder")}
-                    rows={4}
-                    className="font-korean min-h-[120px] w-full resize-none rounded-[14px] border-[1.5px] border-[#d4c8ff] bg-white px-4 py-3 text-[15px] text-[#0f172a] outline-none transition placeholder:text-[#94A3B8] focus:border-[#6c2eff] focus:ring-2 focus:ring-[#6c2eff]/20"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  {micHint ? <p className="text-center text-xs text-red-600/90">{micHint}</p> : null}
-                  <button
-                    type="submit"
-                    disabled={!userInput.trim() || isListening}
-                    className="w-full rounded-2xl py-4 text-[16px] font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => submitSttRecognition()}
+                    disabled={!userInput.trim()}
+                    className="w-full rounded-2xl py-[14px] text-[15px] font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 active:scale-[0.99]"
                     style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
                   >
-                    {tx(uiLang, "fl_submit")}
+                    {tx(uiLang, "fl_submitStt")}
                   </button>
-                </form>
-              ) : micHint ? (
-                <p className="mt-4 text-center text-xs text-red-600/90">{micHint}</p>
-              ) : null}
+                  <button
+                    type="button"
+                    onClick={resetSttPreview}
+                    className="w-full rounded-2xl border-[1.5px] bg-white py-[14px] text-[15px] font-bold transition hover:bg-[#FAF8FF] active:scale-[0.99]"
+                    style={{ borderColor: "#d4c8ff", color: BRAND_PURPLE }}
+                  >
+                    {tx(uiLang, "fl_retryMicPreview")}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

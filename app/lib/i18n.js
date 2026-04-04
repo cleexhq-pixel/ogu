@@ -165,7 +165,10 @@ const STR = {
     fl_speakListening: "지금 말하는 중...",
     fl_dayResultLabel: "DAY {n} · RESULT",
     fl_resultBrowse: "RESULT",
-    fl_modelAnswer: "모범 답안"
+    fl_modelAnswer: "모범 답안",
+    fl_submitStt: "제출하기",
+    fl_retryMicPreview: "🎙 다시 말해보기",
+    fl_sttEmptyHint: "다시 말해보기를 눌러주세요"
   },
   en: {
     home_yourFirstLine: "🪄 YOUR FIRST LINE",
@@ -263,7 +266,16 @@ const STR = {
     fl_evalKeep: "Keep going!",
     fl_vocabHeader: "Vocabulary",
     fl_retrySpeak: "🎙 Try speaking again",
-    fl_mySaidLabel: "What you said"
+    fl_mySaidLabel: "What you said",
+    fl_listenAgainBtn: "Listen again",
+    fl_speakIdle: "Speak now",
+    fl_speakListening: "Listening...",
+    fl_dayResultLabel: "DAY {n} · RESULT",
+    fl_resultBrowse: "RESULT",
+    fl_modelAnswer: "Model answer",
+    fl_submitStt: "Submit",
+    fl_retryMicPreview: "🎙 Try again",
+    fl_sttEmptyHint: "Tap “Try again” to speak once more"
   },
   id: {
     home_yourFirstLine: "🪄 KALIMAT PERTAMAMU",
@@ -367,7 +379,10 @@ const STR = {
     fl_speakListening: "Sedang mendengarkan...",
     fl_dayResultLabel: "DAY {n} · RESULT",
     fl_resultBrowse: "RESULT",
-    fl_modelAnswer: "Jawaban contoh"
+    fl_modelAnswer: "Jawaban contoh",
+    fl_submitStt: "Kirim",
+    fl_retryMicPreview: "🎙 Coba lagi",
+    fl_sttEmptyHint: "Ketuk “Coba lagi” untuk berbicara lagi"
   },
   fr: {
     home_yourFirstLine: "🪄 TA PREMIÈRE PHRASE",
@@ -471,7 +486,10 @@ const STR = {
     fl_speakListening: "En écoute...",
     fl_dayResultLabel: "DAY {n} · RESULT",
     fl_resultBrowse: "RESULT",
-    fl_modelAnswer: "Réponse modèle"
+    fl_modelAnswer: "Réponse modèle",
+    fl_submitStt: "Soumettre",
+    fl_retryMicPreview: "🎙 Réessayer",
+    fl_sttEmptyHint: "Appuyez sur « Réessayer » pour réessayer"
   },
   pt: {
     home_yourFirstLine: "🪄 SUA PRIMEIRA FRASE",
@@ -575,6 +593,9 @@ const STR = {
     fl_speakListening: "Ouvindo...",
     fl_dayResultLabel: "DAY {n} · RESULT",
     fl_resultBrowse: "RESULT",
-    fl_modelAnswer: "Resposta modelo"
+    fl_modelAnswer: "Resposta modelo",
+    fl_submitStt: "Enviar",
+    fl_retryMicPreview: "🎙 Tentar novamente",
+    fl_sttEmptyHint: "Toque em “Tentar novamente” para falar de novo"
   }
 };
