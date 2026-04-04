@@ -136,6 +136,23 @@ function computeMatchTier(userRaw, referenceRaw) {
   return "keep";
 }
 
+/** @param {{ fill: string }} props */
+function TierCheckIcon({ fill }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden className="shrink-0">
+      <circle cx="9" cy="9" r="9" fill={fill} />
+      <path
+        d="M5 9l2.5 2.5L13 6"
+        stroke="white"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function getSpeechRecognition() {
   if (typeof window === "undefined") return null;
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -761,42 +778,51 @@ function FirstLineFlow() {
 
           {step === 3 && content && (
             <div key="s3" className={stepClass}>
+              <p
+                className="text-center text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[11px]"
+                style={{ color: BRAND_PURPLE }}
+              >
+                {content.headerLabel}
+              </p>
+
+              <div
+                className="mt-5 rounded-[18px] border-[1.5px] bg-white px-6 py-8"
+                style={{ borderColor: "#d4c8ff", boxShadow: "0 10px 32px rgba(109, 40, 255, 0.06)" }}
+              >
+                <p
+                  className="font-korean text-center text-[20px] font-bold leading-[1.5] [word-break:keep-all]"
+                  style={{ color: TEXT_PRIMARY }}
+                >
+                  {content.ko}
+                </p>
+                {content.romanization ? (
+                  <>
+                    <div className="my-5 h-px w-full" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
+                    <p
+                      className="text-center text-[12px] italic leading-[1.6] [word-break:break-word]"
+                      style={{ color: BRAND_PURPLE }}
+                    >
+                      {content.romanization}
+                    </p>
+                  </>
+                ) : null}
+                <p className="mt-4 text-center text-[13px] leading-relaxed" style={{ color: "#9ca3af" }}>
+                  {content.en}
+                </p>
+              </div>
+
               <button
                 type="button"
                 onClick={() => void playKoreanTts()}
                 disabled={ttsLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 bg-white py-3 text-sm font-semibold transition hover:bg-[#FAF8FF] disabled:opacity-50"
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border-2 bg-white py-3 text-sm font-semibold transition hover:bg-[#FAF8FF] disabled:opacity-50"
                 style={{ borderColor: BRAND_PURPLE, color: BRAND_PURPLE }}
               >
                 <span aria-hidden>🔊</span>
-                {ttsLoading ? (
-                  tx(uiLang, "fl_loading")
-                ) : (
-                  <>
-                    <span aria-hidden>🔊</span>
-                    {tx(uiLang, "fl_listenAgain").replace(/^\s*←\s*/, "")}
-                  </>
-                )}
+                {ttsLoading ? tx(uiLang, "fl_loading") : tx(uiLang, "fl_listenAgainBtn")}
               </button>
-              <h2
-                className="mt-6 text-center text-lg font-bold sm:text-xl"
-                style={{ color: TEXT_PRIMARY }}
-              >
-                {tx(uiLang, "fl_nowSayKorean")}
-              </h2>
-              <p className="font-korean mt-4 text-center text-base leading-[1.5] text-[#64748B] [word-break:keep-all] sm:text-lg">
-                {content.ko}
-              </p>
-              {content.romanization ? (
-                <p
-                  className="mt-2 text-center text-[11px] italic leading-snug sm:text-xs"
-                  style={{ color: BRAND_PURPLE }}
-                >
-                  {content.romanization}
-                </p>
-              ) : null}
 
-              <div className="mt-10 flex flex-col items-center">
+              <div className="mt-6 flex flex-col items-center">
                 <button
                   type="button"
                   onClick={() => void toggleVoiceInput()}
@@ -808,13 +834,13 @@ function FirstLineFlow() {
                   }}
                   aria-pressed={isListening}
                   aria-label={
-                    isListening ? tx(uiLang, "fl_stopListening") : tx(uiLang, "fl_startVoice")
+                    isListening ? tx(uiLang, "fl_speakListening") : tx(uiLang, "fl_speakIdle")
                   }
                 >
                   <span aria-hidden className="text-xl">
-                    🎤
+                    🎙
                   </span>
-                  {isListening ? tx(uiLang, "fl_stopListening") : tx(uiLang, "fl_sayItNow")}
+                  {isListening ? tx(uiLang, "fl_speakListening") : tx(uiLang, "fl_speakIdle")}
                 </button>
                 <p className="mt-5 text-center text-[13px] text-[#64748B]">
                   <button
@@ -849,39 +875,18 @@ function FirstLineFlow() {
                     {tx(uiLang, "fl_submit")}
                   </button>
                 </form>
-              ) : (
-                micHint ? (
-                  <p className="mt-4 text-center text-xs text-red-600/90">{micHint}</p>
-                ) : null
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  setStep(2);
-                  void playKoreanTts();
-                }}
-                className="mt-8 w-full text-center text-xs font-medium text-[#94A3B8] transition hover:text-[#64748B]"
-              >
-                {tx(uiLang, "fl_listenAgain")}
-              </button>
+              ) : micHint ? (
+                <p className="mt-4 text-center text-xs text-red-600/90">{micHint}</p>
+              ) : null}
             </div>
           )}
 
           {step === 4 && successContent && (
             <div key="s4" className={`${stepClass} mx-auto w-full max-w-[480px] text-left`}>
-              <div
-                className="inline-flex items-center justify-center rounded-[20px] px-4 py-2 text-[11px] font-bold text-white"
-                style={{ backgroundColor: BRAND_PURPLE }}
-              >
-                {tx(uiLang, "fl_successBadge")}
-              </div>
-              <p className="mt-4 text-center text-[14px] leading-relaxed text-[#6b7280]">
-                {completedJourneyDay != null ? (
-                  <>{tx(uiLang, "fl_streak", { day: completedJourneyDay })}</>
-                ) : (
-                  <>{tx(uiLang, "fl_firstSentence")}</>
-                )}
+              <p className="text-center text-[10px] font-bold uppercase tracking-[0.18em] text-[#6b7280]">
+                {completedJourneyDay != null
+                  ? tx(uiLang, "fl_dayResultLabel", { n: completedJourneyDay })
+                  : tx(uiLang, "fl_resultBrowse")}
               </p>
 
               {(() => {
@@ -914,7 +919,7 @@ function FirstLineFlow() {
                         };
                 return (
                   <div
-                    className="mt-6 rounded-[18px] border-[1.5px] bg-white px-5 py-6"
+                    className="mt-5 rounded-[18px] border-[1.5px] bg-white px-5 py-6"
                     style={{ borderColor: tier.border }}
                   >
                     <div
@@ -923,31 +928,40 @@ function FirstLineFlow() {
                     >
                       {tx(uiLang, tier.badgeKey)}
                     </div>
-                    <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b7280]">
-                      {tx(uiLang, "fl_mySaidLabel")}
-                    </p>
-                    <p className="font-korean mt-2 text-[18px] font-bold leading-snug text-[#0f172a]">
+                    <p className="mt-5 text-[11px] leading-snug text-[#9ca3af]">{tx(uiLang, "fl_mySaidLabel")}</p>
+                    <p className="font-korean mt-2 text-[17px] font-bold leading-snug text-[#0f172a]">
                       {userInput.trim()}
                     </p>
-                    <div className="mt-4 flex items-start gap-2">
-                      <span className="mt-0.5 text-base font-bold" style={{ color: tier.check }} aria-hidden>
-                        ✓
-                      </span>
-                      <p className="text-[15px] font-semibold leading-snug text-[#0f172a]">
+                    <div className="mt-4 flex items-center gap-1.5">
+                      <TierCheckIcon fill={tier.check} />
+                      <p className="text-[13px] font-semibold leading-snug" style={{ color: tier.check }}>
                         {tx(uiLang, tier.evalKey)}
                       </p>
                     </div>
-                    <div className="my-5 h-px w-full" style={{ backgroundColor: CARD_BORDER }} aria-hidden />
-                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#6b7280]">
-                      {tx(uiLang, "fl_modelLine")}
-                    </p>
-                    <p className="font-korean mt-2 text-[17px] font-bold leading-snug text-[#0f172a]">
-                      {successContent.ko}
-                    </p>
-                    <p className="mt-2 text-[13px] text-[#6b7280]">{successContent.en}</p>
                   </div>
                 );
               })()}
+
+              <div
+                className="mt-4 rounded-[18px] border-[1.5px] bg-white px-5 py-6"
+                style={{ borderColor: "#d4c8ff" }}
+              >
+                <p className="text-[11px] font-bold text-[#6b7280]">{tx(uiLang, "fl_modelAnswer")}</p>
+                <p className="font-korean mt-3 text-[17px] font-bold leading-snug text-[#0f172a]">
+                  {successContent.ko}
+                </p>
+                {successContent.romanization ? (
+                  <p
+                    className="mt-2 text-[12px] italic leading-relaxed [word-break:break-word]"
+                    style={{ color: BRAND_PURPLE }}
+                  >
+                    {successContent.romanization}
+                  </p>
+                ) : null}
+                <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "#9ca3af" }}>
+                  {successContent.en}
+                </p>
+              </div>
 
               {vocabForResult.length > 0 ? (
                 <div
@@ -961,7 +975,7 @@ function FirstLineFlow() {
                     {vocabForResult.map((row, i) => (
                       <li
                         key={`${row.word}-${i}`}
-                        className="flex items-start justify-between gap-3 rounded-lg px-2 py-1.5"
+                        className="flex items-start justify-between gap-3 rounded-[8px] px-2 py-1.5"
                         style={{ backgroundColor: "#f9f7ff" }}
                       >
                         <div className="min-w-0 flex-1">

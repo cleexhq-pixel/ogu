@@ -159,7 +159,13 @@ const STR = {
     fl_evalKeep: "조금만 더 연습해봐요!",
     fl_vocabHeader: "단어 보기",
     fl_retrySpeak: "🎙 다시 말해보기",
-    fl_mySaidLabel: "내가 말한 것"
+    fl_mySaidLabel: "내가 말한 것",
+    fl_listenAgainBtn: "다시 듣기",
+    fl_speakIdle: "지금 말해보기",
+    fl_speakListening: "지금 말하는 중...",
+    fl_dayResultLabel: "DAY {n} · RESULT",
+    fl_resultBrowse: "RESULT",
+    fl_modelAnswer: "모범 답안"
   },
   en: {
     home_yourFirstLine: "🪄 YOUR FIRST LINE",
@@ -355,7 +361,13 @@ const STR = {
     fl_evalKeep: "Terus berlatih!",
     fl_vocabHeader: "Kosakata",
     fl_retrySpeak: "🎙 Coba bicara lagi",
-    fl_mySaidLabel: "Yang kamu katakan"
+    fl_mySaidLabel: "Yang kamu katakan",
+    fl_listenAgainBtn: "Dengarkan lagi",
+    fl_speakIdle: "Bicara sekarang",
+    fl_speakListening: "Sedang mendengarkan...",
+    fl_dayResultLabel: "DAY {n} · RESULT",
+    fl_resultBrowse: "RESULT",
+    fl_modelAnswer: "Jawaban contoh"
   },
   fr: {
     home_yourFirstLine: "🪄 TA PREMIÈRE PHRASE",
@@ -453,7 +465,13 @@ const STR = {
     fl_evalKeep: "Continue !",
     fl_vocabHeader: "Vocabulaire",
     fl_retrySpeak: "🎙 Réessayer à l’oral",
-    fl_mySaidLabel: "Ce que vous avez dit"
+    fl_mySaidLabel: "Ce que vous avez dit",
+    fl_listenAgainBtn: "Réécouter",
+    fl_speakIdle: "Parlez maintenant",
+    fl_speakListening: "En écoute...",
+    fl_dayResultLabel: "DAY {n} · RESULT",
+    fl_resultBrowse: "RESULT",
+    fl_modelAnswer: "Réponse modèle"
   },
   pt: {
     home_yourFirstLine: "🪄 SUA PRIMEIRA FRASE",
@@ -551,6 +569,12 @@ const STR = {
     fl_evalKeep: "Continue praticando!",
     fl_vocabHeader: "Vocabulário",
     fl_retrySpeak: "🎙 Falar de novo",
-    fl_mySaidLabel: "O que você disse"
+    fl_mySaidLabel: "O que você disse",
+    fl_listenAgainBtn: "Ouvir de novo",
+    fl_speakIdle: "Fale agora",
+    fl_speakListening: "Ouvindo...",
+    fl_dayResultLabel: "DAY {n} · RESULT",
+    fl_resultBrowse: "RESULT",
+    fl_modelAnswer: "Resposta modelo"
   }
 };
