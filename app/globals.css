@@ -18,6 +18,19 @@ body {
   --color-border: #E5E7EB;
   --color-text-primary: #0F172A;
   --color-text-secondary: #64748B;
+
+  /* Editorial minimalism (home / onboarding) */
+  --primary: #2a14b4;
+  --primary-container: #4338ca;
+  --surface: #f9f9fb;
+  --surface-low: #f3f3f5;
+  --surface-lowest: #ffffff;
+  --on-surface: #1a1c1d;
+  --on-surface-variant: #6b6f72;
+  --ghost-border: rgba(26, 28, 29, 0.15);
+  --shadow-card: 0 20px 50px rgba(26, 28, 29, 0.05);
+  --shadow-active: 0 8px 24px rgba(42, 20, 180, 0.28);
+  --shadow-lang-pill: 0 2px 10px rgba(0, 0, 0, 0.07);
 }
 
 * {

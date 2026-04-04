@@ -21,16 +21,30 @@ import {
 } from "@/lib/journey-data";
 import { useActiveSession } from "@/hooks/useActiveSession";
 
-const BRAND_PURPLE = "#6c2eff";
-const BRAND_GOLD = "#ffd84d";
-const LAVENDER_BG = "#EDE9FE";
-const CARD_BORDER = "#DDD6FE";
-const DIVIDER_COLOR = "#E4DDF7";
-
-const GOLD_UNDERLINE = "border-b-[3px] pb-0.5";
-const goldUnderlineStyle = { borderColor: BRAND_GOLD };
+const HERO_UNDERLINE = "border-b-[3px] pb-0.5";
+const heroUnderlineStyle = { borderColor: "var(--primary)" };
 
 const HERO_J_EN_KEYS = /** @type {const} */ (["j1_en", "j2_en", "j3_en"]);
+
+const LANG_FLAG = /** @type {const} */ ({
+  ko: "🇰🇷",
+  en: "🇬🇧",
+  id: "🇮🇩",
+  fr: "🇫🇷",
+  pt: "🇵🇹"
+});
+
+function ArrowCircleIcon() {
+  return (
+    <span
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg leading-none text-white"
+      style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
+      aria-hidden
+    >
+      →
+    </span>
+  );
+}
 
 /** @param {string} L normalized lang @param {number} day 1…30 */
 function heroJourneyEnglish(L, day) {
@@ -50,7 +64,7 @@ function HeroKoreanLine({ ko }) {
         <span key={i}>
           {part}
           {i < parts.length - 1 ? (
-            <span className={GOLD_UNDERLINE} style={goldUnderlineStyle}>
+            <span className={HERO_UNDERLINE} style={heroUnderlineStyle}>
               ___
             </span>
           ) : null}
@@ -114,6 +128,8 @@ export default function HomePage() {
   const activeUserIdRef = useRef(null);
   const langReady = useRef(false);
   const profileMenuRef = useRef(null);
+  const langMenuRef = useRef(null);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -181,6 +197,17 @@ export default function HomePage() {
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [profileMenuOpen]);
+
+  useEffect(() => {
+    if (!langMenuOpen) return;
+    const close = (e) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target)) {
+        setLangMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [langMenuOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -287,8 +314,6 @@ export default function HomePage() {
     router.push(`/first-line?${params.toString()}`);
   };
 
-  const langPillBase =
-    "rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition-colors duration-200 sm:px-3 sm:text-[12px]";
   const L = normalizeLang(language);
 
   const heroJourneyComplete = journeyCurrent >= JOURNEY_DONE_MARKER;
@@ -342,96 +367,132 @@ export default function HomePage() {
     if (error) setLoginError(error.message);
   }, []);
 
+  const vibeStripEmoji = (label) =>
+    String(label || "")
+      .replace(/^(👑|🎬|✈️)\s*/u, "")
+      .trim();
+
   return (
     <>
       <Analytics />
-      <main className="min-h-screen px-4 py-8 font-jakarta sm:py-10" style={{ backgroundColor: LAVENDER_BG }}>
-        <div className="mx-auto flex w-full max-w-[480px] flex-col gap-8 text-[#0F172A]">
-          {showOnboardingModal && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 font-jakarta"
-              style={{ backgroundColor: "rgba(15, 23, 42, 0.5)" }}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="onboarding-modal-title"
-            >
-              <div className="w-full max-w-[360px] rounded-[24px] bg-white px-7 py-8 shadow-lg">
-                <div
-                  className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-[28px] leading-none"
-                  style={{ backgroundColor: LAVENDER_BG }}
-                  aria-hidden
-                >
-                  🪄
-                </div>
-                <h2
-                  id="onboarding-modal-title"
-                  className="mt-5 text-center text-[22px] font-bold leading-snug text-[#0f172a]"
-                >
-                  {tx(L, "modal_headlineBefore")}
-                  <span style={{ color: BRAND_PURPLE }}>{tx(L, "modal_headlineAccent")}</span>
-                  {tx(L, "modal_headlineAfter")}
-                </h2>
-                <div className="mt-3 space-y-0.5 text-center text-[14px] leading-relaxed text-[#6b7280]">
-                  <p>{tx(L, "modal_pickTopic")}</p>
-                  <p>{tx(L, "modal_noSignup")}</p>
-                </div>
-                <div className="mt-6 flex flex-col gap-3">
+      {showOnboardingModal && (
+        <div
+          className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col bg-[var(--surface-lowest)] font-jakarta"
+          style={{ padding: "48px 28px 44px" }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="onboarding-modal-title"
+        >
+          <div className="flex min-h-0 flex-1 flex-col justify-between">
+            <div>
+              <p className="inline-flex rounded-[20px] bg-[var(--surface-low)] px-[14px] py-[7px] text-[11px] font-bold text-[var(--on-surface-variant)]">
+                🪄 Speak 한국어 from Day 1
+              </p>
+              <h2
+                id="onboarding-modal-title"
+                className="mt-8 text-[36px] font-extrabold leading-[1.12] tracking-[-0.8px] text-[var(--on-surface)]"
+              >
+                <span className="block">{tx(L, "modal_headlineBefore").trim()}</span>
+                <span className="block">{tx(L, "modal_headlineAccent")}</span>
+                <span className="block">
+                  {L === "en" ? (
+                    <>
+                      <span className="text-[var(--on-surface)]">in </span>
+                      <span className="font-light italic text-[var(--primary)]">30 seconds.</span>
+                    </>
+                  ) : (
+                    <span
+                      className={
+                        L === "ko"
+                          ? "text-[var(--on-surface)]"
+                          : "font-light italic text-[var(--primary)]"
+                      }
+                    >
+                      {tx(L, "modal_headlineAfter")}
+                    </span>
+                  )}
+                </span>
+              </h2>
+              <div className="mb-10 mt-4 text-[15px] leading-[1.65] text-[var(--on-surface-variant)]">
+                <p>{tx(L, "modal_pickTopic")}</p>
+                <p>{tx(L, "modal_noSignup")}</p>
+              </div>
+              <p
+                className="mb-3 mt-10 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--on-surface-variant)]"
+                style={{ letterSpacing: "0.12em" }}
+              >
+                {tx(L, "home_vibeTitle")}
+              </p>
+              <div className="flex flex-col gap-[10px]">
+                {[
+                  { cat: "idol", key: "cat_idol_card", sub: "cat_idol_sub" },
+                  { cat: "drama", key: "cat_drama_card", sub: "cat_drama_sub" },
+                  { cat: "trip", key: "cat_trip_card", sub: "cat_trip_sub" }
+                ].map(({ cat, key, sub }) => (
                   <button
+                    key={cat}
                     type="button"
                     onClick={() => {
                       setShowOnboardingModal(false);
-                      goFirstLine("idol");
+                      goFirstLine(cat);
                     }}
-                    className="w-full rounded-[14px] border-2 border-[#DDD6FE] bg-[#EDE9FE] px-4 py-3.5 text-center text-[14px] font-bold text-[#0f172a] transition hover:border-[#6c2eff] active:scale-[0.99]"
+                    className="group flex w-full items-center gap-4 rounded-[32px] border-2 border-transparent bg-[var(--surface-low)] p-4 pl-5 text-left transition hover:border-[rgba(42,20,180,0.2)] hover:bg-[#edeafd]"
                   >
-                    {tx(L, "cat_idol_card")}
+                    <span
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[var(--surface-lowest)] text-[22px] leading-none"
+                      aria-hidden
+                    >
+                      {cat === "idol" ? "👑" : cat === "drama" ? "🎬" : "✈️"}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14px] font-bold text-[var(--on-surface)]">{tx(L, key)}</span>
+                      <span className="mt-0.5 block text-[12px] text-[var(--on-surface-variant)]">{tx(L, sub)}</span>
+                    </span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowOnboardingModal(false);
-                      goFirstLine("drama");
-                    }}
-                    className="w-full rounded-[14px] border-2 border-[#DDD6FE] bg-[#EDE9FE] px-4 py-3.5 text-center text-[14px] font-bold text-[#0f172a] transition hover:border-[#6c2eff] active:scale-[0.99]"
-                  >
-                    {tx(L, "cat_drama_card")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowOnboardingModal(false);
-                      goFirstLine("trip");
-                    }}
-                    className="w-full rounded-[14px] border-2 border-[#DDD6FE] bg-[#EDE9FE] px-4 py-3.5 text-center text-[14px] font-bold text-[#0f172a] transition hover:border-[#6c2eff] active:scale-[0.99]"
-                  >
-                    {tx(L, "cat_trip_card")}
-                  </button>
-                </div>
-                <div className="mt-5 text-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowOnboardingModal(false)}
-                    className="text-[14px] text-[#6b7280] transition hover:opacity-80"
-                  >
-                    {tx(L, "modal_browseBefore")}
-                    <span style={{ color: BRAND_PURPLE }}>{tx(L, "modal_browseAccent")}</span>
-                  </button>
-                </div>
-                <p className="mt-3 text-center text-[11px] text-[#9ca3af]">{tx(L, "modal_footer")}</p>
+                ))}
               </div>
             </div>
-          )}
-
-          <header className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] text-lg leading-none"
-                style={{ backgroundColor: BRAND_PURPLE }}
-                aria-hidden
+            <div className="mt-10 shrink-0 space-y-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOnboardingModal(false);
+                  goFirstLine("idol");
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-[24px] px-5 py-[18px] text-[15px] font-bold text-white transition hover:brightness-105 active:scale-[0.99]"
+                style={{
+                  background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                  boxShadow: "var(--shadow-active)"
+                }}
               >
+                <span>{tx(L, "home_sayItNow")}</span>
+                <ArrowCircleIcon />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowOnboardingModal(false)}
+                className="w-full text-center text-[13px] text-[var(--on-surface-variant)] underline underline-offset-2 transition hover:opacity-80"
+              >
+                {tx(L, "modal_browseBefore")}
+                {tx(L, "modal_browseAccent")}
+              </button>
+              <p className="text-center text-[11px] opacity-50 text-[var(--on-surface)]">{tx(L, "modal_footer")}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="min-h-screen bg-[var(--surface)] pb-14 pt-0 font-jakarta text-[var(--on-surface)]">
+        <header
+          className="sticky top-0 z-40 border-b border-transparent backdrop-blur-[20px]"
+          style={{ backgroundColor: "rgba(249, 249, 251, 0.85)" }}
+        >
+          <div className="mx-auto flex w-full max-w-[480px] flex-wrap items-center justify-between gap-3 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl leading-none" aria-hidden>
                 🪄
               </span>
-              <span className="text-lg font-bold tracking-tight text-[#0F172A]">Kkobi</span>
+              <span className="text-lg font-bold tracking-tight text-[var(--on-surface)]">꼬비</span>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
               {!authUser ? (
@@ -440,8 +501,7 @@ export default function HomePage() {
                     type="button"
                     onClick={() => void signInWithGoogle()}
                     disabled={loginBusy}
-                    className="shrink-0 rounded-[20px] border-2 bg-white px-3 py-1.5 text-[11px] font-semibold transition hover:bg-[#FAF8FF] disabled:opacity-50 sm:text-[12px]"
-                    style={{ borderColor: BRAND_PURPLE, color: BRAND_PURPLE }}
+                    className="shrink-0 rounded-[20px] bg-[var(--on-surface)] px-3 py-1.5 text-[11px] font-bold text-[var(--surface-lowest)] transition hover:opacity-90 disabled:opacity-50 sm:text-[12px]"
                   >
                     {tx(L, "home_logIn")}
                   </button>
@@ -450,31 +510,54 @@ export default function HomePage() {
                   ) : null}
                 </div>
               ) : null}
-              <div className="flex max-w-[200px] shrink-0 flex-wrap justify-end gap-1 sm:max-w-none">
-                {LANG_CODES.map((code) => (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => setLang(code)}
-                    className={langPillBase}
-                    style={
-                      language === code
-                        ? { backgroundColor: BRAND_PURPLE, color: "#fff" }
-                        : { backgroundColor: "transparent", color: "#64748B" }
-                    }
+              <div className="relative shrink-0" ref={langMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setLangMenuOpen((o) => !o)}
+                  className="flex items-center gap-1.5 rounded-[20px] bg-[var(--surface-lowest)] py-[7px] pl-[13px] pr-[11px] text-[12px] font-bold text-[var(--on-surface)]"
+                  style={{ boxShadow: "var(--shadow-lang-pill)" }}
+                  aria-expanded={langMenuOpen}
+                  aria-haspopup="listbox"
+                >
+                  <span aria-hidden>{LANG_FLAG[normalizeLang(language)] ?? "🌐"}</span>
+                  <span>{language.toUpperCase()}</span>
+                  <span className="text-[10px] opacity-60" aria-hidden>
+                    ▾
+                  </span>
+                </button>
+                {langMenuOpen ? (
+                  <ul
+                    className="absolute right-0 top-full z-50 mt-1 min-w-[140px] overflow-hidden rounded-[16px] bg-[var(--surface-lowest)] py-1 shadow-lg"
+                    style={{ boxShadow: "var(--shadow-card)" }}
+                    role="listbox"
                   >
-                    {code.toUpperCase()}
-                  </button>
-                ))}
+                    {LANG_CODES.map((code) => (
+                      <li key={code} role="option" aria-selected={language === code}>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[12px] font-semibold text-[var(--on-surface)] hover:bg-[var(--surface-low)]"
+                          onClick={() => {
+                            setLang(code);
+                            setLangMenuOpen(false);
+                          }}
+                        >
+                          <span aria-hidden>{LANG_FLAG[code]}</span>
+                          {code.toUpperCase()}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
               {authUser ? (
                 <div className="relative shrink-0" ref={profileMenuRef}>
                   <button
                     type="button"
                     onClick={() => setProfileMenuOpen((o) => !o)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold text-white shadow-sm"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold text-white"
                     style={{
-                      backgroundColor: BRAND_PURPLE
+                      background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                      boxShadow: "var(--shadow-active)"
                     }}
                     aria-expanded={profileMenuOpen}
                     aria-haspopup="true"
@@ -485,8 +568,8 @@ export default function HomePage() {
                       <img
                         src={profileAvatarUrl}
                         alt=""
-                        width={32}
-                        height={32}
+                        width={36}
+                        height={36}
                         className="h-full w-full object-cover"
                         onError={() => setProfileAvatarBroken(true)}
                       />
@@ -496,22 +579,23 @@ export default function HomePage() {
                   </button>
                   {profileMenuOpen ? (
                     <div
-                      className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-[12px] border bg-white py-1 shadow-lg"
-                      style={{ borderColor: "#e5e7eb" }}
+                      className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-[16px] bg-[var(--surface-lowest)] py-1"
+                      style={{ border: "1px solid var(--ghost-border)", boxShadow: "var(--shadow-card)" }}
                       role="menu"
                     >
                       {profileDisplayLine ? (
                         <>
-                          <p className="truncate px-3 py-2 text-left text-xs text-[#64748B]">{profileDisplayLine}</p>
-                          <div className="mx-3 h-px bg-[#e5e7eb]" aria-hidden />
+                          <p className="truncate px-3 py-2 text-left text-xs text-[var(--on-surface-variant)]">
+                            {profileDisplayLine}
+                          </p>
+                          <div className="mx-3 h-px bg-[var(--surface-low)]" aria-hidden />
                         </>
                       ) : null}
                       <button
                         type="button"
                         role="menuitem"
                         onClick={() => void signOut()}
-                        className="w-full px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-[#f8fafc]"
-                        style={{ color: "#ef4444" }}
+                        className="w-full px-3 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-[var(--surface-low)]"
                       >
                         {tx(L, "home_logOut")}
                       </button>
@@ -520,85 +604,112 @@ export default function HomePage() {
                 </div>
               ) : null}
             </div>
-          </header>
+          </div>
+        </header>
 
-          <section>
-            <p
-              className="text-center text-[10px] font-bold uppercase tracking-[0.2em] sm:text-[11px]"
-              style={{ color: BRAND_PURPLE }}
-            >
+        <div className="mx-auto w-full max-w-[480px] px-6">
+          <section className="mb-12 mt-8">
+            <p className="text-left text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--on-surface-variant)]">
               {heroLineLabel}
             </p>
             <div
-              className="mt-4 rounded-[18px] border bg-white px-5 py-8 sm:px-7 sm:py-9"
-              style={{ borderColor: CARD_BORDER, boxShadow: "0 10px 32px rgba(109, 40, 255, 0.06)" }}
+              className="relative mt-4 overflow-hidden rounded-[48px] px-6 py-10"
+              style={{
+                background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                boxShadow: "var(--shadow-card)"
+              }}
             >
-              {heroJourneyComplete ? (
-                <>
-                  <p className="font-korean text-center text-[1.35rem] font-bold leading-relaxed text-[#0F172A] sm:text-[1.5rem]">
-                    {tx(L, "home_journeyCompleteMessage")}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={goBrowseFirstLine}
-                    className="mt-8 w-full rounded-2xl py-4 text-[16px] font-bold text-white transition hover:brightness-110 active:scale-[0.98]"
-                    style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
-                  >
-                    {tx(L, "home_browseMissions")}
-                  </button>
-                </>
-              ) : heroRow ? (
-                <>
-                  <p className="font-korean text-center text-[1.35rem] font-bold leading-relaxed text-[#0F172A] sm:text-[1.5rem]">
-                    <HeroKoreanLine ko={heroRow.ko} />
-                  </p>
-                  <p className="mt-5 text-center text-sm leading-relaxed text-[#94A3B8] sm:text-[15px]">
-                    {heroJourneyEnglish(L, heroDay)}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={goHeroSayItNow}
-                    className="mt-8 w-full rounded-2xl py-4 text-[16px] font-bold text-white transition hover:brightness-110 active:scale-[0.98]"
-                    style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 12px 28px rgba(108, 46, 255, 0.35)" }}
-                  >
-                    {tx(L, "home_sayItNow")}
-                  </button>
-                </>
-              ) : null}
+              <div
+                className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full bg-white/12"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute -bottom-16 -left-12 h-40 w-40 rounded-full bg-white/[0.08]"
+                aria-hidden
+              />
+              <div className="relative">
+                {heroJourneyComplete ? (
+                  <>
+                    <p className="font-korean text-center text-[32px] font-extrabold leading-[1.25] tracking-[-0.6px] text-white sm:text-[34px]">
+                      {tx(L, "home_journeyCompleteMessage")}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={goBrowseFirstLine}
+                      className="mt-10 w-full rounded-[24px] bg-white py-[14px] text-[15px] font-bold text-[#2a14b4] transition hover:brightness-95 active:scale-[0.99]"
+                      style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}
+                    >
+                      {tx(L, "home_browseMissions")}
+                    </button>
+                  </>
+                ) : heroRow ? (
+                  <>
+                    <p className="font-korean text-center text-[32px] font-extrabold leading-[1.25] tracking-[-0.6px] text-white sm:text-[34px]">
+                      <HeroKoreanLine ko={heroRow.ko} />
+                    </p>
+                    <p className="mt-2 text-center text-[15px] font-light italic leading-relaxed text-white/90">
+                      {heroJourneyEnglish(L, heroDay)}
+                    </p>
+                    <div className="mt-8 flex items-end justify-between gap-4">
+                      <button
+                        type="button"
+                        onClick={goHeroSayItNow}
+                        className="rounded-[24px] bg-white px-[22px] py-[14px] text-[15px] font-bold text-[#2a14b4] transition hover:brightness-95 active:scale-[0.99]"
+                      >
+                        {tx(L, "home_sayItNow")}
+                      </button>
+                      {heroDay != null ? (
+                        <span
+                          className="select-none font-extrabold leading-none text-white/25"
+                          style={{ fontSize: "clamp(3rem, 18vw, 5rem)" }}
+                          aria-hidden
+                        >
+                          {heroDay}
+                        </span>
+                      ) : null}
+                    </div>
+                  </>
+                ) : null}
+              </div>
             </div>
           </section>
 
-          {showSignInBanner ? (
-            <div
-              className="rounded-[14px] border-2 px-4 py-4 sm:px-5 sm:py-5"
-              style={{ backgroundColor: "#EDE9FE", borderColor: CARD_BORDER }}
-            >
-              <p className="text-center text-[15px] font-bold leading-snug text-[#0f172a] sm:text-base">
-                {tx(L, "home_signInBannerTitle")}
-              </p>
-              <p className="mt-2 text-center text-[13px] leading-relaxed text-[#64748B] sm:text-[14px]">
-                {tx(L, "home_signInBannerSub")}
-              </p>
-              <button
-                type="button"
-                onClick={() => void signInWithGoogle()}
-                disabled={loginBusy}
-                className="mt-4 w-full rounded-xl py-3.5 text-[14px] font-bold text-white transition hover:brightness-110 disabled:opacity-50 active:scale-[0.99]"
-                style={{ backgroundColor: BRAND_PURPLE, boxShadow: "0 8px 20px rgba(108, 46, 255, 0.25)" }}
-              >
-                {tx(L, "home_signInWithGoogle")}
-              </button>
+          <section className="mb-12">
+            <h2 className="text-left text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--on-surface-variant)]">
+              {tx(L, "home_vibeTitle")}
+            </h2>
+            <div className="mt-4 grid grid-cols-3 gap-[10px]">
+              {[
+                { cat: "idol", label: "home_vibeIdol", sub: "cat_idol_sub" },
+                { cat: "drama", label: "home_vibeDrama", sub: "cat_drama_sub" },
+                { cat: "trip", label: "home_vibeTrip", sub: "cat_trip_sub" }
+              ].map(({ cat, label, sub }) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => goFirstLine(cat)}
+                  className="flex flex-col items-center rounded-[32px] bg-[var(--surface-lowest)] px-3 pb-[18px] pt-5 text-center transition hover:brightness-[0.99] active:scale-[0.99]"
+                  style={{ boxShadow: "var(--shadow-card)" }}
+                >
+                  <span className="text-[26px] leading-none" aria-hidden>
+                    {cat === "idol" ? "👑" : cat === "drama" ? "🎬" : "✈️"}
+                  </span>
+                  <span className="mt-2 text-[11px] font-semibold leading-tight text-[var(--on-surface)]">
+                    {vibeStripEmoji(tx(L, label))}
+                  </span>
+                  <span className="mt-1.5 line-clamp-2 text-[10px] leading-snug text-[var(--on-surface-variant)]">
+                    {tx(L, sub)}
+                  </span>
+                </button>
+              ))}
             </div>
-          ) : null}
+          </section>
 
-          <section className="space-y-3">
-            <p
-              className="text-center text-[9px] font-bold uppercase tracking-[0.16em]"
-              style={{ color: BRAND_PURPLE }}
-            >
+          <section className="mb-12">
+            <p className="text-left text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--on-surface-variant)]">
               {journeyCurrent >= 4 ? tx(L, "home_speakingJourney") : tx(L, "home_journeyTitle")}
             </p>
-            <div className="flex flex-col gap-3">
+            <div className="mt-4 rounded-[32px] bg-[var(--surface-low)] px-4 py-2">
               {getJourneyWindowDays(journeyCurrent).map((d) => {
                 const isPlaceholder = d === JOURNEY_DONE_MARKER;
                 const isDone =
@@ -607,37 +718,37 @@ export default function HomePage() {
                 const isActive =
                   !isPlaceholder && d === journeyCurrent && journeyCurrent <= MAX_JOURNEY_DAY;
                 const isLocked = !isDone && !isActive;
-                const baseCard =
-                  "flex w-full gap-3 rounded-xl border-2 bg-white p-4 text-left transition";
-                const cardClass = isActive ? `${baseCard} ring-0` : `${baseCard} border-[#DDD6FE]`;
-                const cardStyle = isActive
-                  ? { borderColor: BRAND_PURPLE, boxShadow: "0 0 0 1px rgba(108,46,255,0.15)" }
-                  : undefined;
                 const title = homeJourneyCardTitle(L, d);
                 const koLine = homeJourneyCardKo(d);
 
-                const inner = (
-                  <>
+                const row = (
+                  <div className="flex gap-3 py-[14px]">
                     <div className="flex shrink-0 flex-col items-center justify-start pt-0.5">
                       {isDone ? (
                         <span
-                          className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
-                          style={{ backgroundColor: BRAND_PURPLE }}
+                          className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-[#2a14b4]"
+                          style={{
+                            backgroundColor: "var(--surface-lowest)",
+                            boxShadow: "var(--shadow-card)"
+                          }}
                           aria-hidden
                         >
                           ✓
                         </span>
                       ) : isActive ? (
                         <span
-                          className="flex h-10 w-10 items-center justify-center rounded-full text-base font-bold text-[#0f172a]"
-                          style={{ backgroundColor: BRAND_GOLD }}
+                          className="flex h-10 w-10 items-center justify-center rounded-full text-base font-bold text-white"
+                          style={{
+                            background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                            boxShadow: "var(--shadow-active)"
+                          }}
                           aria-hidden
                         >
                           {d}
                         </span>
                       ) : (
                         <span
-                          className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#d1d5db] bg-[#f3f4f6] text-sm font-bold text-[#9ca3af]"
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-low)] text-sm font-semibold text-[var(--on-surface-variant)]"
                           aria-hidden
                         >
                           {isPlaceholder ? "…" : d}
@@ -645,25 +756,29 @@ export default function HomePage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p
+                          className={`text-[15px] font-semibold ${
+                            isLocked ? "font-normal text-[var(--on-surface-variant)]" : "text-[var(--on-surface)]"
+                          }`}
+                        >
+                          {title}
+                        </p>
+                        {isActive ? (
+                          <span className="rounded-[20px] bg-[#2a14b4] px-[9px] py-[3px] text-[9px] font-bold uppercase tracking-wide text-white">
+                            {tx(L, "home_today")}
+                          </span>
+                        ) : null}
+                      </div>
                       <p
-                        className={`text-[15px] font-bold ${isLocked ? "text-[#9ca3af]" : "text-[#0f172a]"}`}
-                      >
-                        {title}
-                      </p>
-                      <p
-                        className={`font-korean mt-1 text-sm font-semibold ${isLocked ? "text-[#c4c4c4]" : "text-[#334155]"}`}
+                        className={`font-korean mt-1 text-[15px] leading-snug ${
+                          isLocked ? "font-normal text-[var(--on-surface-variant)]" : "font-semibold text-[var(--on-surface)]"
+                        }`}
                       >
                         {koLine}
                       </p>
-                      <p
-                        className={`mt-2 text-[11px] font-bold uppercase tracking-wide ${
-                          isDone || isActive ? "text-[#6c2eff]" : "text-[#9ca3af]"
-                        }`}
-                      >
-                        {isDone ? tx(L, "home_done") : isActive ? tx(L, "home_today") : tx(L, "home_locked")}
-                      </p>
                     </div>
-                  </>
+                  </div>
                 );
 
                 if (isActive) {
@@ -672,73 +787,88 @@ export default function HomePage() {
                       key={d}
                       type="button"
                       onClick={openActiveJourneyDay}
-                      className={cardClass}
-                      style={cardStyle}
+                      className="block w-full text-left transition hover:opacity-95"
                     >
-                      {inner}
+                      {row}
                     </button>
                   );
                 }
 
                 return (
-                  <div key={d} className={cardClass} style={cardStyle} aria-disabled={isLocked}>
-                    {inner}
+                  <div key={d} className={isLocked ? "opacity-90" : ""} aria-disabled={isLocked}>
+                    {row}
                   </div>
                 );
               })}
             </div>
           </section>
 
-          <div className="h-px w-full" style={{ backgroundColor: DIVIDER_COLOR }} aria-hidden />
-
-          <section className="space-y-4">
-            <h2 className="text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[#94A3B8] sm:text-[11px]">
-              {tx(L, "home_vibeTitle")}
-            </h2>
-            <div className="flex gap-2 sm:gap-3">
+          <section className="mb-12">
+            <div
+              className="flex items-center justify-between gap-4 rounded-[48px] bg-[var(--surface-lowest)] px-7 py-7"
+              style={{ boxShadow: "var(--shadow-card)" }}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--on-surface-variant)]">
+                  {tx(L, "home_browseMissions")}
+                </p>
+                <p className="mt-2 text-[20px] font-extrabold leading-tight tracking-[-0.4px] text-[var(--on-surface)]">
+                  {tx(L, "home_browseMissions")}
+                </p>
+                <p className="mt-2 text-[14px] font-normal leading-relaxed text-[var(--on-surface-variant)]">
+                  {tx(L, "modal_pickTopic")}
+                </p>
+              </div>
               <button
                 type="button"
-                onClick={() => goFirstLine("idol")}
-                className="min-w-0 flex-1 rounded-[14px] border bg-white px-2 py-3.5 text-center text-[11px] font-semibold leading-tight text-[#334155] transition hover:bg-[#FAFAFC] sm:px-3 sm:text-xs"
-                style={{ borderColor: CARD_BORDER }}
+                onClick={goBrowseFirstLine}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white transition hover:brightness-105 active:scale-95"
+                style={{
+                  background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                  boxShadow: "var(--shadow-active)"
+                }}
+                aria-label={tx(L, "home_browseMissions")}
               >
-                {tx(L, "home_vibeIdol")}
-              </button>
-              <button
-                type="button"
-                onClick={() => goFirstLine("drama")}
-                className="min-w-0 flex-1 rounded-[14px] border bg-white px-2 py-3.5 text-center text-[11px] font-semibold leading-tight text-[#334155] transition hover:bg-[#FAFAFC] sm:px-3 sm:text-xs"
-                style={{ borderColor: CARD_BORDER }}
-              >
-                {tx(L, "home_vibeDrama")}
-              </button>
-              <button
-                type="button"
-                onClick={() => goFirstLine("trip")}
-                className="min-w-0 flex-1 rounded-[14px] border bg-white px-2 py-3.5 text-center text-[11px] font-semibold leading-tight text-[#334155] transition hover:bg-[#FAFAFC] sm:px-3 sm:text-xs"
-                style={{ borderColor: CARD_BORDER }}
-              >
-                {tx(L, "home_vibeTrip")}
+                →
               </button>
             </div>
           </section>
 
-          <footer className="pb-4 pt-2 text-center">
-            <button
-              type="button"
-              onClick={goBrowseFirstLine}
-              className="text-[13px] font-semibold transition hover:opacity-80"
-              style={{ color: BRAND_PURPLE }}
-            >
-              {tx(L, "home_browseMissions")}
-            </button>
-          </footer>
+          {showSignInBanner ? (
+            <div className="mb-12 rounded-[32px] bg-[var(--surface-low)] px-6 py-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 flex-1 gap-3">
+                  <span className="text-2xl shrink-0" aria-hidden>
+                    🪄
+                  </span>
+                  <div>
+                    <p className="text-[15px] font-bold leading-snug text-[var(--on-surface)]">
+                      {tx(L, "home_signInBannerTitle")}
+                    </p>
+                    <p className="mt-1 text-[14px] leading-relaxed text-[var(--on-surface-variant)]">
+                      {tx(L, "home_signInBannerSub")}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void signInWithGoogle()}
+                  disabled={loginBusy}
+                  className="shrink-0 rounded-[20px] bg-[var(--on-surface)] px-5 py-3 text-[14px] font-bold text-[var(--surface-lowest)] transition hover:opacity-90 disabled:opacity-50"
+                >
+                  {tx(L, "home_signInWithGoogle")}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {activeSessionCount != null ? (
-            <p className="py-4 text-center text-sm" style={{ color: "#6b7280" }}>
+            <p className="pb-8 text-center text-[14px] text-[var(--on-surface-variant)]">
               {activeSessionLine(L, activeSessionCount)}
             </p>
-          ) : null}
+          ) : (
+            <div className="pb-8" />
+          )}
         </div>
       </main>
     </>
