@@ -6,7 +6,6 @@ import { pageview, trackSendVoice } from "@/app/lib/gtag";
 import Analytics from "@/app/components/Analytics";
 import {
   isValidLang,
-  LANG_CODES,
   normalizeLang,
   OGU_LANG_KEY,
   resolveLangFromUrlAndStorage,
@@ -45,6 +44,13 @@ const secondaryBtnHome =
   "w-full rounded-[24px] border border-[rgba(26,28,29,0.12)] bg-white py-3 text-[14px] font-semibold text-[#6b6f72] transition hover:bg-[var(--surface-low)]";
 const nextStepBtn =
   "w-full rounded-[24px] border-[1.5px] border-[rgba(42,20,180,0.2)] bg-white py-[13px] text-[13px] font-bold text-[#2a14b4] transition hover:bg-[rgba(42,20,180,0.04)]";
+/** Step 1 — unified 15px / bold / centered */
+const step1PrimaryBtn =
+  "w-full rounded-[24px] py-[14px] text-[15px] font-bold text-white transition hover:brightness-105 active:scale-[0.99] disabled:opacity-50 flex items-center justify-center text-center gap-3";
+const step1SecondaryBtn =
+  "w-full rounded-[24px] border border-[rgba(26,28,29,0.12)] bg-white py-[14px] text-[15px] font-bold text-[#2a14b4] transition hover:bg-[var(--surface-low)] flex items-center justify-center text-center";
+const step1NextBtn =
+  "w-full rounded-[24px] border-[1.5px] border-[rgba(42,20,180,0.2)] bg-white py-[14px] text-[15px] font-bold text-[#2a14b4] transition hover:bg-[rgba(42,20,180,0.04)] flex items-center justify-center text-center";
 
 function readStoredCurrentDay() {
   if (typeof window === "undefined") return 1;
@@ -257,6 +263,38 @@ function ProgressDots({ active, allComplete }) {
         />
       ))}
     </div>
+  );
+}
+
+function WordPlayIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "block" }} aria-hidden>
+      <polygon points="2,1 9,5 2,9" fill="white" />
+    </svg>
+  );
+}
+
+function WordPauseIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "block" }} aria-hidden>
+      <rect x="1.5" y="1" width="2.5" height="8" rx="1" fill="white" />
+      <rect x="6" y="1" width="2.5" height="8" rx="1" fill="white" />
+    </svg>
+  );
+}
+
+function WordCheckIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "block" }} aria-hidden>
+      <path
+        d="M2 5l2.5 2.5 3.5-4"
+        stroke="white"
+        strokeWidth="1.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -526,17 +564,6 @@ export default function FirstLineFlow() {
     qs.set("lang", normalizeLang(searchParams.get("lang") || "en"));
     return qs;
   }, [searchParams]);
-
-  const setLang = (code) => {
-    const lang = normalizeLang(code);
-    if (typeof window !== "undefined") window.localStorage.setItem(OGU_LANG_KEY, lang);
-    const p = new URLSearchParams(searchParams.toString());
-    p.set("lang", lang);
-    router.replace(`${pathname}?${p.toString()}`);
-  };
-
-  const langPillBase =
-    "rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition-colors duration-200 sm:px-3 sm:text-[12px]";
 
   const selectCategory = (key) => {
     setCategory(key);
@@ -953,24 +980,6 @@ export default function FirstLineFlow() {
 
       <main className="min-h-screen px-4 py-8 font-jakarta" style={{ backgroundColor: "var(--surface)", color: "var(--on-surface)" }}>
         <div className="mx-auto w-full max-w-[480px]">
-          <div className="mb-6 flex flex-wrap justify-end gap-1">
-            {LANG_CODES.map((code) => (
-              <button
-                key={code}
-                type="button"
-                onClick={() => setLang(code)}
-                className={langPillBase}
-                style={
-                  uiLang === code
-                    ? { backgroundColor: "#2a14b4", color: "#fff" }
-                    : { backgroundColor: "transparent", color: "var(--on-surface-variant)" }
-                }
-              >
-                {code.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
           {phase === "pick" && (
             <div className="animate-fade-in-up">
               <h1 className="text-center text-xl font-bold leading-snug sm:text-2xl">{tx(L, "fl_vibeHeading")}</h1>
@@ -999,7 +1008,7 @@ export default function FirstLineFlow() {
                 <>
                   <ProgressDots allComplete />
                   <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
-                    {tx(L, "fl5_over_done", { n: dayN })}
+                    {tx(L, "fl5_over_done")}
                   </p>
                   <div
                     className="mt-4 rounded-[28px] px-4 py-4 text-center text-white"
@@ -1143,14 +1152,14 @@ export default function FirstLineFlow() {
               {flowStep === "listen" && (
                 <>
                   <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
-                    {tx(L, "fl5_over_listen", { n: dayN })}
+                    {tx(L, "fl5_over_listen")}
                   </p>
                   <div className="mt-4">{heroCard}</div>
                   <button
                     type="button"
                     onClick={onListenMain}
                     disabled={ttsLoading}
-                    className={`${primaryBtn} mt-6 flex items-center justify-between gap-3 px-4`}
+                    className={`${step1PrimaryBtn} mt-6`}
                     style={primaryStyle}
                   >
                     <span>{tx(L, "fl5_btn_listen")}</span>
@@ -1161,11 +1170,11 @@ export default function FirstLineFlow() {
                       {tx(L, "fl5_listen_count", { n: Math.min(listenCount, 3) })}
                     </span>
                   </button>
-                  <button type="button" onClick={onListenSlow} disabled={ttsLoading} className={`${secondaryBtn} mt-3`}>
+                  <button type="button" onClick={onListenSlow} disabled={ttsLoading} className={`${step1SecondaryBtn} mt-3`}>
                     {tx(L, "fl5_btn_slow")}
                   </button>
                   {listenCount >= 3 ? (
-                    <button type="button" onClick={goNextFromListen} className={`${nextStepBtn} mt-6`}>
+                    <button type="button" onClick={goNextFromListen} className={`${step1NextBtn} mt-6`}>
                       {tx(L, "fl5_next_vocab")}
                     </button>
                   ) : null}
@@ -1175,7 +1184,7 @@ export default function FirstLineFlow() {
               {flowStep === "understand" && (
                 <>
                   <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
-                    {tx(L, "fl5_over_understand", { n: dayN })}
+                    {tx(L, "fl5_over_understand")}
                   </p>
                   {situationText ? (
                     <div className="mt-4 rounded-[28px] px-4 py-4" style={{ backgroundColor: "var(--surface-low)" }}>
@@ -1222,7 +1231,7 @@ export default function FirstLineFlow() {
                               }}
                               aria-label="play"
                             >
-                              {done ? "✓" : playing ? "‖" : "▶"}
+                              {done ? <WordCheckIcon /> : playing ? <WordPauseIcon /> : <WordPlayIcon />}
                             </button>
                           </li>
                         );
@@ -1240,7 +1249,7 @@ export default function FirstLineFlow() {
               {flowStep === "repeat" && (
                 <>
                   <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
-                    {tx(L, "fl5_over_repeat", { n: dayN })}
+                    {tx(L, "fl5_over_repeat")}
                   </p>
                   <div className="mt-4">{heroCard}</div>
                   <p className="mt-2 text-center text-[12px] text-[var(--on-surface-variant)]">{tx(L, "fl5_repeat_hint")}</p>
@@ -1256,10 +1265,9 @@ export default function FirstLineFlow() {
                     type="button"
                     onClick={() => void toggleVoiceInput("repeat")}
                     disabled={!getSpeechRecognition() || isRequestingMic}
-                    className={`${primaryBtn} mt-4 flex items-center justify-center gap-2`}
+                    className={`${primaryBtn} mt-4 flex items-center justify-center text-center`}
                     style={primaryStyle}
                   >
-                    <span aria-hidden>🎙</span>
                     {isListening ? tx(L, "fl5_btn_speaking") : tx(L, "fl5_btn_speak_now")}
                   </button>
                   {micHint ? <p className="mt-2 text-center text-xs text-red-600">{micHint}</p> : null}
@@ -1274,20 +1282,25 @@ export default function FirstLineFlow() {
               {flowStep === "recall" && (
                 <>
                   <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
-                    {tx(L, "fl5_over_recall", { n: dayN })}
+                    {tx(L, "fl5_over_recall")}
                   </p>
                   <div
-                    className="mt-4 rounded-[28px] px-4 py-5"
+                    className="mt-4 rounded-[28px] text-center"
                     style={{
-                      backgroundColor: "var(--surface-low)",
-                      border: "2px dashed rgba(26,28,29,0.12)"
+                      backgroundColor: "#f3f3f5",
+                      border: "1.5px dashed rgba(42,20,180,0.2)",
+                      padding: "20px 16px"
                     }}
                   >
-                    <p className="text-center text-[14px] leading-relaxed text-[var(--on-surface)]">
-                      {tx(L, "fl5_recall_hint")}
+                    <p className="mb-3 text-[13px] leading-relaxed text-[#6b6f72]">{tx(L, "fl5_recall_hint")}</p>
+                    <p
+                      className="mb-3 text-[22px] font-normal tracking-[6px] text-[rgba(42,20,180,0.12)]"
+                      aria-hidden
+                    >
+                      ● ● ●
                     </p>
                     {content.romanization ? (
-                      <p className="mt-4 text-center text-[12px] italic text-[#2a14b4]">{content.romanization}</p>
+                      <p className="text-[12px] italic leading-[1.6] text-[#2a14b4]">{content.romanization}</p>
                     ) : null}
                   </div>
                   {!recallDone ? (
@@ -1295,10 +1308,9 @@ export default function FirstLineFlow() {
                       type="button"
                       onClick={() => void toggleVoiceInput("recall")}
                       disabled={!getSpeechRecognition() || isRequestingMic}
-                      className={`${primaryBtn} mt-6 flex items-center justify-center gap-2`}
+                      className={`${primaryBtn} mt-6 flex items-center justify-center text-center`}
                       style={primaryStyle}
                     >
-                      <span aria-hidden>🎙</span>
                       {isListening ? tx(L, "fl5_btn_speaking") : tx(L, "fl5_btn_speak_practice")}
                     </button>
                   ) : (
@@ -1378,7 +1390,7 @@ export default function FirstLineFlow() {
               {flowStep === "swap" && (
                 <>
                   <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
-                    {tx(L, "fl5_over_swap", { n: dayN })}
+                    {tx(L, "fl5_over_swap")}
                   </p>
                   <div
                     className="mt-4 rounded-[28px] bg-[var(--surface-lowest)] p-4"
@@ -1426,10 +1438,9 @@ export default function FirstLineFlow() {
                     type="button"
                     onClick={() => void onSwapSpeak()}
                     disabled={!getSpeechRecognition() || isRequestingMic}
-                    className={`${primaryBtn} mt-3 flex items-center justify-center gap-2`}
+                    className={`${primaryBtn} mt-3 flex items-center justify-center text-center`}
                     style={primaryStyle}
                   >
-                    <span aria-hidden>🎙</span>
                     {isListening ? tx(L, "fl5_btn_speaking") : tx(L, "fl5_btn_speak_swap")}
                   </button>
                   {spokenCount >= 1 ? (

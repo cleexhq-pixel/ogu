@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MISSIONS } from "@/app/data/missions";
 import { pageview, trackStartMission } from "@/app/lib/gtag";
+import { normalizeLang, OGU_LANG_KEY } from "@/app/lib/i18n";
 
 const CATEGORY_TABS = [
   { id: "all", category: null },
@@ -148,35 +149,7 @@ export default function MissionPage() {
             </span>
             <h1 className="text-lg font-bold">{labels.header}</h1>
           </div>
-          <div className="inline-flex rounded-full border border-[#E5E7EB] bg-[#FFFFFF] p-1 text-[11px] font-medium shadow-sm">
-            <button
-              type="button"
-              onClick={() => setLanguage("ko")}
-              className={`rounded-full px-2.5 py-1 transition ${
-                language === "ko" ? "bg-[#4F46E5] text-white" : "text-[#64748B] hover:bg-[#EEF2FF]"
-              }`}
-            >
-              🇰🇷
-            </button>
-            <button
-              type="button"
-              onClick={() => setLanguage("en")}
-              className={`rounded-full px-2.5 py-1 transition ${
-                language === "en" ? "bg-[#4F46E5] text-white" : "text-[#64748B] hover:bg-[#EEF2FF]"
-              }`}
-            >
-              EN
-            </button>
-            <button
-              type="button"
-              onClick={() => setLanguage("id")}
-              className={`rounded-full px-2.5 py-1 transition ${
-                language === "id" ? "bg-[#4F46E5] text-white" : "text-[#64748B] hover:bg-[#EEF2FF]"
-              }`}
-            >
-              ID
-            </button>
-          </div>
+          <div className="w-12 shrink-0" aria-hidden />
         </header>
 
         {/* 카테고리 탭 */}

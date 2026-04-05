@@ -554,45 +554,47 @@ export default function HomePage() {
                   ) : null}
                 </div>
               ) : null}
-              <div className="relative shrink-0" ref={langMenuRef}>
-                <button
-                  type="button"
-                  onClick={() => setLangMenuOpen((o) => !o)}
-                  className="flex items-center gap-1.5 rounded-[20px] bg-[var(--surface-lowest)] py-[7px] pl-[13px] pr-[11px] text-[12px] font-bold text-[var(--on-surface)]"
-                  style={{ boxShadow: "var(--shadow-lang-pill)" }}
-                  aria-expanded={langMenuOpen}
-                  aria-haspopup="listbox"
-                >
-                  <span aria-hidden>{LANG_FLAG[normalizeLang(language)] ?? "🌐"}</span>
-                  <span>{language.toUpperCase()}</span>
-                  <span className="text-[10px] opacity-60" aria-hidden>
-                    ▾
-                  </span>
-                </button>
-                {langMenuOpen ? (
-                  <ul
-                    className="absolute right-0 top-full z-50 mt-1 min-w-[140px] overflow-hidden rounded-[16px] bg-[var(--surface-lowest)] py-1 shadow-lg"
-                    style={{ boxShadow: "var(--shadow-card)" }}
-                    role="listbox"
+              {pathname !== "/first-line" && pathname !== "/mission" ? (
+                <div className="relative shrink-0" ref={langMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setLangMenuOpen((o) => !o)}
+                    className="flex items-center gap-1.5 rounded-[20px] bg-[var(--surface-lowest)] py-[7px] pl-[13px] pr-[11px] text-[12px] font-bold text-[var(--on-surface)]"
+                    style={{ boxShadow: "var(--shadow-lang-pill)" }}
+                    aria-expanded={langMenuOpen}
+                    aria-haspopup="listbox"
                   >
-                    {LANG_CODES.map((code) => (
-                      <li key={code} role="option" aria-selected={language === code}>
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[12px] font-semibold text-[var(--on-surface)] hover:bg-[var(--surface-low)]"
-                          onClick={() => {
-                            setLang(code);
-                            setLangMenuOpen(false);
-                          }}
-                        >
-                          <span aria-hidden>{LANG_FLAG[code]}</span>
-                          {code.toUpperCase()}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
+                    <span aria-hidden>{LANG_FLAG[normalizeLang(language)] ?? "🌐"}</span>
+                    <span>{language.toUpperCase()}</span>
+                    <span className="text-[10px] opacity-60" aria-hidden>
+                      ▾
+                    </span>
+                  </button>
+                  {langMenuOpen ? (
+                    <ul
+                      className="absolute right-0 top-full z-50 mt-1 min-w-[140px] overflow-hidden rounded-[16px] bg-[var(--surface-lowest)] py-1 shadow-lg"
+                      style={{ boxShadow: "var(--shadow-card)" }}
+                      role="listbox"
+                    >
+                      {LANG_CODES.map((code) => (
+                        <li key={code} role="option" aria-selected={language === code}>
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[12px] font-semibold text-[var(--on-surface)] hover:bg-[var(--surface-low)]"
+                            onClick={() => {
+                              setLang(code);
+                              setLangMenuOpen(false);
+                            }}
+                          >
+                            <span aria-hidden>{LANG_FLAG[code]}</span>
+                            {code.toUpperCase()}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
               {authUser ? (
                 <div className="relative shrink-0" ref={profileMenuRef}>
                   <button
