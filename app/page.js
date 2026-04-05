@@ -92,19 +92,21 @@ function homeJourneyCardKo(day, vibe) {
   return getJourneyRow(day, vibe)?.homeKo ?? "";
 }
 
-/** @param {import("@/app/lib/i18n").UILang} lang */
-function activeSessionLine(lang, n) {
+const ACTIVE_SESSION_FLAGS = /** @type {const} */ (["🇵🇭", "🇫🇷", "🇧🇷", "🇮🇩", "🇺🇸", "🇰🇷"]);
+
+/** @param {import("@/app/lib/i18n").UILang} lang @param {number} n */
+function getActiveSessionBannerParts(lang, n) {
   switch (lang) {
     case "ko":
-      return `🟢 지금 ${n}명이 한국어 말하는 중`;
+      return { before: "지금 ", count: n, after: "명이 한국어 말하는 중" };
     case "id":
-      return `🟢 ${n} orang sedang berbicara bahasa Korea`;
+      return { before: "", count: n, after: " orang sedang berbicara bahasa Korea" };
     case "fr":
-      return `🟢 ${n} personnes parlent coréen en ce moment`;
+      return { before: "", count: n, after: " personnes parlent coréen en ce moment" };
     case "pt":
-      return `🟢 ${n} pessoas falando coreano agora`;
+      return { before: "", count: n, after: " pessoas falando coreano agora" };
     default:
-      return `🟢 ${n} people speaking Korean right now`;
+      return { before: "", count: n, after: " speaking right now" };
   }
 }
 
@@ -324,6 +326,8 @@ export default function HomePage() {
   };
 
   const L = normalizeLang(language);
+  const activeSessionBannerParts =
+    activeSessionCount != null ? getActiveSessionBannerParts(L, activeSessionCount) : null;
 
   const heroJourneyComplete = journeyCurrent >= JOURNEY_DONE_MARKER;
   const heroDay =
@@ -495,7 +499,11 @@ export default function HomePage() {
         </div>
       )}
 
-      <main className="min-h-screen bg-[var(--surface)] pb-14 pt-0 font-jakarta text-[var(--on-surface)]">
+      <main
+        className={`min-h-screen bg-[var(--surface)] pt-0 font-jakarta text-[var(--on-surface)] ${
+          activeSessionCount != null ? "pb-0" : "pb-14"
+        }`}
+      >
         <header
           className="sticky top-0 z-40 border-b border-transparent backdrop-blur-[20px]"
           style={{ backgroundColor: "rgba(249, 249, 251, 0.85)" }}
@@ -620,7 +628,9 @@ export default function HomePage() {
           </div>
         </header>
 
-        <div className="mx-auto w-full max-w-[480px] px-6">
+        <div
+          className={`mx-auto w-full max-w-[480px] px-6 ${activeSessionCount == null ? "pb-8" : ""}`}
+        >
           <section className="mb-12 mt-8">
             <p className="text-left text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--on-surface-variant)]">
               {heroLineLabel}
@@ -853,14 +863,58 @@ export default function HomePage() {
             </div>
           ) : null}
 
-          {activeSessionCount != null ? (
-            <p className="pb-8 text-center text-[14px] text-[var(--on-surface-variant)]">
-              {activeSessionLine(L, activeSessionCount)}
-            </p>
-          ) : (
-            <div className="pb-8" />
-          )}
         </div>
+
+        {activeSessionCount != null ? (
+          <div
+            className="flex w-full items-center justify-between px-6 py-[14px] font-jakarta"
+            style={{
+              background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+              paddingBottom: "max(14px, env(safe-area-inset-bottom, 0px))"
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-[10px]">
+              <span className="relative inline-flex h-2 w-2 shrink-0 items-center justify-center" aria-hidden>
+                <span className="pointer-events-none absolute inset-[-3px] rounded-full bg-[rgba(34,197,94,0.3)] animate-kkobi-active-users-pulse" />
+                <span className="relative z-[1] h-2 w-2 rounded-full bg-[#22c55e]" />
+              </span>
+              <p className="min-w-0 text-[13px] font-semibold leading-snug text-[rgba(255,255,255,0.9)]">
+                {activeSessionBannerParts ? (
+                  <>
+                    {activeSessionBannerParts.before ? (
+                      <span>{activeSessionBannerParts.before}</span>
+                    ) : null}
+                    <span className="font-extrabold text-white">{activeSessionBannerParts.count}</span>
+                    <span>{activeSessionBannerParts.after}</span>
+                  </>
+                ) : null}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center">
+              {Array.from({ length: Math.min(3, activeSessionCount) }, (_, i) => (
+                <span
+                  key={i}
+                  className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border-2 border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.15)] text-[12px] leading-none"
+                  style={{ marginLeft: i === 0 ? 0 : -8 }}
+                  aria-hidden
+                >
+                  {ACTIVE_SESSION_FLAGS[i % ACTIVE_SESSION_FLAGS.length]}
+                </span>
+              ))}
+              {activeSessionCount > 3 ? (
+                <span
+                  className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border-2 border-[rgba(255,255,255,0.3)] bg-[rgba(255,255,255,0.2)] text-[9px] font-bold leading-none text-white"
+                  style={{ marginLeft: -8 }}
+                  aria-hidden
+                >
+                  +{activeSessionCount - 3}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </main>
     </>
   );

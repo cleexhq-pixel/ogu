@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes kkobi-active-users-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.animate-kkobi-active-users-pulse {
+  animation: kkobi-active-users-pulse 2s ease-in-out infinite;
+}
+
 body {
   @apply antialiased;
   background-color: #F9FAFB;
