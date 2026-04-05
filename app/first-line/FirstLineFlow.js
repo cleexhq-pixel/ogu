@@ -137,11 +137,10 @@ const CATEGORY_LINE = /** @type {const} */ ({
       pt: "Use quando alguém perguntar quem você gosta."
     },
     swapOptions: [
-      { korean: "세븐틴", meaning: "Seventeen" },
-      { korean: "블랙핑크", meaning: "Blackpink" },
+      { korean: "뷔", meaning: "V (BTS)" },
+      { korean: "지수", meaning: "Jisoo" },
       { korean: "아이유", meaning: "IU" },
-      { korean: "엑소", meaning: "EXO" },
-      { korean: "NCT", meaning: "NCT" }
+      { korean: "찬열", meaning: "Chanyeol" }
     ],
     swapIndex: 2,
     swapTemplate: "제 최애는 ___예요."
@@ -163,7 +162,6 @@ const CATEGORY_LINE = /** @type {const} */ ({
       { korean: "만나고", meaning: "meet" },
       { korean: "듣고", meaning: "hear" },
       { korean: "기다리고", meaning: "wait" },
-      { korean: "응원하고", meaning: "cheer" },
       { korean: "보고", meaning: "see" }
     ],
     swapIndex: 0,
@@ -184,11 +182,10 @@ const CATEGORY_LINE = /** @type {const} */ ({
       pt: "Use ao pedir direções."
     },
     swapOptions: [
-      { korean: "지하철역", meaning: "subway station" },
-      { korean: "공항", meaning: "airport" },
-      { korean: "호텔", meaning: "hotel" },
-      { korean: "카페", meaning: "café" },
-      { korean: "화장실", meaning: "restroom" }
+      { korean: "어떻게", meaning: "how" },
+      { korean: "걸어서", meaning: "by walking" },
+      { korean: "버스로", meaning: "by bus" },
+      { korean: "지하철로", meaning: "by subway" }
     ],
     swapIndex: 1,
     swapTemplate: "여기 ___ 가요?"
@@ -466,10 +463,15 @@ export default function FirstLineFlow() {
   /** 일일 phrase(journey row / category line)의 응용 후보·템플릿 */
   const applyOptions = content?.swapOptions ?? [];
   const applyTemplate = content?.swapTemplate ?? null;
-  const showApplySection =
+  const hasSwap =
     Boolean(
-      applyTemplate && applyOptions.length > 0 && typeof applyTemplate === "string" && applyTemplate.includes("___")
+      applyTemplate &&
+        typeof applyTemplate === "string" &&
+        applyTemplate.includes("___") &&
+        Array.isArray(applyOptions) &&
+        applyOptions.length > 0
     );
+  const showApplySection = hasSwap;
 
   const resetFlowState = useCallback(() => {
     setFlowStep("listen");
