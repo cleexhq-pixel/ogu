@@ -32,6 +32,14 @@ const OGU_STREAK_LAST_KEY = "ogu_streak_last_date";
 const STT_MAX_MS = 10000;
 const STT_SILENCE_MS = 1500;
 
+/** @param {string} ko */
+function splitSentenceWords(ko) {
+  return String(ko || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
 const flowBtnBase =
   "flex w-full items-center justify-center text-center text-[15px] font-bold transition active:scale-[0.99] disabled:opacity-50";
 const primaryBtn = `${flowBtnBase} rounded-[24px] py-[14px] text-white hover:brightness-105`;
@@ -536,19 +544,15 @@ export default function FirstLineFlow() {
           body: JSON.stringify({ text: sentence, lang: "ko-KR", speakingRate: 0.9 })
         });
         const data = await response.json();
-        if (!data?.audioContent) {
-          setActiveSel(null);
-          return;
-        }
+        if (!data?.audioContent) return;
         const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
         audioRef.current = audio;
         audio.onended = () => {
-          setActiveSel(null);
           if (audioRef.current === audio) audioRef.current = null;
         };
         await audio.play();
       } catch {
-        setActiveSel(null);
+        // keep activeSel
       } finally {
         setTtsLoading(false);
       }
@@ -1128,42 +1132,58 @@ export default function FirstLineFlow() {
                         {tx(L, "fl5_apply_section")}
                       </p>
                       <div
-                        className="rounded-[24px] bg-[var(--surface-lowest)] p-4"
+                        className="rounded-[20px] bg-white px-4 py-[14px] text-center font-korean text-[18px] font-bold leading-relaxed text-[#1a1c1d]"
                         style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}
                       >
-                        <p className="font-korean text-[15px] leading-relaxed text-[#1a1c1d]">
-                          {applyTemplate.split("___").map((part, i, arr) => (
-                            <Fragment key={i}>
-                              {part}
-                              {i < arr.length - 1 ? (
-                                <span className="font-bold text-[#2a14b4]">___</span>
-                              ) : null}
-                            </Fragment>
-                          ))}
-                        </p>
-                        <div className="mt-4 flex flex-wrap gap-2 overflow-x-auto">
-                          {applyOptions.map((opt, i) => {
-                            const active = activeSel === opt;
-                            return (
-                              <button
-                                key={`${opt}-${i}`}
-                                type="button"
-                                onClick={() => {
-                                  setActiveSel(opt);
-                                  const s = buildSentenceFromTemplate(applyTemplate, opt);
-                                  void playApplyChipTts(s);
-                                }}
-                                className="shrink-0 rounded-[20px] px-[14px] py-[6px] text-[14px] font-semibold transition hover:bg-[#2a14b4] hover:text-white"
-                                style={{
-                                  backgroundColor: active ? "#2a14b4" : "#f3f3f5",
-                                  color: active ? "#fff" : "#1a1c1d"
-                                }}
-                              >
-                                {opt}
-                              </button>
-                            );
-                          })}
-                        </div>
+                        {applyTemplate.split("___").map((part, i, arr) => (
+                          <Fragment key={i}>
+                            {part}
+                            {i < arr.length - 1 ? (
+                              activeSel ? (
+                                <span className="mx-1 inline-block font-bold text-[#2a14b4]">{activeSel}</span>
+                              ) : (
+                                <span
+                                  className="mx-1 inline-block align-text-bottom"
+                                  style={{
+                                    minWidth: 56,
+                                    height: 24,
+                                    margin: "0 4px",
+                                    borderBottom: "2px solid #2a14b4",
+                                    verticalAlign: "bottom"
+                                  }}
+                                />
+                              )
+                            ) : null}
+                          </Fragment>
+                        ))}
+                      </div>
+                      <div
+                        className="mt-2 flex flex-wrap justify-center"
+                        style={{ gap: "8px" }}
+                      >
+                        {applyOptions.map((opt, i) => {
+                          const active = activeSel === opt;
+                          return (
+                            <button
+                              key={`${opt}-${i}`}
+                              type="button"
+                              onClick={() => {
+                                setActiveSel(opt);
+                                const s = buildSentenceFromTemplate(applyTemplate, opt);
+                                void playApplyChipTts(s);
+                              }}
+                              className="cursor-pointer rounded-[20px] py-[7px] text-[14px] font-semibold transition"
+                              style={{
+                                paddingLeft: 16,
+                                paddingRight: 16,
+                                backgroundColor: active ? "#2a14b4" : "#f3f3f5",
+                                color: active ? "#fff" : "#1a1c1d"
+                              }}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   ) : null}
@@ -1324,7 +1344,7 @@ export default function FirstLineFlow() {
                     className={`${primaryBtn} mt-4`}
                     style={primaryStyle}
                   >
-                    {isListening ? tx(L, "fl5_btn_speaking") : tx(L, "fl5_btn_speak_now")}
+                    {isListening ? tx(L, "fl5_btn_follow_speaking") : tx(L, "fl5_btn_follow_speak")}
                   </button>
                   {micHint ? <p className="mt-2 text-center text-xs text-red-600">{micHint}</p> : null}
                   {repeatDone ? (
@@ -1348,15 +1368,41 @@ export default function FirstLineFlow() {
                       padding: "20px 16px"
                     }}
                   >
-                    <p className="mb-3 text-[13px] leading-relaxed text-[#6b6f72]">{tx(L, "fl5_recall_hint")}</p>
-                    <p
-                      className="mb-3 text-[22px] font-normal tracking-[6px] text-[rgba(42,20,180,0.12)]"
-                      aria-hidden
+                    <p className="text-[13px] leading-relaxed text-[#6b6f72]">{tx(L, "fl5_recall_line1")}</p>
+                    <div className="h-2" aria-hidden />
+                    <div
+                      className="flex flex-wrap justify-center"
+                      style={{ gap: "6px" }}
                     >
-                      ● ● ●
-                    </p>
+                      {splitSentenceWords(content.ko).map((w, wi) => {
+                        const n = [...w].length;
+                        const wPx = Math.max(24, n * 14);
+                        return (
+                          <span
+                            key={`blank-${wi}-${w}`}
+                            className="inline-block"
+                            style={{
+                              width: wPx,
+                              minWidth: 24,
+                              height: 20,
+                              margin: "0 4px",
+                              borderBottom: "2px solid rgba(42,20,180,0.3)"
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="h-2" aria-hidden />
+                    <p className="text-[13px] leading-relaxed text-[#6b6f72]">{tx(L, "fl5_recall_line2")}</p>
                     {content.romanization ? (
-                      <p className="text-[12px] italic leading-[1.6] text-[#2a14b4]">{content.romanization}</p>
+                      <>
+                        <div
+                          className="my-2 w-full"
+                          style={{ height: 1, backgroundColor: "rgba(42,20,180,0.1)" }}
+                          aria-hidden
+                        />
+                        <p className="text-[12px] italic leading-[1.6] text-[#2a14b4]">{content.romanization}</p>
+                      </>
                     ) : null}
                   </div>
                   {!recallDone ? (
@@ -1364,7 +1410,7 @@ export default function FirstLineFlow() {
                       type="button"
                       onClick={() => void toggleVoiceInput("recall")}
                       disabled={!getSpeechRecognition() || isRequestingMic}
-                      className={`${primaryBtn} mt-6 flex items-center justify-center text-center`}
+                      className={`${primaryBtn} mt-6`}
                       style={primaryStyle}
                     >
                       {isListening ? tx(L, "fl5_btn_speaking") : tx(L, "fl5_btn_speak_practice")}
@@ -1436,7 +1482,7 @@ export default function FirstLineFlow() {
                         );
                       })()}
                       <button type="button" onClick={() => setFlowStep("result")} className={`${nextStepBtn} mt-6`}>
-                        {tx(L, "fl5_next_swap")}
+                        {tx(L, "fl5_next_result")}
                       </button>
                     </>
                   ) : null}
