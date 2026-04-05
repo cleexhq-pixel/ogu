@@ -376,8 +376,8 @@ export default function FirstLineFlow() {
   const [repeatDone, setRepeatDone] = useState(false);
   const [recallDone, setRecallDone] = useState(false);
   const [recallText, setRecallText] = useState("");
-  /** @type {[number | null, import('react').Dispatch<import('react').SetStateAction<number | null>>]} */
-  const [applyChipIdx, setApplyChipIdx] = useState(null);
+  /** 칩 TTS 재생 중 하이라이트 (phrase `swapOptions` 값과 동일 문자열) */
+  const [activeSel, setActiveSel] = useState(/** @type {string | null} */ (null));
   const [streakDisplay, setStreakDisplay] = useState(1);
 
   const clearSttTimers = useCallback(() => {
@@ -411,10 +411,13 @@ export default function FirstLineFlow() {
 
   const vocab = content?.vocab ?? [];
   const situationText = content?.situation ?? "";
-  const swapOptions = content?.swapOptions ?? [];
-  const swapTemplate = content?.swapTemplate ?? null;
+  /** 일일 phrase(journey row / category line)의 응용 후보·템플릿 */
+  const applyOptions = content?.swapOptions ?? [];
+  const applyTemplate = content?.swapTemplate ?? null;
   const showApplySection =
-    Boolean(swapTemplate && swapOptions.length > 0 && typeof swapTemplate === "string" && swapTemplate.includes("___"));
+    Boolean(
+      applyTemplate && applyOptions.length > 0 && typeof applyTemplate === "string" && applyTemplate.includes("___")
+    );
 
   const resetFlowState = useCallback(() => {
     setFlowStep("listen");
@@ -425,9 +428,7 @@ export default function FirstLineFlow() {
     setRecallDone(false);
     setRecallText("");
     setUserInput("");
-    setSwapSel(0);
-    setSpokenCount(0);
-    setLastSwapTranscript("");
+    setActiveSel(null);
     missionResultGaFiredRef.current = false;
   }, []);
 
@@ -491,7 +492,6 @@ export default function FirstLineFlow() {
       wordAudioRef.current = null;
     }
     setPlayingWordIdx(null);
-    setApplyChipIdx(null);
   }, []);
 
   useEffect(() => () => stopAudio(), [stopAudio]);
@@ -502,6 +502,7 @@ export default function FirstLineFlow() {
       const rate = slow ? 0.55 : 0.9;
       if (!text) return;
       stopAudio();
+      setActiveSel(null);
       setTtsLoading(true);
       try {
         const response = await fetch("/api/tts", {
@@ -524,10 +525,9 @@ export default function FirstLineFlow() {
   );
 
   const playApplyChipTts = useCallback(
-    async (sentence, chipIdx) => {
+    async (sentence) => {
       if (!sentence) return;
       stopAudio();
-      setApplyChipIdx(chipIdx);
       setTtsLoading(true);
       try {
         const response = await fetch("/api/tts", {
@@ -537,18 +537,18 @@ export default function FirstLineFlow() {
         });
         const data = await response.json();
         if (!data?.audioContent) {
-          setApplyChipIdx(null);
+          setActiveSel(null);
           return;
         }
         const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
         audioRef.current = audio;
         audio.onended = () => {
-          setApplyChipIdx(null);
+          setActiveSel(null);
           if (audioRef.current === audio) audioRef.current = null;
         };
         await audio.play();
       } catch {
-        setApplyChipIdx(null);
+        setActiveSel(null);
       } finally {
         setTtsLoading(false);
       }
@@ -560,6 +560,7 @@ export default function FirstLineFlow() {
     async (word, idx) => {
       if (!word) return;
       stopAudio();
+      setActiveSel(null);
       setPlayingWordIdx(idx);
       setTtsLoading(true);
       try {
@@ -613,6 +614,7 @@ export default function FirstLineFlow() {
 
   const goHome = () => {
     stopAudio();
+    setActiveSel(null);
     const qs = buildQs();
     const tail = qs.toString();
     router.push(tail ? `/?${tail}` : "/");
@@ -832,6 +834,7 @@ export default function FirstLineFlow() {
 
   const retryFromResult = () => {
     stopAudio();
+    setActiveSel(null);
     missionResultGaFiredRef.current = false;
     if (typeof window !== "undefined") {
       sessionStorage.removeItem(`ogu_mission_ga_${journeyDay}`);
@@ -890,6 +893,7 @@ export default function FirstLineFlow() {
 
   const tryAnother = () => {
     stopAudio();
+    setActiveSel(null);
     if (journeyDay <= MAX_JOURNEY_DAY) {
       setPhase("flow");
       resetFlowState();
@@ -1118,7 +1122,7 @@ export default function FirstLineFlow() {
                     </div>
                   ) : null}
 
-                  {showApplySection && swapTemplate ? (
+                  {showApplySection && applyTemplate ? (
                     <div className="mt-4">
                       <p className="mb-[10px] text-[11px] font-bold uppercase tracking-[0.06em] text-[#2a14b4]">
                         {tx(L, "fl5_apply_section")}
@@ -1128,7 +1132,7 @@ export default function FirstLineFlow() {
                         style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}
                       >
                         <p className="font-korean text-[15px] leading-relaxed text-[#1a1c1d]">
-                          {swapTemplate.split("___").map((part, i, arr) => (
+                          {applyTemplate.split("___").map((part, i, arr) => (
                             <Fragment key={i}>
                               {part}
                               {i < arr.length - 1 ? (
@@ -1138,15 +1142,16 @@ export default function FirstLineFlow() {
                           ))}
                         </p>
                         <div className="mt-4 flex flex-wrap gap-2 overflow-x-auto">
-                          {swapOptions.map((opt, i) => {
-                            const active = applyChipIdx === i;
+                          {applyOptions.map((opt, i) => {
+                            const active = activeSel === opt;
                             return (
                               <button
                                 key={`${opt}-${i}`}
                                 type="button"
                                 onClick={() => {
-                                  const s = buildSentenceFromTemplate(swapTemplate, opt);
-                                  void playApplyChipTts(s, i);
+                                  setActiveSel(opt);
+                                  const s = buildSentenceFromTemplate(applyTemplate, opt);
+                                  void playApplyChipTts(s);
                                 }}
                                 className="shrink-0 rounded-[20px] px-[14px] py-[6px] text-[14px] font-semibold transition hover:bg-[#2a14b4] hover:text-white"
                                 style={{
