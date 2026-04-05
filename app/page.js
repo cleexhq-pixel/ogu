@@ -127,7 +127,7 @@ export default function HomePage() {
   const profileMenuRef = useRef(null);
   const langMenuRef = useRef(null);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
-  const [vibe, setVibe] = useState("idol");
+  const [selectedVibe, setSelectedVibe] = useState("idol");
   const [onboardingVibe, setOnboardingVibe] = useState("idol");
 
   useEffect(() => {
@@ -156,7 +156,7 @@ export default function HomePage() {
     if (typeof window === "undefined") return;
     const sync = () => {
       setJourneyCurrent(readJourneyCurrentFromStorage());
-      setVibe(normalizeVibe(window.localStorage.getItem(OGU_VIBE_KEY)));
+      setSelectedVibe(normalizeVibe(window.localStorage.getItem(OGU_VIBE_KEY)));
     };
     sync();
     const onVis = () => {
@@ -225,7 +225,9 @@ export default function HomePage() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !showOnboardingModal) return;
-    setOnboardingVibe(normalizeVibe(window.localStorage.getItem(OGU_VIBE_KEY)));
+    const v = normalizeVibe(window.localStorage.getItem(OGU_VIBE_KEY));
+    setOnboardingVibe(v);
+    setSelectedVibe(v);
   }, [showOnboardingModal]);
 
   useEffect(() => {
@@ -286,11 +288,18 @@ export default function HomePage() {
     router.replace(q ? `${pathname}?${q}` : pathname);
   };
 
+  const handleVibeSelect = useCallback((cat) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(OGU_VIBE_KEY, cat);
+    }
+    setSelectedVibe(normalizeVibe(cat));
+  }, []);
+
   const goFirstLine = (category) => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(OGU_VIBE_KEY, category);
     }
-    setVibe(normalizeVibe(category));
+    setSelectedVibe(normalizeVibe(category));
     trackStartDailyPhrase();
     const params = new URLSearchParams();
     params.set("lang", language);
@@ -310,17 +319,18 @@ export default function HomePage() {
     trackStartDailyPhrase();
     const params = new URLSearchParams();
     params.set("lang", language);
+    params.set("category", selectedVibe);
     router.push(`/first-line?${params.toString()}`);
   };
 
-  /** Hero CTA: journey days use idol category to match /first-line journey flow. */
+  /** Hero CTA: journey days use current mood track for /first-line. */
   const goHeroSayItNow = () => {
     if (journeyCurrent >= JOURNEY_DONE_MARKER) return;
     trackStartDailyPhrase();
     const params = new URLSearchParams();
     params.set("lang", language);
     if (journeyCurrent >= 1 && journeyCurrent <= MAX_JOURNEY_DAY) {
-      params.set("category", "idol");
+      params.set("category", selectedVibe);
     }
     router.push(`/first-line?${params.toString()}`);
   };
@@ -332,7 +342,7 @@ export default function HomePage() {
   const heroJourneyComplete = journeyCurrent >= JOURNEY_DONE_MARKER;
   const heroDay =
     !heroJourneyComplete && journeyCurrent >= 1 && journeyCurrent <= MAX_JOURNEY_DAY ? journeyCurrent : null;
-  const heroRow = heroDay != null ? getJourneyRow(heroDay, vibe) : null;
+  const heroRow = heroDay != null ? getJourneyRow(heroDay, selectedVibe) : null;
   const heroLineLabel = heroJourneyComplete
     ? tx(L, "home_journeyCompleteBadge")
     : journeyCurrent === 1
@@ -449,6 +459,7 @@ export default function HomePage() {
                       window.localStorage.setItem(OGU_VIBE_KEY, cat);
                     }
                     setOnboardingVibe(cat);
+                    setSelectedVibe(normalizeVibe(cat));
                   }}
                   className={`group flex w-full shrink-0 items-center gap-3 rounded-[32px] border-2 px-4 py-3 text-left transition ${
                     onboardingVibe === cat
@@ -671,7 +682,7 @@ export default function HomePage() {
                       <HeroKoreanLine ko={heroRow.ko} />
                     </p>
                     <p className="mt-2 text-center text-[15px] font-light italic leading-relaxed text-white/90">
-                      {heroJourneyEnglish(L, heroDay, vibe)}
+                      {heroJourneyEnglish(L, heroDay, selectedVibe)}
                     </p>
                     <div className="mt-8 flex items-end justify-between gap-4">
                       <button
@@ -710,18 +721,13 @@ export default function HomePage() {
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => {
-                    if (typeof window !== "undefined") {
-                      window.localStorage.setItem(OGU_VIBE_KEY, cat);
-                    }
-                    setVibe(normalizeVibe(cat));
-                  }}
+                  onClick={() => handleVibeSelect(cat)}
                   className={`flex flex-col items-center rounded-[32px] px-3 pb-[18px] pt-5 text-center transition hover:brightness-[0.99] active:scale-[0.99] ${
-                    vibe === cat
+                    selectedVibe === cat
                       ? "border-2 border-[#2a14b4] bg-[#edeafd]"
                       : "border-2 border-transparent bg-[var(--surface-lowest)]"
                   }`}
-                  style={vibe === cat ? undefined : { boxShadow: "var(--shadow-card)" }}
+                  style={selectedVibe === cat ? undefined : { boxShadow: "var(--shadow-card)" }}
                 >
                   <span className="text-[26px] leading-none" aria-hidden>
                     {cat === "idol" ? "👑" : cat === "drama" ? "🎬" : "✈️"}
@@ -750,8 +756,8 @@ export default function HomePage() {
                 const isActive =
                   !isPlaceholder && d === journeyCurrent && journeyCurrent <= MAX_JOURNEY_DAY;
                 const isLocked = !isDone && !isActive;
-                const title = homeJourneyCardTitle(L, d, vibe);
-                const koLine = homeJourneyCardKo(d, vibe);
+                const title = homeJourneyCardTitle(L, d, selectedVibe);
+                const koLine = homeJourneyCardKo(d, selectedVibe);
 
                 const row = (
                   <div className="flex gap-3 py-[14px]">
@@ -827,7 +833,7 @@ export default function HomePage() {
                 }
 
                 return (
-                  <div key={d} className={isLocked ? "opacity-90" : ""} aria-disabled={isLocked}>
+                  <div key={`${d}-${selectedVibe}`} className={isLocked ? "opacity-90" : ""} aria-disabled={isLocked}>
                     {row}
                   </div>
                 );
@@ -866,15 +872,16 @@ export default function HomePage() {
         </div>
 
         {activeSessionCount != null ? (
-          <div
-            className="flex w-full items-center justify-between px-6 py-[14px] font-jakarta"
-            style={{
-              background: "linear-gradient(135deg, #2a14b4, #4338ca)",
-              paddingBottom: "max(14px, env(safe-area-inset-bottom, 0px))"
-            }}
-            role="status"
-            aria-live="polite"
-          >
+          <div className="w-full min-[480px]:mx-auto min-[480px]:mb-6 min-[480px]:max-w-[480px]">
+            <div
+              className="flex w-full items-center justify-between px-6 py-[14px] font-jakarta min-[480px]:rounded-[24px]"
+              style={{
+                background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                paddingBottom: "max(14px, env(safe-area-inset-bottom, 0px))"
+              }}
+              role="status"
+              aria-live="polite"
+            >
             <div className="flex min-w-0 flex-1 items-center gap-[10px]">
               <span className="relative inline-flex h-2 w-2 shrink-0 items-center justify-center" aria-hidden>
                 <span className="pointer-events-none absolute inset-[-3px] rounded-full bg-[rgba(34,197,94,0.3)] animate-kkobi-active-users-pulse" />
@@ -913,6 +920,7 @@ export default function HomePage() {
                 </span>
               ) : null}
             </div>
+          </div>
           </div>
         ) : null}
       </main>
