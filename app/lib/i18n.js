@@ -1,9 +1,9 @@
-/** @typedef {'ko'|'en'|'id'|'fr'|'pt'} UILang */
+/** @typedef {'en'|'id'|'fr'|'pt'} UILang */
 
 import { JOURNEY_UI } from "./journey-ui-strings";
 import { FL5_STR } from "./fl5-strings";
 
-export const LANG_CODES = /** @type {const} */ (["ko", "en", "id", "fr", "pt"]);
+export const LANG_CODES = /** @type {const} */ (["en", "id", "fr", "pt"]);
 export const OGU_LANG_KEY = "ogu_lang";
 
 /**
@@ -12,6 +12,7 @@ export const OGU_LANG_KEY = "ogu_lang";
  */
 export function normalizeLang(code) {
   const c = String(code || "").toLowerCase();
+  if (c === "ko" || c === "kr") return "en";
   if (c === "pt-br" || c === "pt_br") return "pt";
   return /** @type {UILang} */ (LANG_CODES.includes(c) ? c : "en");
 }
@@ -30,6 +31,7 @@ export function isValidLang(code) {
  */
 export function resolveLangFromUrlAndStorage(urlLang, storedLang) {
   if (isValidLang(urlLang)) return normalizeLang(urlLang);
+  if (String(storedLang || "").toLowerCase() === "ko") return "en";
   if (isValidLang(storedLang)) return normalizeLang(storedLang);
   return "en";
 }
@@ -49,7 +51,8 @@ function fill(template, vars) {
 
 /** @param {UILang} lang */
 function dict(lang) {
-  return STR[lang] || STR.en;
+  const k = normalizeLang(lang);
+  return STR[k] || STR.en;
 }
 
 /**
@@ -66,131 +69,6 @@ export function tx(lang, key, vars) {
 }
 
 const STR = {
-  ko: {
-    ...FL5_STR.ko,
-    ...JOURNEY_UI.ko,
-    today_line: "오늘의 한마디 · Day {n}",
-    vibe_today: "오늘 무드는 뭐예요?",
-    speaking_journey: "나의 스피킹 여정",
-    journey_three_day: "3일 챌린지",
-    day_done: "Day {n} · 완료",
-    today_badge: "오늘",
-    nudge_title: "스트릭을 유지하세요",
-    nudge_sub: "로그인하고 진행 상황을 저장하세요",
-    sign_in: "로그인",
-    active_users: "{n}명이 지금 말하는 중",
-    vibe_idol_title: "최애 아이돌",
-    vibe_idol_sub: "내 최애는 BTS예요.",
-    vibe_drama_title: "K-드라마 대사",
-    vibe_drama_sub: "보고 싶었어요.",
-    vibe_trip_title: "한국 여행",
-    vibe_trip_sub: "여기 어떻게 가요?",
-    home_yourFirstLine: "🪄 첫 한마디",
-    home_todaysLine: "🪄 오늘의 한마디",
-    home_journeyCompleteBadge: "🎉 30일 여정 완료",
-    home_journeyCompleteMessage: "대단해요! 30일 완료!",
-    home_myFavoriteIs: "내 최애는 ___이에요.",
-    home_sayItNow: "지금 말해보기",
-    home_vibeTitle: "오늘 무드는 뭐예요?",
-    home_vibeIdol: "👑 최애 아이돌",
-    home_vibeDrama: "🎬 K-드라마 대사",
-    home_vibeTrip: "✈️ 한국 여행",
-    home_browseMissions: "모든 미션 둘러보기",
-    home_journeyTitle: "3일 챌린지",
-    home_speakingJourney: "나의 스피킹 여정",
-    home_journeyMoreSoon: "곧 더 만나요",
-    home_journeyDay1Title: "내 최애",
-    home_journeyDay2Title: "이거 좋아해요",
-    home_journeyDay3Title: "한국어 공부 중",
-    home_done: "완료!",
-    home_today: "오늘",
-    home_locked: "잠김",
-    home_logOut: "로그아웃",
-    home_logIn: "로그인",
-    home_signInBannerTitle: "진행 상황을 저장하고 스트릭을 이어가요! 🪄",
-    home_signInBannerSub: "로그인하고 Day 4 이후를 계속 열어보세요.",
-    home_signInWithGoogle: "Google로 로그인",
-    modal_headlineBefore: "30초 만에 첫",
-    modal_headlineAccent: "한국어 문장",
-    modal_headlineAfter: "을 말해보세요.",
-    modal_pickTopic: "분위기를 골라주세요 —",
-    modal_noSignup: "딱 맞는 첫 문장을 찾아드릴게요.",
-    modal_browseBefore: "또는 ",
-    modal_browseAccent: "둘러보기",
-    modal_footer: "계정 없이 · 무료로 체험",
-    fl_vibeHeading: "오늘 무드는 뭐예요?",
-    fl_vibeSub: "첫 한국어 문장을 말할 주제를 골라보세요.",
-    fl_listen: "듣기",
-    fl_loading: "불러오는 중…",
-    fl_sayItNow: "지금 말하기",
-    fl_chooseOtherTopic: "← 다른 주제 고르기",
-    fl_nowSayKorean: "이제 한국어로 말해보세요! 🗣️",
-    fl_placeholder: "한국어로 입력…",
-    fl_submit: "제출",
-    fl_listenAgain: "← 다시 듣기",
-    fl_voiceInput: "음성 입력",
-    fl_voiceUnsupported: "이 기기에서는 음성 입력을 지원하지 않아요",
-    fl_stopListening: "듣기 중지",
-    fl_startVoice: "음성 입력 시작",
-    fl_micAllow: "마이크 사용을 허용해 주세요",
-    fl_micFail: "음성 입력에 실패했어요. 다시 시도해 주세요.",
-    fl_successBadge: "🎉 첫 한마디 완료",
-    fl_youJustSpoke: "방금 ",
-    fl_koreanExclaim: "한국어",
-    fl_youJustSpokeAfter: "로 말했어요!",
-    fl_streak: "Day {day} 완료! 쭉 이어가요!",
-    fl_firstSentence: "첫 문장이에요. 계속해요!",
-    fl_youSaid: "내가 말한 문장",
-    fl_modelLine: "모범 문장",
-    fl_perfectMatch: "✨ 완벽해요!",
-    fl_upNext: "다음 — DAY {n}",
-    fl_startDayNow: "Day {n} 지금 시작",
-    fl_tryAnother: "다른 문장 해보기",
-    fl_goHome: "홈으로",
-    fl_challengeComplete: "🎉 3일 챌린지 완료!",
-    fl_footerStreakBefore: "지금 ",
-    fl_footerStreakHighlight: "Day {day}",
-    fl_footerStreakAfter: " — 내일 또 만나요!",
-    fl_footerAllDone: "30일 스피킹 여정을 모두 마쳤어요!",
-    fl_footerKeep: "계속 연습해요 — 내일 또 만나요!",
-    cat_idol_card: "👑 최애 아이돌",
-    cat_idol_header: "최애 아이돌",
-    cat_idol_sub: "내 최애는 BTS예요.",
-    cat_drama_card: "🎬 K-드라마 대사",
-    cat_drama_header: "K-드라마 대사",
-    cat_drama_sub: "보고 싶었어요.",
-    cat_trip_card: "✈️ 한국 여행",
-    cat_trip_header: "한국 여행",
-    cat_trip_sub: "여기 어떻게 가요?",
-    j_dayHeader: "Day {n} · {title}",
-    j1_title: "내 최애",
-    j1_en: "내 최애는 BTS예요.",
-    j2_title: "이거 좋아해요",
-    j2_en: "저는 K-pop을 좋아해요.",
-    j3_title: "한국어 공부 중",
-    j3_en: "저는 한국어를 배우고 있어요.",
-    j_card: "👑 Day {n}",
-    fl_dayBadge: "DAY {n}",
-    fl_typeInstead: "말하기가 어려우신가요? 타이핑으로 입력",
-    fl_badge_perfect: "Perfect match!",
-    fl_badge_good: "Good try!",
-    fl_badge_keep: "Keep practicing!",
-    fl_evalPerfect: "완벽해요!",
-    fl_evalGood: "좋은 시도예요!",
-    fl_evalKeep: "조금만 더 연습해봐요!",
-    fl_vocabHeader: "단어 보기",
-    fl_retrySpeak: "🎙 다시 말해보기",
-    fl_mySaidLabel: "내가 말한 것",
-    fl_listenAgainBtn: "다시 듣기",
-    fl_speakIdle: "지금 말해보기",
-    fl_speakListening: "지금 말하는 중...",
-    fl_dayResultLabel: "DAY {n} · RESULT",
-    fl_resultBrowse: "RESULT",
-    fl_modelAnswer: "모범 답안",
-    fl_submitStt: "제출하기",
-    fl_retryMicPreview: "🎙 다시 말해보기",
-    fl_sttEmptyHint: "다시 말해보기를 눌러주세요"
-  },
   en: {
     ...FL5_STR.en,
     ...JOURNEY_UI.en,

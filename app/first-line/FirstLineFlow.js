@@ -13,12 +13,15 @@ import {
 } from "@/app/lib/i18n";
 import { getSupabase } from "@/lib/supabase";
 import {
-  JOURNEY_DONE_MARKER,
-  MAX_JOURNEY_DAY,
-  OGU_VIBE_KEY,
   buildSentenceFromTemplate,
   getJourneyRow,
-  normalizeVibe
+  JOURNEY_DONE_MARKER,
+  MAX_JOURNEY_DAY,
+  normalizeSwapOptionsList,
+  normalizeVibe,
+  OGU_VIBE_KEY,
+  resolveSituation,
+  swapOptionKorean
 } from "@/lib/journey-data";
 import { trackEvent } from "@/lib/analytics";
 
@@ -91,8 +94,8 @@ function journeyDayToContent(dayNum, lang, vibe) {
   const L = normalizeLang(lang);
   const romanization = row.romanization ?? "";
   const vocab = row.vocab ?? [];
-  const situation = row.situation ?? "";
-  const swapOptions = row.swapOptions ?? ["영어", "스페인어", "일본어", "요리", "피아노"];
+  const situation = resolveSituation(row.situation, L);
+  const swapOptions = normalizeSwapOptionsList(row.swapOptions ?? []);
   const swapIndex = Number.isFinite(row.swapIndex) ? row.swapIndex : 0;
   const swapTemplate = row.swapTemplate ?? null;
   return {
@@ -119,8 +122,19 @@ const CATEGORY_LINE = /** @type {const} */ ({
       { word: "최애는", roman: "choe-ae-neun", meaning: "favorite (topic)" },
       { word: "BTS예요", roman: "BTS-ye-yo", meaning: "is BTS" }
     ],
-    situation: "누가 '누구 좋아해?'라고 물었을 때 대답하는 표현이에요.",
-    swapOptions: ["세븐틴", "블랙핑크", "아이유", "엑소", "NCT"],
+    situation: {
+      en: "Use when someone asks who you like.",
+      id: "Gunakan saat ada yang bertanya siapa yang kamu suka.",
+      fr: "À utiliser quand on te demande qui tu aimes.",
+      pt: "Use quando alguém perguntar quem você gosta."
+    },
+    swapOptions: [
+      { korean: "세븐틴", meaning: "Seventeen" },
+      { korean: "블랙핑크", meaning: "Blackpink" },
+      { korean: "아이유", meaning: "IU" },
+      { korean: "엑소", meaning: "EXO" },
+      { korean: "NCT", meaning: "NCT" }
+    ],
     swapIndex: 2,
     swapTemplate: "제 최애는 ___예요."
   },
@@ -131,8 +145,19 @@ const CATEGORY_LINE = /** @type {const} */ ({
       { word: "보고", roman: "bo-go", meaning: "seeing / to see" },
       { word: "싶었어요", roman: "sip-eo-sseo-yo", meaning: "missed / wanted to" }
     ],
-    situation: "애틋한 대사를 연상할 때 쓰는 표현이에요.",
-    swapOptions: ["만나고", "듣고", "기다리고", "응원하고", "보고"],
+    situation: {
+      en: "Use this when you miss someone and want to express longing.",
+      id: "Gunakan ini saat kamu merindukan seseorang.",
+      fr: "Utilisez ceci quand vous manquez à quelqu'un.",
+      pt: "Use isso quando sentir saudade de alguém."
+    },
+    swapOptions: [
+      { korean: "만나고", meaning: "meet" },
+      { korean: "듣고", meaning: "hear" },
+      { korean: "기다리고", meaning: "wait" },
+      { korean: "응원하고", meaning: "cheer" },
+      { korean: "보고", meaning: "see" }
+    ],
     swapIndex: 0,
     swapTemplate: "___ 싶었어요."
   },
@@ -144,8 +169,19 @@ const CATEGORY_LINE = /** @type {const} */ ({
       { word: "어떻게", roman: "eo-tteoh-ke", meaning: "how" },
       { word: "가요", roman: "ga-yo", meaning: "go?" }
     ],
-    situation: "길을 물을 때 쓰는 표현이에요.",
-    swapOptions: ["지하철역", "공항", "호텔", "카페", "화장실"],
+    situation: {
+      en: "Use when asking for directions.",
+      id: "Gunakan saat bertanya arah.",
+      fr: "À utiliser pour demander votre chemin.",
+      pt: "Use ao pedir direções."
+    },
+    swapOptions: [
+      { korean: "지하철역", meaning: "subway station" },
+      { korean: "공항", meaning: "airport" },
+      { korean: "호텔", meaning: "hotel" },
+      { korean: "카페", meaning: "café" },
+      { korean: "화장실", meaning: "restroom" }
+    ],
     swapIndex: 1,
     swapTemplate: "여기 ___ 가요?"
   }
@@ -163,8 +199,8 @@ function categoryToContent(cat, lang) {
     en: tx(L, `cat_${cat}_sub`),
     romanization: line.romanization,
     vocab: line.vocab,
-    situation: line.situation,
-    swapOptions: line.swapOptions,
+    situation: resolveSituation(line.situation, L),
+    swapOptions: normalizeSwapOptionsList(line.swapOptions ?? []),
     swapIndex: line.swapIndex,
     swapTemplate: line.swapTemplate ?? null
   };
@@ -1034,7 +1070,7 @@ export default function FirstLineFlow() {
                     <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[rgba(255,255,255,0.6)]">
                       {tx(L, "fl5_badge_first_done")}
                     </p>
-                    <p className="mt-2 text-[20px] font-extrabold leading-snug">{tx(L, "fl5_result_title", { n: dayN })}</p>
+                    <p className="mt-2 text-[20px] font-extrabold leading-snug">{tx(L, "fl5_result_title")}</p>
                     <p className="mt-2 text-[12px] text-[rgba(255,255,255,0.65)]">{tx(L, "fl5_day_done_sub")}</p>
                   </div>
 
@@ -1067,7 +1103,14 @@ export default function FirstLineFlow() {
                               : "#991b1b"
                       }}
                     >
-                      {tx(L, resultScreenTier === "perfect" ? "fl_badge_perfect" : resultScreenTier === "good" ? "fl_badge_good" : "fl_badge_keep")}
+                      {tx(
+                        L,
+                        resultScreenTier === "perfect"
+                          ? "fl5_rs_eval_perfect"
+                          : resultScreenTier === "good"
+                            ? "fl5_rs_eval_good"
+                            : "fl5_rs_eval_keep"
+                      )}
                     </div>
                     <p className="mt-4 text-[10px] text-[#6b6f72]">{tx(L, "fl5_rs_you_said")}</p>
                     <p className="font-korean mt-1 text-[15px] font-bold text-[#1a1c1d]">{recallText || "—"}</p>
@@ -1099,103 +1142,120 @@ export default function FirstLineFlow() {
                     ) : null}
                   </div>
 
-                  {vocab.length > 0 ? (
+                  {vocab.length > 0 || (showApplySection && applyTemplate) ? (
                     <div
-                      className="mt-4 rounded-[24px] bg-white p-4"
-                      style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}
+                      className="mt-4 rounded-[22px] bg-white"
+                      style={{ padding: "14px 12px", boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <BookIcon />
-                        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#2a14b4]">{tx(L, "fl5_rs_vocab")}</p>
-                      </div>
-                      <ul className="mt-3">
-                        {vocab.map((row, i) => (
-                          <li
-                            key={`${row.word}-${i}`}
-                            className="mb-[5px] flex items-start justify-between gap-2 rounded-[10px] px-2 py-1.5 last:mb-0"
-                            style={{ backgroundColor: "#f3f3f5" }}
+                      {vocab.length > 0 ? (
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <BookIcon />
+                            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#2a14b4]">
+                              {tx(L, "fl5_rs_vocab")}
+                            </p>
+                          </div>
+                          <ul className="mt-3">
+                            {vocab.map((row, i) => (
+                              <li
+                                key={`${row.word}-${i}`}
+                                className="mb-[5px] flex items-start justify-between gap-2 rounded-[10px] px-2 py-1.5 last:mb-0"
+                                style={{ backgroundColor: "#f3f3f5" }}
+                              >
+                                <div className="min-w-0">
+                                  <p className="font-korean text-[12px] font-bold">{row.word}</p>
+                                  <p className="text-[9px] italic text-[#2a14b4]">{row.roman}</p>
+                                </div>
+                                <p className="max-w-[45%] text-right text-[10px] text-[#6b6f72]">{row.meaning}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      ) : null}
+                      {vocab.length > 0 && showApplySection && applyTemplate ? (
+                        <div className="my-4 h-px w-full bg-[rgba(26,28,29,0.06)]" aria-hidden />
+                      ) : null}
+                      {showApplySection && applyTemplate ? (
+                        <>
+                          <p
+                            className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#2a14b4]"
+                            style={{ marginBottom: 12 }}
                           >
-                            <div className="min-w-0">
-                              <p className="font-korean text-[12px] font-bold">{row.word}</p>
-                              <p className="text-[9px] italic text-[#2a14b4]">{row.roman}</p>
-                            </div>
-                            <p className="max-w-[45%] text-right text-[10px] text-[#6b6f72]">{row.meaning}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-
-                  {showApplySection && applyTemplate ? (
-                    <div
-                      className="mt-4 rounded-[28px] bg-white"
-                      style={{
-                        padding: "18px 16px",
-                        boxShadow: "0 20px 50px rgba(26,28,29,0.05)"
-                      }}
-                    >
-                      <p
-                        className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#2a14b4]"
-                        style={{ marginBottom: 12 }}
-                      >
-                        {tx(L, "fl5_apply_section")}
-                      </p>
-                      <div
-                        className="text-center font-korean text-[18px] font-bold leading-relaxed text-[#1a1c1d]"
-                        style={{
-                          background: "#f9f9fb",
-                          borderRadius: 16,
-                          padding: "12px 14px",
-                          marginBottom: 12
-                        }}
-                      >
-                        {applyTemplate.split("___").map((part, i, arr) => (
-                          <Fragment key={i}>
-                            {part}
-                            {i < arr.length - 1 ? (
-                              activeSel ? (
-                                <span className="mx-1 inline-block font-bold text-[#2a14b4]">{activeSel}</span>
-                              ) : (
-                                <span
-                                  className="mx-1 inline-block"
-                                  style={{
-                                    display: "inline-block",
-                                    minWidth: 56,
-                                    height: 24,
-                                    margin: "0 4px",
-                                    borderBottom: "2px solid #2a14b4",
-                                    verticalAlign: "bottom"
+                            {tx(L, "fl5_apply_section")}
+                          </p>
+                          <p className="mb-3 text-center text-[11px] text-[#6b6f72]">{tx(L, "fl5_apply_hint")}</p>
+                          <div
+                            className="text-center font-korean text-[18px] font-bold leading-relaxed text-[#1a1c1d]"
+                            style={{
+                              background: "#f9f9fb",
+                              borderRadius: 16,
+                              padding: "12px 14px",
+                              marginBottom: 12
+                            }}
+                          >
+                            {applyTemplate.split("___").map((part, i, arr) => (
+                              <Fragment key={i}>
+                                {part}
+                                {i < arr.length - 1 ? (
+                                  activeSel ? (
+                                    <span className="mx-1 inline-block font-bold text-[#2a14b4]">{activeSel}</span>
+                                  ) : (
+                                    <span
+                                      className="mx-1 inline-block"
+                                      style={{
+                                        display: "inline-block",
+                                        minWidth: 52,
+                                        height: 22,
+                                        margin: "0 3px",
+                                        borderBottom: "2.5px solid #2a14b4",
+                                        verticalAlign: "bottom"
+                                      }}
+                                    />
+                                  )
+                                ) : null}
+                              </Fragment>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap justify-center" style={{ gap: "8px" }}>
+                            {applyOptions.map((opt, i) => {
+                              const kr = swapOptionKorean(opt);
+                              const active = activeSel === kr;
+                              const mean = typeof opt === "object" && opt?.meaning ? opt.meaning : "";
+                              return (
+                                <button
+                                  key={`${kr}-${i}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveSel(kr);
+                                    void playApplyChipTts(buildSentenceFromTemplate(applyTemplate, kr));
                                   }}
-                                />
-                              )
-                            ) : null}
-                          </Fragment>
-                        ))}
-                      </div>
-                      <div className="flex flex-wrap justify-center" style={{ gap: "8px" }}>
-                        {applyOptions.map((opt, i) => {
-                          const active = activeSel === opt;
-                          return (
-                            <button
-                              key={`${opt}-${i}`}
-                              type="button"
-                              onClick={() => {
-                                setActiveSel(opt);
-                                const s = buildSentenceFromTemplate(applyTemplate, opt);
-                                void playApplyChipTts(s);
-                              }}
-                              className="cursor-pointer rounded-[20px] text-[14px] font-semibold"
-                              style={{
-                                padding: "7px 16px",
-                                backgroundColor: active ? "#2a14b4" : "#f3f3f5",
-                                color: active ? "#fff" : "#1a1c1d"
-                              }}
-                            >
-                              {opt}
-                            </button>
-                          );
-                        })}
-                      </div>
+                                  className="flex cursor-pointer flex-col items-center rounded-[14px]"
+                                  style={{
+                                    gap: 1,
+                                    padding: "6px 12px",
+                                    backgroundColor: active ? "#2a14b4" : "#f3f3f5"
+                                  }}
+                                >
+                                  <span
+                                    className="font-korean text-[12px] font-bold"
+                                    style={{ color: active ? "#fff" : "#1a1c1d" }}
+                                  >
+                                    {kr}
+                                  </span>
+                                  {mean ? (
+                                    <span
+                                      className="text-[9px]"
+                                      style={{ color: active ? "rgba(255,255,255,0.7)" : "#6b6f72" }}
+                                    >
+                                      {mean}
+                                    </span>
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : null}
                     </div>
                   ) : null}
 

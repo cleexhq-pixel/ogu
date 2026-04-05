@@ -27,7 +27,6 @@ const HERO_UNDERLINE = "border-b-[3px] pb-0.5";
 const heroUnderlineStyle = { borderColor: "rgba(255,255,255,0.65)" };
 
 const LANG_FLAG = /** @type {const} */ ({
-  ko: "🇰🇷",
   en: "🇬🇧",
   id: "🇮🇩",
   fr: "🇫🇷",
@@ -117,8 +116,6 @@ const ACTIVE_SESSION_FLAGS = /** @type {const} */ (["🇵🇭", "🇫🇷", "�
 /** @param {import("@/app/lib/i18n").UILang} lang @param {number} n */
 function getActiveSessionBannerParts(lang, n) {
   switch (lang) {
-    case "ko":
-      return { before: "지금 ", count: n, after: "명이 한국어 말하는 중" };
     case "id":
       return { before: "", count: n, after: " orang sedang berbicara bahasa Korea" };
     case "fr":
