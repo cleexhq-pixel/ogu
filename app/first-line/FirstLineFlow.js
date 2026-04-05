@@ -1127,13 +1127,27 @@ export default function FirstLineFlow() {
                   ) : null}
 
                   {showApplySection && applyTemplate ? (
-                    <div className="mt-4">
-                      <p className="mb-[10px] text-[11px] font-bold uppercase tracking-[0.06em] text-[#2a14b4]">
+                    <div
+                      className="mt-4 rounded-[28px] bg-white"
+                      style={{
+                        padding: "18px 16px",
+                        boxShadow: "0 20px 50px rgba(26,28,29,0.05)"
+                      }}
+                    >
+                      <p
+                        className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#2a14b4]"
+                        style={{ marginBottom: 12 }}
+                      >
                         {tx(L, "fl5_apply_section")}
                       </p>
                       <div
-                        className="rounded-[20px] bg-white px-4 py-[14px] text-center font-korean text-[18px] font-bold leading-relaxed text-[#1a1c1d]"
-                        style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}
+                        className="text-center font-korean text-[18px] font-bold leading-relaxed text-[#1a1c1d]"
+                        style={{
+                          background: "#f9f9fb",
+                          borderRadius: 16,
+                          padding: "12px 14px",
+                          marginBottom: 12
+                        }}
                       >
                         {applyTemplate.split("___").map((part, i, arr) => (
                           <Fragment key={i}>
@@ -1143,8 +1157,9 @@ export default function FirstLineFlow() {
                                 <span className="mx-1 inline-block font-bold text-[#2a14b4]">{activeSel}</span>
                               ) : (
                                 <span
-                                  className="mx-1 inline-block align-text-bottom"
+                                  className="mx-1 inline-block"
                                   style={{
+                                    display: "inline-block",
                                     minWidth: 56,
                                     height: 24,
                                     margin: "0 4px",
@@ -1157,10 +1172,7 @@ export default function FirstLineFlow() {
                           </Fragment>
                         ))}
                       </div>
-                      <div
-                        className="mt-2 flex flex-wrap justify-center"
-                        style={{ gap: "8px" }}
-                      >
+                      <div className="flex flex-wrap justify-center" style={{ gap: "8px" }}>
                         {applyOptions.map((opt, i) => {
                           const active = activeSel === opt;
                           return (
@@ -1172,10 +1184,9 @@ export default function FirstLineFlow() {
                                 const s = buildSentenceFromTemplate(applyTemplate, opt);
                                 void playApplyChipTts(s);
                               }}
-                              className="cursor-pointer rounded-[20px] py-[7px] text-[14px] font-semibold transition"
+                              className="cursor-pointer rounded-[20px] text-[14px] font-semibold"
                               style={{
-                                paddingLeft: 16,
-                                paddingRight: 16,
+                                padding: "7px 16px",
                                 backgroundColor: active ? "#2a14b4" : "#f3f3f5",
                                 color: active ? "#fff" : "#1a1c1d"
                               }}
