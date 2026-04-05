@@ -706,8 +706,12 @@ export default function HomePage() {
                     }
                     setVibe(normalizeVibe(cat));
                   }}
-                  className="flex flex-col items-center rounded-[32px] bg-[var(--surface-lowest)] px-3 pb-[18px] pt-5 text-center transition hover:brightness-[0.99] active:scale-[0.99]"
-                  style={{ boxShadow: "var(--shadow-card)" }}
+                  className={`flex flex-col items-center rounded-[32px] px-3 pb-[18px] pt-5 text-center transition hover:brightness-[0.99] active:scale-[0.99] ${
+                    vibe === cat
+                      ? "border-2 border-[#2a14b4] bg-[#edeafd]"
+                      : "border-2 border-transparent bg-[var(--surface-lowest)]"
+                  }`}
+                  style={vibe === cat ? undefined : { boxShadow: "var(--shadow-card)" }}
                 >
                   <span className="text-[26px] leading-none" aria-hidden>
                     {cat === "idol" ? "👑" : cat === "drama" ? "🎬" : "✈️"}
