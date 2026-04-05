@@ -22,7 +22,7 @@ import {
 import { useActiveSession } from "@/hooks/useActiveSession";
 
 const HERO_UNDERLINE = "border-b-[3px] pb-0.5";
-const heroUnderlineStyle = { borderColor: "var(--primary)" };
+const heroUnderlineStyle = { borderColor: "rgba(255,255,255,0.65)" };
 
 const HERO_J_EN_KEYS = /** @type {const} */ (["j1_en", "j2_en", "j3_en"]);
 
