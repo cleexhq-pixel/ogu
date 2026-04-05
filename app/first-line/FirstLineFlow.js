@@ -24,8 +24,10 @@ import {
 import { trackEvent } from "@/lib/analytics";
 
 const OGU_CURRENT_DAY_KEY = "ogu_current_day";
+const OGU_STREAK_KEY = "ogu_streak_count";
+const OGU_STREAK_LAST_KEY = "ogu_streak_last_date";
 
-/** @typedef {'listen'|'understand'|'repeat'|'recall'|'swap'} FlowStep */
+/** @typedef {'listen'|'understand'|'repeat'|'recall'|'swap'|'result'} FlowStep */
 /** @typedef {'pick'|'flow'|'summary'} Phase */
 
 const STT_MAX_MS = 10000;
@@ -39,6 +41,8 @@ const primaryStyle = {
 };
 const secondaryBtn =
   "w-full rounded-[24px] border border-[rgba(26,28,29,0.12)] bg-white py-[11px] text-[13px] font-semibold text-[#2a14b4] transition hover:bg-[var(--surface-low)]";
+const secondaryBtnHome =
+  "w-full rounded-[24px] border border-[rgba(26,28,29,0.12)] bg-white py-3 text-[14px] font-semibold text-[#6b6f72] transition hover:bg-[var(--surface-low)]";
 const nextStepBtn =
   "w-full rounded-[24px] border-[1.5px] border-[rgba(42,20,180,0.2)] bg-white py-[13px] text-[13px] font-bold text-[#2a14b4] transition hover:bg-[rgba(42,20,180,0.04)]";
 
@@ -48,6 +52,30 @@ function readStoredCurrentDay() {
   const n = parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1) return 1;
   return Math.min(n, JOURNEY_DONE_MARKER);
+}
+
+function readStreakCount() {
+  if (typeof window === "undefined") return 1;
+  const raw = window.localStorage.getItem(OGU_STREAK_KEY);
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+function bumpStudyStreakOnMissionComplete() {
+  if (typeof window === "undefined") return;
+  const today = new Date().toISOString().slice(0, 10);
+  const last = window.localStorage.getItem(OGU_STREAK_LAST_KEY);
+  const prev = parseInt(window.localStorage.getItem(OGU_STREAK_KEY) || "0", 10);
+  if (last === today) return;
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  const ystr = y.toISOString().slice(0, 10);
+  let next = 1;
+  if (last === ystr) {
+    next = (Number.isFinite(prev) && prev > 0 ? prev : 0) + 1;
+  }
+  window.localStorage.setItem(OGU_STREAK_KEY, String(next));
+  window.localStorage.setItem(OGU_STREAK_LAST_KEY, today);
 }
 
 /** @param {number} dayNum @param {import("@/app/lib/i18n").UILang} lang @param {'idol'|'drama'|'trip'} vibe */
@@ -203,9 +231,18 @@ async function requestMicrophoneAccess() {
   }
 }
 
-/** @param {{ active: number }} props */
-function ProgressDots({ active }) {
+/** @param {{ active: number, allComplete?: boolean }} props */
+function ProgressDots({ active, allComplete }) {
   const steps = [0, 1, 2, 3, 4];
+  if (allComplete) {
+    return (
+      <div className="mb-6 flex items-center justify-center gap-2">
+        {steps.map((i) => (
+          <span key={i} className="h-2 w-[18px] rounded-full bg-[#22c55e] transition-all duration-300" aria-hidden />
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="mb-6 flex items-center justify-center gap-2">
       {steps.map((i) => (
@@ -220,6 +257,46 @@ function ProgressDots({ active }) {
         />
       ))}
     </div>
+  );
+}
+
+function BookIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0 text-[#2a14b4]">
+      <path
+        d="M4 19.5A2.5 2.5 0 016.5 17H20"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M8 7h8M8 11h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function WarningMarkIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden className="shrink-0">
+      <circle cx="9" cy="9" r="9" fill="#eab308" />
+      <path d="M9 5v5M9 12h.01" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ResultXIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden className="shrink-0">
+      <circle cx="9" cy="9" r="9" fill="#ef4444" />
+      <path d="M6 6l6 6M12 6l-6 6" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -242,7 +319,6 @@ export default function FirstLineFlow() {
   const [isRequestingMic, setIsRequestingMic] = useState(false);
   const [micHint, setMicHint] = useState(null);
   const [journeyDay, setJourneyDay] = useState(1);
-  const [completedJourneyDay, setCompletedJourneyDay] = useState(null);
   const [signupModalDismissed, setSignupModalDismissed] = useState(false);
   const [signupBusy, setSignupBusy] = useState(false);
   const [signupError, setSignupError] = useState(null);
@@ -252,11 +328,11 @@ export default function FirstLineFlow() {
   const userStoppedMicRef = useRef(false);
   const hydratedFromUrl = useRef(false);
   const signupModalShownGaArmedRef = useRef(false);
+  const missionResultGaFiredRef = useRef(false);
   const sttPurposeRef = useRef(/** @type {'repeat'|'recall'|'swap'|null} */ (null));
   const sttSilenceTimerRef = useRef(null);
   const sttMaxTimerRef = useRef(null);
   const wordAudioRef = useRef(null);
-  const completeDayMissionRef = useRef(/** @type {() => void} */ () => {});
 
   const [listenCount, setListenCount] = useState(0);
   const [listenedWords, setListenedWords] = useState(() => new Set());
@@ -265,8 +341,9 @@ export default function FirstLineFlow() {
   const [recallDone, setRecallDone] = useState(false);
   const [recallText, setRecallText] = useState("");
   const [swapSel, setSwapSel] = useState(0);
-  const [swapDone, setSwapDone] = useState(false);
-  const [swapSpeakPending, setSwapSpeakPending] = useState(false);
+  const [spokenCount, setSpokenCount] = useState(0);
+  const [lastSwapTranscript, setLastSwapTranscript] = useState("");
+  const [streakDisplay, setStreakDisplay] = useState(1);
 
   const clearSttTimers = useCallback(() => {
     if (sttSilenceTimerRef.current != null) {
@@ -295,7 +372,9 @@ export default function FirstLineFlow() {
           ? 2
           : flowStep === "recall"
             ? 3
-            : 4;
+            : flowStep === "swap"
+              ? 4
+              : 4;
 
   const vocab = content?.vocab ?? [];
   const situationText = content?.situation ?? "";
@@ -316,8 +395,9 @@ export default function FirstLineFlow() {
     setRecallText("");
     setUserInput("");
     setSwapSel(0);
-    setSwapDone(false);
-    setSwapSpeakPending(false);
+    setSpokenCount(0);
+    setLastSwapTranscript("");
+    missionResultGaFiredRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -487,25 +567,29 @@ export default function FirstLineFlow() {
   const gaCategory =
     journeyVibe === "drama" ? "kdrama" : journeyVibe === "trip" ? "trip" : "idol";
 
-  const completeDayMission = useCallback(() => {
-    if (!journeyActive || !content) return;
-    const completed = journeyDay;
-    setCompletedJourneyDay(completed);
-    const next = Math.min(journeyDay + 1, JOURNEY_DONE_MARKER);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(OGU_CURRENT_DAY_KEY, String(next));
+  useEffect(() => {
+    if (flowStep !== "result" || !journeyActive || !content) return;
+    if (typeof window === "undefined") return;
+    const k = `ogu_mission_ga_${journeyDay}`;
+    if (sessionStorage.getItem(k)) {
+      setStreakDisplay(readStreakCount());
+      return;
     }
-    setJourneyDay(next);
+    if (missionResultGaFiredRef.current) return;
+    missionResultGaFiredRef.current = true;
+    sessionStorage.setItem(k, "1");
+    const completed = journeyDay;
     trackEvent("first_line_complete", { category: gaCategory, day: completed });
     trackEvent("day_complete", { day_number: completed });
     trackEvent("mission_complete", { day_number: completed });
-    setPhase("summary");
-    resetFlowState();
-  }, [journeyActive, content, journeyDay, gaCategory, resetFlowState]);
+    bumpStudyStreakOnMissionComplete();
+    setStreakDisplay(readStreakCount());
+  }, [flowStep, journeyActive, content, journeyDay, gaCategory]);
 
   useEffect(() => {
-    completeDayMissionRef.current = completeDayMission;
-  }, [completeDayMission]);
+    if (flowStep !== "result") return;
+    setStreakDisplay(readStreakCount());
+  }, [flowStep]);
 
   useEffect(() => {
     const SpeechRecognition = getSpeechRecognition();
@@ -589,9 +673,15 @@ export default function FirstLineFlow() {
       } else if (purpose === "recall") {
         setRecallText(t);
         setRecallDone(true);
-      } else if (purpose === "swap" && t) {
-        setSwapDone(true);
-        completeDayMissionRef.current();
+      } else if (purpose === "swap") {
+        setLastSwapTranscript(t);
+        setSpokenCount((c) => {
+          const next = c + 1;
+          if (next >= 3) {
+            setTimeout(() => setFlowStep("result"), 0);
+          }
+          return next;
+        });
       }
       sttPurposeRef.current = null;
     };
@@ -693,15 +783,44 @@ export default function FirstLineFlow() {
 
   const recallTier = recallDone && content ? computeRecallTier(recallText, content.ko) : "keep";
 
-  const onSwapPrimary = async () => {
+  const swapResultTier = useMemo(
+    () => (flowStep === "result" && content ? computeRecallTier(lastSwapTranscript, swapSentence) : "keep"),
+    [flowStep, content, lastSwapTranscript, swapSentence]
+  );
+
+  const onSwapListenOnly = async () => {
     if (!swapSentence) return;
-    setSwapSpeakPending(true);
     await playTts(swapSentence);
-    setSwapSpeakPending(false);
+  };
+
+  const onSwapSpeak = () => {
     void toggleVoiceInput("swap");
   };
 
-  const showDay3SignupModal = phase === "summary" && completedJourneyDay === 3 && !signupModalDismissed;
+  const retrySwapFromResult = () => {
+    stopAudio();
+    missionResultGaFiredRef.current = false;
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(`ogu_mission_ga_${journeyDay}`);
+    }
+    setSpokenCount(0);
+    setLastSwapTranscript("");
+    setFlowStep("swap");
+  };
+
+  const goNextDayFromResult = () => {
+    stopAudio();
+    if (!journeyActive) return;
+    const next = Math.min(journeyDay + 1, JOURNEY_DONE_MARKER);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(OGU_CURRENT_DAY_KEY, String(next));
+    }
+    setJourneyDay(next);
+    missionResultGaFiredRef.current = false;
+    resetFlowState();
+  };
+
+  const showDay3SignupModal = flowStep === "result" && journeyActive && journeyDay === 3 && !signupModalDismissed;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -733,19 +852,11 @@ export default function FirstLineFlow() {
     if (error) setSignupError(error.message);
   }, []);
 
-  const successContent =
-    completedJourneyDay != null ? journeyDayToContent(completedJourneyDay, uiLang, journeyVibe) : content;
-  const vocabForResult = successContent?.vocab ?? [];
-  const nextJourneyRow =
-    completedJourneyDay != null && completedJourneyDay < MAX_JOURNEY_DAY
-      ? getJourneyRow(completedJourneyDay + 1, journeyVibe)
-      : null;
-  const nextJourneyPreview = nextJourneyRow ? { ko: nextJourneyRow.ko, en: nextJourneyRow.en } : null;
-  const nextDayNumber = completedJourneyDay != null ? completedJourneyDay + 1 : null;
+  const showNextDayFromResult = journeyActive && journeyDay < MAX_JOURNEY_DAY;
+  const nextDayNumFromResult = journeyDay + 1;
 
   const tryAnother = () => {
     stopAudio();
-    setCompletedJourneyDay(null);
     if (journeyDay <= MAX_JOURNEY_DAY) {
       setPhase("flow");
       resetFlowState();
@@ -756,13 +867,6 @@ export default function FirstLineFlow() {
     const qs = buildQs();
     const tail = qs.toString();
     router.replace(tail ? `/first-line?${tail}` : "/first-line");
-  };
-
-  const startNextJourneyDay = () => {
-    stopAudio();
-    setCompletedJourneyDay(null);
-    setPhase("flow");
-    resetFlowState();
   };
 
   const heroCard = (
@@ -891,7 +995,150 @@ export default function FirstLineFlow() {
 
           {phase === "flow" && content && (
             <div className="animate-fade-in-up">
-              <ProgressDots active={flowIndex} />
+              {flowStep === "result" ? (
+                <>
+                  <ProgressDots allComplete />
+                  <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
+                    {tx(L, "fl5_over_done", { n: dayN })}
+                  </p>
+                  <div
+                    className="mt-4 rounded-[28px] px-4 py-4 text-center text-white"
+                    style={{
+                      background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                      boxShadow: "0 8px 24px rgba(42,20,180,0.25)"
+                    }}
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[rgba(255,255,255,0.6)]">
+                      {tx(L, "fl5_badge_first_done")}
+                    </p>
+                    <p className="mt-2 text-[20px] font-extrabold leading-snug">{tx(L, "fl5_result_title", { n: dayN })}</p>
+                    <p className="mt-2 text-[12px] text-[rgba(255,255,255,0.65)]">{tx(L, "fl5_day_done_sub")}</p>
+                  </div>
+
+                  <div
+                    className="mt-6 rounded-[24px] bg-white p-5"
+                    style={{
+                      boxShadow: "0 20px 50px rgba(26,28,29,0.05)",
+                      border:
+                        swapResultTier === "perfect"
+                          ? "1.5px solid rgba(34,197,94,0.3)"
+                          : swapResultTier === "good"
+                            ? "1.5px solid rgba(234,179,8,0.3)"
+                            : "1.5px solid rgba(239,68,68,0.3)"
+                    }}
+                  >
+                    <div
+                      className="inline-flex rounded-full px-3 py-1.5 text-[12px] font-bold"
+                      style={{
+                        backgroundColor:
+                          swapResultTier === "perfect"
+                            ? "rgba(34,197,94,0.1)"
+                            : swapResultTier === "good"
+                              ? "rgba(234,179,8,0.1)"
+                              : "rgba(239,68,68,0.1)",
+                        color:
+                          swapResultTier === "perfect"
+                            ? "#166534"
+                            : swapResultTier === "good"
+                              ? "#854d0e"
+                              : "#991b1b"
+                      }}
+                    >
+                      {tx(L, swapResultTier === "perfect" ? "fl_badge_perfect" : swapResultTier === "good" ? "fl_badge_good" : "fl_badge_keep")}
+                    </div>
+                    <p className="mt-4 text-[10px] text-[#6b6f72]">{tx(L, "fl5_rs_you_said")}</p>
+                    <p className="font-korean mt-1 text-[15px] font-bold text-[#1a1c1d]">{lastSwapTranscript || "—"}</p>
+                    <div className="mt-3 flex items-center gap-2">
+                      {swapResultTier === "perfect" ? (
+                        <TierCheckIcon fill="#22c55e" />
+                      ) : swapResultTier === "good" ? (
+                        <WarningMarkIcon />
+                      ) : (
+                        <ResultXIcon />
+                      )}
+                      <p
+                        className="text-[13px] font-semibold"
+                        style={{
+                          color: swapResultTier === "perfect" ? "#22c55e" : swapResultTier === "good" ? "#ca8a04" : "#ef4444"
+                        }}
+                      >
+                        {tx(
+                          L,
+                          swapResultTier === "perfect" ? "fl5_rs_eval_perfect" : swapResultTier === "good" ? "fl5_rs_eval_good" : "fl5_rs_eval_keep"
+                        )}
+                      </p>
+                    </div>
+                    <div className="my-4 h-px w-full bg-[rgba(26,28,29,0.06)]" aria-hidden />
+                    <p className="text-[10px] text-[#6b6f72]">{tx(L, "fl5_rs_model")}</p>
+                    <p className="font-korean mt-1 text-[14px] font-bold text-[#1a1c1d]">{swapSentence}</p>
+                    {content.romanization ? (
+                      <p className="mt-2 text-[11px] italic text-[#2a14b4]">{content.romanization}</p>
+                    ) : null}
+                  </div>
+
+                  {vocab.length > 0 ? (
+                    <div
+                      className="mt-4 rounded-[24px] bg-white p-4"
+                      style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <BookIcon />
+                        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#2a14b4]">{tx(L, "fl5_rs_vocab")}</p>
+                      </div>
+                      <ul className="mt-3">
+                        {vocab.map((row, i) => (
+                          <li
+                            key={`${row.word}-${i}`}
+                            className="mb-[5px] flex items-start justify-between gap-2 rounded-[10px] px-2 py-1.5 last:mb-0"
+                            style={{ backgroundColor: "#f3f3f5" }}
+                          >
+                            <div className="min-w-0">
+                              <p className="font-korean text-[12px] font-bold">{row.word}</p>
+                              <p className="text-[9px] italic text-[#2a14b4]">{row.roman}</p>
+                            </div>
+                            <p className="max-w-[45%] text-right text-[10px] text-[#6b6f72]">{row.meaning}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-white px-3 py-4 text-center" style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}>
+                      <p className="text-[20px] font-extrabold text-[#2a14b4]">3</p>
+                      <p className="mt-1 text-[10px] text-[#6b6f72]">{tx(L, "fl5_stat_times")}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white px-3 py-4 text-center" style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}>
+                      <p className="text-[20px] font-extrabold text-[#2a14b4]">{streakDisplay}</p>
+                      <p className="mt-1 text-[10px] text-[#6b6f72]">{tx(L, "fl5_stat_streak")}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 flex flex-col-reverse gap-3">
+                    {showNextDayFromResult ? (
+                      <button type="button" onClick={goNextDayFromResult} className={primaryBtn} style={primaryStyle}>
+                        {tx(L, "fl5_btn_next_day", { n: nextDayNumFromResult })}
+                      </button>
+                    ) : journeyActive ? (
+                      <button type="button" onClick={tryAnother} className={primaryBtn} style={primaryStyle}>
+                        {tx(L, "fl_tryAnother")}
+                      </button>
+                    ) : (
+                      <button type="button" onClick={goChooseTopic} className={primaryBtn} style={primaryStyle}>
+                        {tx(L, "fl_chooseOtherTopic")}
+                      </button>
+                    )}
+                    <button type="button" onClick={retrySwapFromResult} className={secondaryBtn}>
+                      {tx(L, "fl5_btn_retry_swap")}
+                    </button>
+                    <button type="button" onClick={goHome} className={secondaryBtnHome}>
+                      {tx(L, "fl5_btn_home_go")}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ProgressDots active={flowIndex} />
 
               {flowStep === "listen" && (
                 <>
@@ -1167,27 +1414,32 @@ export default function FirstLineFlow() {
                       ))}
                     </div>
                   </div>
-                  <div className="mt-4 rounded-[32px] px-4 py-4" style={{ background: "linear-gradient(135deg, #2a14b4, #4338ca)", boxShadow: "0 8px 24px rgba(42,20,180,0.25)" }}>
-                    <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-white/80">
-                      {tx(L, "fl5_swap_mini")}
-                    </p>
-                    <p className="font-korean mt-2 text-center text-[16px] font-bold text-white [word-break:keep-all]">
-                      {swapSentence}
-                    </p>
-                  </div>
                   <button
                     type="button"
-                    onClick={() => void onSwapPrimary()}
-                    disabled={swapSpeakPending || isListening}
-                    className={`${primaryBtn} mt-6`}
+                    onClick={() => void onSwapListenOnly()}
+                    disabled={ttsLoading}
+                    className={`${secondaryBtn} mt-4`}
+                  >
+                    {tx(L, "fl5_btn_listen_swap")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onSwapSpeak()}
+                    disabled={!getSpeechRecognition() || isRequestingMic}
+                    className={`${primaryBtn} mt-3 flex items-center justify-center gap-2`}
                     style={primaryStyle}
                   >
-                    {tx(L, "fl5_btn_speak_swap")}
+                    <span aria-hidden>🎙</span>
+                    {isListening ? tx(L, "fl5_btn_speaking") : tx(L, "fl5_btn_speak_swap")}
                   </button>
+                  {spokenCount >= 1 ? (
+                    <p className="mt-3 text-center text-[13px] text-[#6b6f72]">{tx(L, "fl5_spoken_count", { n: spokenCount })}</p>
+                  ) : null}
+                  {micHint ? <p className="mt-2 text-center text-xs text-red-600">{micHint}</p> : null}
                 </>
               )}
 
-              {!journeyActive ? (
+              {!journeyActive && flowStep !== "result" ? (
                 <button
                   type="button"
                   onClick={goChooseTopic}
@@ -1196,90 +1448,8 @@ export default function FirstLineFlow() {
                   {tx(L, "fl_chooseOtherTopic")}
                 </button>
               ) : null}
-            </div>
-          )}
-
-          {phase === "summary" && successContent && (
-            <div className="animate-fade-in-up mx-auto w-full max-w-[480px] text-left">
-              <div
-                className="rounded-[32px] px-5 py-8 text-center text-white"
-                style={{
-                  background: "linear-gradient(135deg, #2a14b4, #4338ca)",
-                  boxShadow: "0 8px 24px rgba(42,20,180,0.25)"
-                }}
-              >
-                <p className="text-[22px] font-extrabold">{tx(L, "fl5_day_done_title", { n: completedJourneyDay })}</p>
-                <p className="mt-2 text-[14px] text-white/85">{tx(L, "fl5_day_done_sub")}</p>
-              </div>
-
-              <p className="mt-8 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--on-surface-variant)]">
-                {completedJourneyDay != null
-                  ? tx(L, "fl_dayResultLabel", { n: completedJourneyDay })
-                  : tx(L, "fl_resultBrowse")}
-              </p>
-
-              <div
-                className="mt-4 rounded-[28px] bg-[var(--surface-lowest)] p-5"
-                style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}
-              >
-                <p className="text-[11px] font-bold text-[var(--on-surface-variant)]">{tx(L, "fl_modelAnswer")}</p>
-                <p className="font-korean mt-3 text-[17px] font-bold leading-snug">{successContent.ko}</p>
-                {successContent.romanization ? (
-                  <p className="mt-2 text-[12px] italic text-[#2a14b4]">{successContent.romanization}</p>
-                ) : null}
-                <p className="mt-3 text-[13px] leading-relaxed text-[var(--on-surface-variant)]">{successContent.en}</p>
-              </div>
-
-              {vocabForResult.length > 0 ? (
-                <div className="mt-6 rounded-[28px] bg-[var(--surface-lowest)] p-4" style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}>
-                  <p className="text-[15px] font-bold text-[#2a14b4]">📚 {tx(L, "fl_vocabHeader")}</p>
-                  <ul className="mt-4 flex flex-col gap-2">
-                    {vocabForResult.map((row, i) => (
-                      <li key={`${row.word}-${i}`} className="flex justify-between gap-3 rounded-[12px] bg-[var(--surface-low)] px-2 py-2">
-                        <div>
-                          <p className="font-korean text-[14px] font-semibold">{row.word}</p>
-                          <p className="text-[10px] italic text-[#2a14b4]">{row.roman}</p>
-                        </div>
-                        <p className="max-w-[48%] text-right text-[12px] text-[var(--on-surface-variant)]">{row.meaning}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {nextJourneyPreview && nextDayNumber != null ? (
-                <>
-                  <p className="mt-8 text-center text-[11px] font-bold uppercase tracking-[0.14em] text-[#2a14b4]">
-                    {tx(L, "fl_upNext", { n: nextDayNumber })}
-                  </p>
-                  <div className="mt-4 rounded-[14px] bg-[var(--surface-lowest)] px-4 py-5 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
-                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#2a14b4]">
-                      {tx(L, "fl_dayBadge", { n: nextDayNumber })}
-                    </p>
-                    <p className="font-korean mt-3 text-lg font-bold">{nextJourneyPreview.ko}</p>
-                    <p className="mt-2 text-[13px] text-[var(--on-surface-variant)]">{nextJourneyPreview.en}</p>
-                  </div>
                 </>
-              ) : null}
-
-              <div className="mt-8 flex flex-col gap-3">
-                {nextJourneyPreview && nextDayNumber != null ? (
-                  <button
-                    type="button"
-                    onClick={startNextJourneyDay}
-                    className={`${primaryBtn}`}
-                    style={primaryStyle}
-                  >
-                    {tx(L, "fl_startDayNow", { n: nextDayNumber })} →
-                  </button>
-                ) : null}
-                <button type="button" onClick={tryAnother} className={`${primaryBtn}`} style={primaryStyle}>
-                  {tx(L, "fl_tryAnother")}
-                </button>
-                <button type="button" onClick={goHome} className={secondaryBtn}>
-                  {tx(L, "fl_goHome")}
-                </button>
-              </div>
+              )}
             </div>
           )}
         </div>
