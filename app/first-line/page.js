@@ -14,10 +14,11 @@ import {
 } from "@/app/lib/i18n";
 import { getSupabase } from "@/lib/supabase";
 import {
-  JOURNEY_DAYS,
   JOURNEY_DONE_MARKER,
   MAX_JOURNEY_DAY,
-  getJourneyRow
+  OGU_VIBE_KEY,
+  getJourneyRow,
+  normalizeVibe
 } from "@/lib/journey-data";
 import { trackEvent } from "@/lib/analytics";
 
@@ -35,30 +36,26 @@ function readStoredCurrentDay() {
   return Math.min(n, JOURNEY_DONE_MARKER);
 }
 
-const J_TITLE_KEYS = /** @type {const} */ (["j1_title", "j2_title", "j3_title"]);
-const J_EN_KEYS = /** @type {const} */ (["j1_en", "j2_en", "j3_en"]);
-
-/** @param {number} dayNum */
-function journeyDayToContent(dayNum, lang) {
-  const row = getJourneyRow(dayNum);
+/** @param {number} dayNum @param {import("@/app/lib/i18n").UILang} lang @param {'idol'|'drama'|'trip'} vibe */
+function journeyDayToContent(dayNum, lang, vibe) {
+  const row = getJourneyRow(dayNum, vibe);
   if (!row) return null;
   const L = normalizeLang(lang);
-  const i = dayNum - 1;
   const romanization = row.romanization ?? "";
   const vocab = row.vocab ?? [];
   if (dayNum <= 3) {
     return {
-      id: "idol",
+      id: vibe,
       cardLabel: tx(L, "j_card", { n: dayNum }),
-      headerLabel: tx(L, "j_dayHeader", { n: dayNum, title: tx(L, J_TITLE_KEYS[i]) }),
+      headerLabel: tx(L, "j_dayHeader", { n: dayNum, title: row.homeTitle }),
       ko: row.ko,
-      en: tx(L, J_EN_KEYS[i]),
+      en: row.en,
       romanization,
       vocab
     };
   }
   return {
-    id: "idol",
+    id: vibe,
     cardLabel: tx(L, "j_card", { n: dayNum }),
     headerLabel: tx(L, "j_dayHeader", { n: dayNum, title: row.homeTitle }),
     ko: row.ko,
@@ -225,7 +222,8 @@ function FirstLineFlow() {
   }, []);
 
   const journeyActive = journeyDay >= 1 && journeyDay <= MAX_JOURNEY_DAY;
-  const journeyContent = journeyActive ? journeyDayToContent(journeyDay, uiLang) : null;
+  const journeyVibe = category ? normalizeVibe(category) : "idol";
+  const journeyContent = journeyActive ? journeyDayToContent(journeyDay, uiLang, journeyVibe) : null;
   const categoryContent = category ? categoryToContent(category, uiLang) : null;
   const content = journeyActive && journeyContent ? journeyContent : categoryContent;
 
@@ -252,7 +250,8 @@ function FirstLineFlow() {
     setJourneyDay(d);
     const cat = searchParams.get("category");
     if (d <= MAX_JOURNEY_DAY) {
-      setCategory("idol");
+      const storedVibe = window.localStorage.getItem(OGU_VIBE_KEY);
+      setCategory(normalizeVibe(storedVibe));
       setStep(2);
       setUserInput("");
       return;
@@ -621,20 +620,22 @@ function FirstLineFlow() {
     "w-full transition-all duration-300 ease-out motion-reduce:transition-none animate-fade-in-up";
 
   const successContent =
-    completedJourneyDay != null ? journeyDayToContent(completedJourneyDay, uiLang) : content;
+    completedJourneyDay != null
+      ? journeyDayToContent(completedJourneyDay, uiLang, journeyVibe)
+      : content;
   const matchTier =
     step === 4 && successContent ? computeMatchTier(userInput, successContent.ko) : "keep";
   const vocabForResult = successContent?.vocab ?? [];
-  const nextJourneyPreview =
+  const nextJourneyRow =
     completedJourneyDay != null && completedJourneyDay < MAX_JOURNEY_DAY
-      ? {
-          ko: JOURNEY_DAYS[completedJourneyDay].ko,
-          en:
-            completedJourneyDay < 3
-              ? tx(uiLang, J_EN_KEYS[completedJourneyDay])
-              : JOURNEY_DAYS[completedJourneyDay].en
-        }
+      ? getJourneyRow(completedJourneyDay + 1, journeyVibe)
       : null;
+  const nextJourneyPreview = nextJourneyRow
+    ? {
+        ko: nextJourneyRow.ko,
+        en: nextJourneyRow.en
+      }
+    : null;
   const nextDayNumber = completedJourneyDay != null ? completedJourneyDay + 1 : null;
 
   return (

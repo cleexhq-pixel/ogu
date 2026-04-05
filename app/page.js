@@ -17,14 +17,14 @@ import {
   getJourneyRow,
   getJourneyWindowDays,
   JOURNEY_DONE_MARKER,
-  MAX_JOURNEY_DAY
+  MAX_JOURNEY_DAY,
+  normalizeVibe,
+  OGU_VIBE_KEY
 } from "@/lib/journey-data";
 import { useActiveSession } from "@/hooks/useActiveSession";
 
 const HERO_UNDERLINE = "border-b-[3px] pb-0.5";
 const heroUnderlineStyle = { borderColor: "rgba(255,255,255,0.65)" };
-
-const HERO_J_EN_KEYS = /** @type {const} */ (["j1_en", "j2_en", "j3_en"]);
 
 const LANG_FLAG = /** @type {const} */ ({
   ko: "🇰🇷",
@@ -46,10 +46,9 @@ function ArrowCircleIcon() {
   );
 }
 
-/** @param {string} L normalized lang @param {number} day 1…30 */
-function heroJourneyEnglish(L, day) {
-  if (day <= 3) return tx(L, HERO_J_EN_KEYS[day - 1]);
-  return getJourneyRow(day)?.en ?? "";
+/** @param {string} _L normalized lang @param {number} day 1…30 @param {'idol'|'drama'|'trip'} vibe */
+function heroJourneyEnglish(_L, day, vibe) {
+  return getJourneyRow(day, vibe)?.en ?? "";
 }
 
 /** Renders Korean line; gold-underlines `___` when present. */
@@ -82,19 +81,15 @@ function readJourneyCurrentFromStorage() {
   return Math.min(n, JOURNEY_DONE_MARKER);
 }
 
-/** @param {string} L normalized lang */
-function homeJourneyCardTitle(L, day) {
+/** @param {string} L normalized lang @param {'idol'|'drama'|'trip'} vibe */
+function homeJourneyCardTitle(L, day, vibe) {
   if (day === JOURNEY_DONE_MARKER) return tx(L, "home_journeyMoreSoon");
-  if (day <= 3) {
-    const keys = ["home_journeyDay1Title", "home_journeyDay2Title", "home_journeyDay3Title"];
-    return tx(L, keys[day - 1]);
-  }
-  return getJourneyRow(day)?.homeTitle ?? `Day ${day}`;
+  return getJourneyRow(day, vibe)?.homeTitle ?? `Day ${day}`;
 }
 
-function homeJourneyCardKo(day) {
+function homeJourneyCardKo(day, vibe) {
   if (day === JOURNEY_DONE_MARKER) return "···";
-  return getJourneyRow(day)?.homeKo ?? "";
+  return getJourneyRow(day, vibe)?.homeKo ?? "";
 }
 
 /** @param {import("@/app/lib/i18n").UILang} lang */
@@ -130,6 +125,8 @@ export default function HomePage() {
   const profileMenuRef = useRef(null);
   const langMenuRef = useRef(null);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [vibe, setVibe] = useState("idol");
+  const [onboardingVibe, setOnboardingVibe] = useState("idol");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -155,7 +152,10 @@ export default function HomePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const sync = () => setJourneyCurrent(readJourneyCurrentFromStorage());
+    const sync = () => {
+      setJourneyCurrent(readJourneyCurrentFromStorage());
+      setVibe(normalizeVibe(window.localStorage.getItem(OGU_VIBE_KEY)));
+    };
     sync();
     const onVis = () => {
       if (document.visibilityState === "visible") sync();
@@ -222,6 +222,11 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !showOnboardingModal) return;
+    setOnboardingVibe(normalizeVibe(window.localStorage.getItem(OGU_VIBE_KEY)));
+  }, [showOnboardingModal]);
+
+  useEffect(() => {
     const supabase = getSupabase();
     if (!supabase) return;
 
@@ -280,6 +285,10 @@ export default function HomePage() {
   };
 
   const goFirstLine = (category) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(OGU_VIBE_KEY, category);
+    }
+    setVibe(normalizeVibe(category));
     trackStartDailyPhrase();
     const params = new URLSearchParams();
     params.set("lang", language);
@@ -319,7 +328,7 @@ export default function HomePage() {
   const heroJourneyComplete = journeyCurrent >= JOURNEY_DONE_MARKER;
   const heroDay =
     !heroJourneyComplete && journeyCurrent >= 1 && journeyCurrent <= MAX_JOURNEY_DAY ? journeyCurrent : null;
-  const heroRow = heroDay != null ? getJourneyRow(heroDay) : null;
+  const heroRow = heroDay != null ? getJourneyRow(heroDay, vibe) : null;
   const heroLineLabel = heroJourneyComplete
     ? tx(L, "home_journeyCompleteBadge")
     : journeyCurrent === 1
@@ -377,107 +386,111 @@ export default function HomePage() {
       <Analytics />
       {showOnboardingModal && (
         <div
-          className="fixed inset-0 z-50 flex min-h-[100dvh] flex-col bg-[var(--surface-lowest)] font-jakarta"
-          style={{ padding: "48px 28px 44px" }}
+          className="fixed inset-0 z-50 flex h-[100dvh] min-h-0 flex-col justify-between bg-[var(--surface-lowest)] font-jakarta"
+          style={{ padding: "36px 28px 32px" }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="onboarding-modal-title"
         >
-          <div className="flex min-h-0 flex-1 flex-col justify-between">
-            <div>
-              <p className="inline-flex rounded-[20px] bg-[var(--surface-low)] px-[14px] py-[7px] text-[11px] font-bold text-[var(--on-surface-variant)]">
-                🪄 Speak 한국어 from Day 1
-              </p>
-              <h2
-                id="onboarding-modal-title"
-                className="mt-8 text-[36px] font-extrabold leading-[1.12] tracking-[-0.8px] text-[var(--on-surface)]"
-              >
-                <span className="block">{tx(L, "modal_headlineBefore").trim()}</span>
-                <span className="block">{tx(L, "modal_headlineAccent")}</span>
-                <span className="block">
-                  {L === "en" ? (
-                    <>
-                      <span className="text-[var(--on-surface)]">in </span>
-                      <span className="font-light italic text-[var(--primary)]">30 seconds.</span>
-                    </>
-                  ) : (
-                    <span
-                      className={
-                        L === "ko"
-                          ? "text-[var(--on-surface)]"
-                          : "font-light italic text-[var(--primary)]"
-                      }
-                    >
-                      {tx(L, "modal_headlineAfter")}
-                    </span>
-                  )}
-                </span>
-              </h2>
-              <div className="mb-10 mt-4 text-[15px] leading-[1.65] text-[var(--on-surface-variant)]">
-                <p>{tx(L, "modal_pickTopic")}</p>
-                <p>{tx(L, "modal_noSignup")}</p>
-              </div>
-              <p
-                className="mb-3 mt-10 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--on-surface-variant)]"
-                style={{ letterSpacing: "0.12em" }}
-              >
-                {tx(L, "home_vibeTitle")}
-              </p>
-              <div className="flex flex-col gap-[10px]">
-                {[
-                  { cat: "idol", key: "cat_idol_card", sub: "cat_idol_sub" },
-                  { cat: "drama", key: "cat_drama_card", sub: "cat_drama_sub" },
-                  { cat: "trip", key: "cat_trip_card", sub: "cat_trip_sub" }
-                ].map(({ cat, key, sub }) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => {
-                      setShowOnboardingModal(false);
-                      goFirstLine(cat);
-                    }}
-                    className="group flex w-full items-center gap-4 rounded-[32px] border-2 border-transparent bg-[var(--surface-low)] p-4 pl-5 text-left transition hover:border-[rgba(42,20,180,0.2)] hover:bg-[#edeafd]"
+          <div className="flex min-h-0 flex-1 flex-col">
+            <p className="mb-5 inline-flex rounded-[20px] bg-[var(--surface-low)] px-[14px] py-[7px] text-[11px] font-bold text-[var(--on-surface-variant)]">
+              🪄 Speak 한국어 from Day 1
+            </p>
+            <h2
+              id="onboarding-modal-title"
+              className="text-[28px] font-extrabold leading-[1.1] tracking-[-0.8px] text-[var(--on-surface)]"
+            >
+              <span className="block">{tx(L, "modal_headlineBefore").trim()}</span>
+              <span className="block">{tx(L, "modal_headlineAccent")}</span>
+              <span className="block">
+                {L === "en" ? (
+                  <>
+                    <span className="text-[var(--on-surface)]">in </span>
+                    <span className="font-light italic text-[var(--primary)]">30 seconds.</span>
+                  </>
+                ) : (
+                  <span
+                    className={
+                      L === "ko"
+                        ? "text-[var(--on-surface)]"
+                        : "font-light italic text-[var(--primary)]"
+                    }
                   >
-                    <span
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[var(--surface-lowest)] text-[22px] leading-none"
-                      aria-hidden
-                    >
-                      {cat === "idol" ? "👑" : cat === "drama" ? "🎬" : "✈️"}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[14px] font-bold text-[var(--on-surface)]">{tx(L, key)}</span>
-                      <span className="mt-0.5 block text-[12px] text-[var(--on-surface-variant)]">{tx(L, sub)}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
+                    {tx(L, "modal_headlineAfter")}
+                  </span>
+                )}
+              </span>
+            </h2>
+            <div className="mb-5 mt-4 text-[15px] leading-[1.65] text-[var(--on-surface-variant)]">
+              <p>{tx(L, "modal_pickTopic")}</p>
+              <p>{tx(L, "modal_noSignup")}</p>
             </div>
-            <div className="mt-10 shrink-0 space-y-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowOnboardingModal(false);
-                  goFirstLine("idol");
-                }}
-                className="flex w-full items-center justify-between gap-3 rounded-[24px] px-5 py-[18px] text-[15px] font-bold text-white transition hover:brightness-105 active:scale-[0.99]"
-                style={{
-                  background: "linear-gradient(135deg, #2a14b4, #4338ca)",
-                  boxShadow: "var(--shadow-active)"
-                }}
-              >
-                <span>{tx(L, "home_sayItNow")}</span>
-                <ArrowCircleIcon />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowOnboardingModal(false)}
-                className="w-full text-center text-[13px] text-[var(--on-surface-variant)] underline underline-offset-2 transition hover:opacity-80"
-              >
-                {tx(L, "modal_browseBefore")}
-                {tx(L, "modal_browseAccent")}
-              </button>
-              <p className="text-center text-[11px] opacity-50 text-[var(--on-surface)]">{tx(L, "modal_footer")}</p>
+            <p
+              className="mb-2.5 mt-0 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--on-surface-variant)]"
+              style={{ letterSpacing: "0.12em" }}
+            >
+              {tx(L, "home_vibeTitle")}
+            </p>
+            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+              {[
+                { cat: "idol", key: "cat_idol_card", sub: "cat_idol_sub" },
+                { cat: "drama", key: "cat_drama_card", sub: "cat_drama_sub" },
+                { cat: "trip", key: "cat_trip_card", sub: "cat_trip_sub" }
+              ].map(({ cat, key, sub }) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      window.localStorage.setItem(OGU_VIBE_KEY, cat);
+                    }
+                    setOnboardingVibe(cat);
+                  }}
+                  className={`group flex w-full shrink-0 items-center gap-3 rounded-[32px] border-2 px-4 py-3 text-left transition ${
+                    onboardingVibe === cat
+                      ? "border-[#2a14b4] bg-[#edeafd]"
+                      : "border-transparent bg-[var(--surface-low)] hover:border-[rgba(42,20,180,0.2)] hover:bg-[#edeafd]"
+                  }`}
+                >
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] bg-[var(--surface-lowest)] text-[18px] leading-none"
+                    aria-hidden
+                  >
+                    {cat === "idol" ? "👑" : cat === "drama" ? "🎬" : "✈️"}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-bold text-[var(--on-surface)]">{tx(L, key)}</span>
+                    <span className="mt-0.5 block text-[12px] text-[var(--on-surface-variant)]">{tx(L, sub)}</span>
+                  </span>
+                </button>
+              ))}
             </div>
+          </div>
+          <div className="shrink-0 space-y-4 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowOnboardingModal(false);
+                goFirstLine(onboardingVibe);
+              }}
+              className="flex w-full items-center justify-between gap-3 rounded-[24px] px-6 py-[14px] text-[15px] font-bold text-white transition hover:brightness-105 active:scale-[0.99]"
+              style={{
+                background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                boxShadow: "var(--shadow-active)"
+              }}
+            >
+              <span>{tx(L, "home_sayItNow")}</span>
+              <ArrowCircleIcon />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowOnboardingModal(false)}
+              className="w-full text-center text-[13px] text-[var(--on-surface-variant)] underline underline-offset-2 transition hover:opacity-80"
+            >
+              {tx(L, "modal_browseBefore")}
+              {tx(L, "modal_browseAccent")}
+            </button>
+            <p className="text-center text-[11px] opacity-50 text-[var(--on-surface)]">{tx(L, "modal_footer")}</p>
           </div>
         </div>
       )}
@@ -648,7 +661,7 @@ export default function HomePage() {
                       <HeroKoreanLine ko={heroRow.ko} />
                     </p>
                     <p className="mt-2 text-center text-[15px] font-light italic leading-relaxed text-white/90">
-                      {heroJourneyEnglish(L, heroDay)}
+                      {heroJourneyEnglish(L, heroDay, vibe)}
                     </p>
                     <div className="mt-8 flex items-end justify-between gap-4">
                       <button
@@ -687,7 +700,12 @@ export default function HomePage() {
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => goFirstLine(cat)}
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      window.localStorage.setItem(OGU_VIBE_KEY, cat);
+                    }
+                    setVibe(normalizeVibe(cat));
+                  }}
                   className="flex flex-col items-center rounded-[32px] bg-[var(--surface-lowest)] px-3 pb-[18px] pt-5 text-center transition hover:brightness-[0.99] active:scale-[0.99]"
                   style={{ boxShadow: "var(--shadow-card)" }}
                 >
@@ -718,8 +736,8 @@ export default function HomePage() {
                 const isActive =
                   !isPlaceholder && d === journeyCurrent && journeyCurrent <= MAX_JOURNEY_DAY;
                 const isLocked = !isDone && !isActive;
-                const title = homeJourneyCardTitle(L, d);
-                const koLine = homeJourneyCardKo(d);
+                const title = homeJourneyCardTitle(L, d, vibe);
+                const koLine = homeJourneyCardKo(d, vibe);
 
                 const row = (
                   <div className="flex gap-3 py-[14px]">
@@ -800,37 +818,6 @@ export default function HomePage() {
                   </div>
                 );
               })}
-            </div>
-          </section>
-
-          <section className="mb-12">
-            <div
-              className="flex items-center justify-between gap-4 rounded-[48px] bg-[var(--surface-lowest)] px-7 py-7"
-              style={{ boxShadow: "var(--shadow-card)" }}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--on-surface-variant)]">
-                  {tx(L, "home_browseMissions")}
-                </p>
-                <p className="mt-2 text-[20px] font-extrabold leading-tight tracking-[-0.4px] text-[var(--on-surface)]">
-                  {tx(L, "home_browseMissions")}
-                </p>
-                <p className="mt-2 text-[14px] font-normal leading-relaxed text-[var(--on-surface-variant)]">
-                  {tx(L, "modal_pickTopic")}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={goBrowseFirstLine}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white transition hover:brightness-105 active:scale-95"
-                style={{
-                  background: "linear-gradient(135deg, #2a14b4, #4338ca)",
-                  boxShadow: "var(--shadow-active)"
-                }}
-                aria-label={tx(L, "home_browseMissions")}
-              >
-                →
-              </button>
             </div>
           </section>
 
