@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { pageview, trackSendVoice } from "@/app/lib/gtag";
 import Analytics from "@/app/components/Analytics";
@@ -16,7 +16,7 @@ import {
   JOURNEY_DONE_MARKER,
   MAX_JOURNEY_DAY,
   OGU_VIBE_KEY,
-  buildSwapSentence,
+  buildSentenceFromTemplate,
   getJourneyRow,
   normalizeVibe
 } from "@/lib/journey-data";
@@ -26,31 +26,23 @@ const OGU_CURRENT_DAY_KEY = "ogu_current_day";
 const OGU_STREAK_KEY = "ogu_streak_count";
 const OGU_STREAK_LAST_KEY = "ogu_streak_last_date";
 
-/** @typedef {'listen'|'understand'|'repeat'|'recall'|'swap'|'result'} FlowStep */
+/** @typedef {'listen'|'understand'|'repeat'|'recall'|'result'} FlowStep */
 /** @typedef {'pick'|'flow'|'summary'} Phase */
 
 const STT_MAX_MS = 10000;
 const STT_SILENCE_MS = 1500;
 
-const primaryBtn =
-  "w-full rounded-[24px] py-[14px] text-[15px] font-bold text-white transition hover:brightness-105 active:scale-[0.99] disabled:opacity-50";
+const flowBtnBase =
+  "flex w-full items-center justify-center text-center text-[15px] font-bold transition active:scale-[0.99] disabled:opacity-50";
+const primaryBtn = `${flowBtnBase} rounded-[24px] py-[14px] text-white hover:brightness-105`;
 const primaryStyle = {
   background: "linear-gradient(135deg, #2a14b4, #4338ca)",
   boxShadow: "0 8px 24px rgba(42,20,180,0.22)"
 };
-const secondaryBtn =
-  "w-full rounded-[24px] border border-[rgba(26,28,29,0.12)] bg-white py-[11px] text-[13px] font-semibold text-[#2a14b4] transition hover:bg-[var(--surface-low)]";
-const secondaryBtnHome =
-  "w-full rounded-[24px] border border-[rgba(26,28,29,0.12)] bg-white py-3 text-[14px] font-semibold text-[#6b6f72] transition hover:bg-[var(--surface-low)]";
-const nextStepBtn =
-  "w-full rounded-[24px] border-[1.5px] border-[rgba(42,20,180,0.2)] bg-white py-[13px] text-[13px] font-bold text-[#2a14b4] transition hover:bg-[rgba(42,20,180,0.04)]";
-/** Step 1 — unified 15px / bold / centered */
-const step1PrimaryBtn =
-  "w-full rounded-[24px] py-[14px] text-[15px] font-bold text-white transition hover:brightness-105 active:scale-[0.99] disabled:opacity-50 flex items-center justify-center text-center gap-3";
-const step1SecondaryBtn =
-  "w-full rounded-[24px] border border-[rgba(26,28,29,0.12)] bg-white py-[14px] text-[15px] font-bold text-[#2a14b4] transition hover:bg-[var(--surface-low)] flex items-center justify-center text-center";
-const step1NextBtn =
-  "w-full rounded-[24px] border-[1.5px] border-[rgba(42,20,180,0.2)] bg-white py-[14px] text-[15px] font-bold text-[#2a14b4] transition hover:bg-[rgba(42,20,180,0.04)] flex items-center justify-center text-center";
+const secondaryBtn = `${flowBtnBase} rounded-[24px] border border-[rgba(26,28,29,0.12)] bg-white py-[14px] text-[#2a14b4] hover:bg-[var(--surface-low)]`;
+const secondaryBtnHome = `${flowBtnBase} rounded-[24px] border border-[rgba(26,28,29,0.12)] bg-white py-[14px] text-[#6b6f72] hover:bg-[var(--surface-low)]`;
+const nextStepBtn = `${flowBtnBase} rounded-[24px] border-[1.5px] border-[rgba(42,20,180,0.2)] bg-white py-[14px] text-[#2a14b4] hover:bg-[rgba(42,20,180,0.04)]`;
+const step1PrimaryBtn = `${primaryBtn} gap-3`;
 
 function readStoredCurrentDay() {
   if (typeof window === "undefined") return 1;
@@ -94,6 +86,7 @@ function journeyDayToContent(dayNum, lang, vibe) {
   const situation = row.situation ?? "";
   const swapOptions = row.swapOptions ?? ["영어", "스페인어", "일본어", "요리", "피아노"];
   const swapIndex = Number.isFinite(row.swapIndex) ? row.swapIndex : 0;
+  const swapTemplate = row.swapTemplate ?? null;
   return {
     id: vibe,
     cardLabel: tx(L, "j_card", { n: dayNum }),
@@ -104,7 +97,8 @@ function journeyDayToContent(dayNum, lang, vibe) {
     vocab,
     situation,
     swapOptions,
-    swapIndex
+    swapIndex,
+    swapTemplate
   };
 }
 
@@ -119,7 +113,8 @@ const CATEGORY_LINE = /** @type {const} */ ({
     ],
     situation: "누가 '누구 좋아해?'라고 물었을 때 대답하는 표현이에요.",
     swapOptions: ["세븐틴", "블랙핑크", "아이유", "엑소", "NCT"],
-    swapIndex: 2
+    swapIndex: 2,
+    swapTemplate: "제 최애는 ___예요."
   },
   drama: {
     ko: "보고 싶었어요.",
@@ -130,7 +125,8 @@ const CATEGORY_LINE = /** @type {const} */ ({
     ],
     situation: "애틋한 대사를 연상할 때 쓰는 표현이에요.",
     swapOptions: ["만나고", "듣고", "기다리고", "응원하고", "보고"],
-    swapIndex: 0
+    swapIndex: 0,
+    swapTemplate: "___ 싶었어요."
   },
   trip: {
     ko: "여기 어떻게 가요?",
@@ -142,7 +138,8 @@ const CATEGORY_LINE = /** @type {const} */ ({
     ],
     situation: "길을 물을 때 쓰는 표현이에요.",
     swapOptions: ["지하철역", "공항", "호텔", "카페", "화장실"],
-    swapIndex: 1
+    swapIndex: 1,
+    swapTemplate: "여기 ___ 가요?"
   }
 });
 
@@ -160,7 +157,8 @@ function categoryToContent(cat, lang) {
     vocab: line.vocab,
     situation: line.situation,
     swapOptions: line.swapOptions,
-    swapIndex: line.swapIndex
+    swapIndex: line.swapIndex,
+    swapTemplate: line.swapTemplate ?? null
   };
 }
 
@@ -239,7 +237,7 @@ async function requestMicrophoneAccess() {
 
 /** @param {{ active: number, allComplete?: boolean }} props */
 function ProgressDots({ active, allComplete }) {
-  const steps = [0, 1, 2, 3, 4];
+  const steps = [0, 1, 2, 3];
   if (allComplete) {
     return (
       <div className="mb-6 flex items-center justify-center gap-2">
@@ -367,7 +365,7 @@ export default function FirstLineFlow() {
   const hydratedFromUrl = useRef(false);
   const signupModalShownGaArmedRef = useRef(false);
   const missionResultGaFiredRef = useRef(false);
-  const sttPurposeRef = useRef(/** @type {'repeat'|'recall'|'swap'|null} */ (null));
+  const sttPurposeRef = useRef(/** @type {'repeat'|'recall'|null} */ (null));
   const sttSilenceTimerRef = useRef(null);
   const sttMaxTimerRef = useRef(null);
   const wordAudioRef = useRef(null);
@@ -378,9 +376,8 @@ export default function FirstLineFlow() {
   const [repeatDone, setRepeatDone] = useState(false);
   const [recallDone, setRecallDone] = useState(false);
   const [recallText, setRecallText] = useState("");
-  const [swapSel, setSwapSel] = useState(0);
-  const [spokenCount, setSpokenCount] = useState(0);
-  const [lastSwapTranscript, setLastSwapTranscript] = useState("");
+  /** @type {[number | null, import('react').Dispatch<import('react').SetStateAction<number | null>>]} */
+  const [applyChipIdx, setApplyChipIdx] = useState(null);
   const [streakDisplay, setStreakDisplay] = useState(1);
 
   const clearSttTimers = useCallback(() => {
@@ -410,18 +407,14 @@ export default function FirstLineFlow() {
           ? 2
           : flowStep === "recall"
             ? 3
-            : flowStep === "swap"
-              ? 4
-              : 4;
+            : 0;
 
   const vocab = content?.vocab ?? [];
   const situationText = content?.situation ?? "";
-  const swapOptions = content?.swapOptions ?? ["영어", "스페인어", "일본어"];
-  const swapIndex = content?.swapIndex ?? 0;
-  const swapSentence =
-    content && swapOptions.length
-      ? buildSwapSentence(content.ko, swapIndex, swapOptions, swapSel)
-      : content?.ko ?? "";
+  const swapOptions = content?.swapOptions ?? [];
+  const swapTemplate = content?.swapTemplate ?? null;
+  const showApplySection =
+    Boolean(swapTemplate && swapOptions.length > 0 && typeof swapTemplate === "string" && swapTemplate.includes("___"));
 
   const resetFlowState = useCallback(() => {
     setFlowStep("listen");
@@ -498,6 +491,7 @@ export default function FirstLineFlow() {
       wordAudioRef.current = null;
     }
     setPlayingWordIdx(null);
+    setApplyChipIdx(null);
   }, []);
 
   useEffect(() => () => stopAudio(), [stopAudio]);
@@ -522,6 +516,39 @@ export default function FirstLineFlow() {
         await audio.play();
       } catch {
         // silent
+      } finally {
+        setTtsLoading(false);
+      }
+    },
+    [stopAudio]
+  );
+
+  const playApplyChipTts = useCallback(
+    async (sentence, chipIdx) => {
+      if (!sentence) return;
+      stopAudio();
+      setApplyChipIdx(chipIdx);
+      setTtsLoading(true);
+      try {
+        const response = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: sentence, lang: "ko-KR", speakingRate: 0.9 })
+        });
+        const data = await response.json();
+        if (!data?.audioContent) {
+          setApplyChipIdx(null);
+          return;
+        }
+        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+        audioRef.current = audio;
+        audio.onended = () => {
+          setApplyChipIdx(null);
+          if (audioRef.current === audio) audioRef.current = null;
+        };
+        await audio.play();
+      } catch {
+        setApplyChipIdx(null);
       } finally {
         setTtsLoading(false);
       }
@@ -700,15 +727,6 @@ export default function FirstLineFlow() {
       } else if (purpose === "recall") {
         setRecallText(t);
         setRecallDone(true);
-      } else if (purpose === "swap") {
-        setLastSwapTranscript(t);
-        setSpokenCount((c) => {
-          const next = c + 1;
-          if (next >= 3) {
-            setTimeout(() => setFlowStep("result"), 0);
-          }
-          return next;
-        });
       }
       sttPurposeRef.current = null;
     };
@@ -724,7 +742,7 @@ export default function FirstLineFlow() {
   }, [clearSttTimers]);
 
   useEffect(() => {
-    if (flowStep !== "repeat" && flowStep !== "recall" && flowStep !== "swap") {
+    if (flowStep !== "repeat" && flowStep !== "recall") {
       clearSttTimers();
       try {
         recognitionRef.current?.stop();
@@ -809,30 +827,18 @@ export default function FirstLineFlow() {
   };
 
   const recallTier = recallDone && content ? computeRecallTier(recallText, content.ko) : "keep";
+  const resultScreenTier =
+    flowStep === "result" && content && recallDone ? computeRecallTier(recallText, content.ko) : "keep";
 
-  const swapResultTier = useMemo(
-    () => (flowStep === "result" && content ? computeRecallTier(lastSwapTranscript, swapSentence) : "keep"),
-    [flowStep, content, lastSwapTranscript, swapSentence]
-  );
-
-  const onSwapListenOnly = async () => {
-    if (!swapSentence) return;
-    await playTts(swapSentence);
-  };
-
-  const onSwapSpeak = () => {
-    void toggleVoiceInput("swap");
-  };
-
-  const retrySwapFromResult = () => {
+  const retryFromResult = () => {
     stopAudio();
     missionResultGaFiredRef.current = false;
     if (typeof window !== "undefined") {
       sessionStorage.removeItem(`ogu_mission_ga_${journeyDay}`);
     }
-    setSpokenCount(0);
-    setLastSwapTranscript("");
-    setFlowStep("swap");
+    setRecallDone(false);
+    setRecallText("");
+    setFlowStep("recall");
   };
 
   const goNextDayFromResult = () => {
@@ -1029,9 +1035,9 @@ export default function FirstLineFlow() {
                     style={{
                       boxShadow: "0 20px 50px rgba(26,28,29,0.05)",
                       border:
-                        swapResultTier === "perfect"
+                        resultScreenTier === "perfect"
                           ? "1.5px solid rgba(34,197,94,0.3)"
-                          : swapResultTier === "good"
+                          : resultScreenTier === "good"
                             ? "1.5px solid rgba(234,179,8,0.3)"
                             : "1.5px solid rgba(239,68,68,0.3)"
                     }}
@@ -1040,27 +1046,27 @@ export default function FirstLineFlow() {
                       className="inline-flex rounded-full px-3 py-1.5 text-[12px] font-bold"
                       style={{
                         backgroundColor:
-                          swapResultTier === "perfect"
+                          resultScreenTier === "perfect"
                             ? "rgba(34,197,94,0.1)"
-                            : swapResultTier === "good"
+                            : resultScreenTier === "good"
                               ? "rgba(234,179,8,0.1)"
                               : "rgba(239,68,68,0.1)",
                         color:
-                          swapResultTier === "perfect"
+                          resultScreenTier === "perfect"
                             ? "#166534"
-                            : swapResultTier === "good"
+                            : resultScreenTier === "good"
                               ? "#854d0e"
                               : "#991b1b"
                       }}
                     >
-                      {tx(L, swapResultTier === "perfect" ? "fl_badge_perfect" : swapResultTier === "good" ? "fl_badge_good" : "fl_badge_keep")}
+                      {tx(L, resultScreenTier === "perfect" ? "fl_badge_perfect" : resultScreenTier === "good" ? "fl_badge_good" : "fl_badge_keep")}
                     </div>
                     <p className="mt-4 text-[10px] text-[#6b6f72]">{tx(L, "fl5_rs_you_said")}</p>
-                    <p className="font-korean mt-1 text-[15px] font-bold text-[#1a1c1d]">{lastSwapTranscript || "—"}</p>
+                    <p className="font-korean mt-1 text-[15px] font-bold text-[#1a1c1d]">{recallText || "—"}</p>
                     <div className="mt-3 flex items-center gap-2">
-                      {swapResultTier === "perfect" ? (
+                      {resultScreenTier === "perfect" ? (
                         <TierCheckIcon fill="#22c55e" />
-                      ) : swapResultTier === "good" ? (
+                      ) : resultScreenTier === "good" ? (
                         <WarningMarkIcon />
                       ) : (
                         <ResultXIcon />
@@ -1068,18 +1074,18 @@ export default function FirstLineFlow() {
                       <p
                         className="text-[13px] font-semibold"
                         style={{
-                          color: swapResultTier === "perfect" ? "#22c55e" : swapResultTier === "good" ? "#ca8a04" : "#ef4444"
+                          color: resultScreenTier === "perfect" ? "#22c55e" : resultScreenTier === "good" ? "#ca8a04" : "#ef4444"
                         }}
                       >
                         {tx(
                           L,
-                          swapResultTier === "perfect" ? "fl5_rs_eval_perfect" : swapResultTier === "good" ? "fl5_rs_eval_good" : "fl5_rs_eval_keep"
+                          resultScreenTier === "perfect" ? "fl5_rs_eval_perfect" : resultScreenTier === "good" ? "fl5_rs_eval_good" : "fl5_rs_eval_keep"
                         )}
                       </p>
                     </div>
                     <div className="my-4 h-px w-full bg-[rgba(26,28,29,0.06)]" aria-hidden />
                     <p className="text-[10px] text-[#6b6f72]">{tx(L, "fl5_rs_model")}</p>
-                    <p className="font-korean mt-1 text-[14px] font-bold text-[#1a1c1d]">{swapSentence}</p>
+                    <p className="font-korean mt-1 text-[14px] font-bold text-[#1a1c1d]">{content.ko}</p>
                     {content.romanization ? (
                       <p className="mt-2 text-[11px] italic text-[#2a14b4]">{content.romanization}</p>
                     ) : null}
@@ -1112,9 +1118,54 @@ export default function FirstLineFlow() {
                     </div>
                   ) : null}
 
+                  {showApplySection && swapTemplate ? (
+                    <div className="mt-4">
+                      <p className="mb-[10px] text-[11px] font-bold uppercase tracking-[0.06em] text-[#2a14b4]">
+                        {tx(L, "fl5_apply_section")}
+                      </p>
+                      <div
+                        className="rounded-[24px] bg-[var(--surface-lowest)] p-4"
+                        style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}
+                      >
+                        <p className="font-korean text-[15px] leading-relaxed text-[#1a1c1d]">
+                          {swapTemplate.split("___").map((part, i, arr) => (
+                            <Fragment key={i}>
+                              {part}
+                              {i < arr.length - 1 ? (
+                                <span className="font-bold text-[#2a14b4]">___</span>
+                              ) : null}
+                            </Fragment>
+                          ))}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2 overflow-x-auto">
+                          {swapOptions.map((opt, i) => {
+                            const active = applyChipIdx === i;
+                            return (
+                              <button
+                                key={`${opt}-${i}`}
+                                type="button"
+                                onClick={() => {
+                                  const s = buildSentenceFromTemplate(swapTemplate, opt);
+                                  void playApplyChipTts(s, i);
+                                }}
+                                className="shrink-0 rounded-[20px] px-[14px] py-[6px] text-[14px] font-semibold transition hover:bg-[#2a14b4] hover:text-white"
+                                style={{
+                                  backgroundColor: active ? "#2a14b4" : "#f3f3f5",
+                                  color: active ? "#fff" : "#1a1c1d"
+                                }}
+                              >
+                                {opt}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     <div className="rounded-2xl bg-white px-3 py-4 text-center" style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}>
-                      <p className="text-[20px] font-extrabold text-[#2a14b4]">3</p>
+                      <p className="text-[20px] font-extrabold text-[#2a14b4]">1</p>
                       <p className="mt-1 text-[10px] text-[#6b6f72]">{tx(L, "fl5_stat_times")}</p>
                     </div>
                     <div className="rounded-2xl bg-white px-3 py-4 text-center" style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}>
@@ -1137,7 +1188,7 @@ export default function FirstLineFlow() {
                         {tx(L, "fl_chooseOtherTopic")}
                       </button>
                     )}
-                    <button type="button" onClick={retrySwapFromResult} className={secondaryBtn}>
+                    <button type="button" onClick={retryFromResult} className={secondaryBtn}>
                       {tx(L, "fl5_btn_retry_swap")}
                     </button>
                     <button type="button" onClick={goHome} className={secondaryBtnHome}>
@@ -1170,11 +1221,11 @@ export default function FirstLineFlow() {
                       {tx(L, "fl5_listen_count", { n: Math.min(listenCount, 3) })}
                     </span>
                   </button>
-                  <button type="button" onClick={onListenSlow} disabled={ttsLoading} className={`${step1SecondaryBtn} mt-3`}>
+                  <button type="button" onClick={onListenSlow} disabled={ttsLoading} className={`${secondaryBtn} mt-3`}>
                     {tx(L, "fl5_btn_slow")}
                   </button>
                   {listenCount >= 3 ? (
-                    <button type="button" onClick={goNextFromListen} className={`${step1NextBtn} mt-6`}>
+                    <button type="button" onClick={goNextFromListen} className={`${nextStepBtn} mt-6`}>
                       {tx(L, "fl5_next_vocab")}
                     </button>
                   ) : null}
@@ -1265,7 +1316,7 @@ export default function FirstLineFlow() {
                     type="button"
                     onClick={() => void toggleVoiceInput("repeat")}
                     disabled={!getSpeechRecognition() || isRequestingMic}
-                    className={`${primaryBtn} mt-4 flex items-center justify-center text-center`}
+                    className={`${primaryBtn} mt-4`}
                     style={primaryStyle}
                   >
                     {isListening ? tx(L, "fl5_btn_speaking") : tx(L, "fl5_btn_speak_now")}
@@ -1379,74 +1430,11 @@ export default function FirstLineFlow() {
                           </div>
                         );
                       })()}
-                      <button type="button" onClick={() => setFlowStep("swap")} className={`${nextStepBtn} mt-6`}>
+                      <button type="button" onClick={() => setFlowStep("result")} className={`${nextStepBtn} mt-6`}>
                         {tx(L, "fl5_next_swap")}
                       </button>
                     </>
                   ) : null}
-                </>
-              )}
-
-              {flowStep === "swap" && (
-                <>
-                  <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
-                    {tx(L, "fl5_over_swap")}
-                  </p>
-                  <div
-                    className="mt-4 rounded-[28px] bg-[var(--surface-lowest)] p-4"
-                    style={{ boxShadow: "0 20px 50px rgba(26,28,29,0.05)" }}
-                  >
-                    <p className="text-[11px] text-[var(--on-surface-variant)]">{tx(L, "fl5_swap_pick")}</p>
-                    <div className="font-korean mt-3 text-[18px] font-bold leading-relaxed text-[var(--on-surface)]">
-                      {content.ko.split(/\s+/).map((w, i) => (
-                        <span key={i}>
-                          {i === swapIndex ? (
-                            <span className="text-[#2a14b4] underline">{swapOptions[swapSel]}</span>
-                          ) : (
-                            <span>{w}</span>
-                          )}
-                          {i < content.ko.split(/\s+/).length - 1 ? " " : ""}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {swapOptions.map((opt, i) => (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() => setSwapSel(i)}
-                          className="rounded-full px-3 py-1.5 text-[12px] font-semibold transition"
-                          style={{
-                            backgroundColor: swapSel === i ? "#2a14b4" : "var(--surface-low)",
-                            color: swapSel === i ? "#fff" : "var(--on-surface)"
-                          }}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void onSwapListenOnly()}
-                    disabled={ttsLoading}
-                    className={`${secondaryBtn} mt-4`}
-                  >
-                    {tx(L, "fl5_btn_listen_swap")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void onSwapSpeak()}
-                    disabled={!getSpeechRecognition() || isRequestingMic}
-                    className={`${primaryBtn} mt-3 flex items-center justify-center text-center`}
-                    style={primaryStyle}
-                  >
-                    {isListening ? tx(L, "fl5_btn_speaking") : tx(L, "fl5_btn_speak_swap")}
-                  </button>
-                  {spokenCount >= 1 ? (
-                    <p className="mt-3 text-center text-[13px] text-[#6b6f72]">{tx(L, "fl5_spoken_count", { n: spokenCount })}</p>
-                  ) : null}
-                  {micHint ? <p className="mt-2 text-center text-xs text-red-600">{micHint}</p> : null}
                 </>
               )}
 
