@@ -46,9 +46,35 @@ function ArrowCircleIcon() {
   );
 }
 
-/** @param {string} _L normalized lang @param {number} day 1…30 @param {'idol'|'drama'|'trip'} vibe */
-function heroJourneyEnglish(_L, day, vibe) {
-  return getJourneyRow(day, vibe)?.en ?? "";
+/** @param {number} day @param {'idol'|'drama'|'trip'} vibe */
+function journeyHomeTitleI18nKey(day, vibe) {
+  const v = normalizeVibe(vibe);
+  if (day >= 1 && day <= 3) {
+    const s = v === "idol" ? "i" : v === "drama" ? "d" : "t";
+    return `journey_ht_${day}_${s}`;
+  }
+  return `journey_ht_${day}`;
+}
+
+/** @param {number} day @param {'idol'|'drama'|'trip'} vibe */
+function journeyHeroEnI18nKey(day, vibe) {
+  const v = normalizeVibe(vibe);
+  if (day >= 1 && day <= 3) {
+    const s = v === "idol" ? "i" : v === "drama" ? "d" : "t";
+    return `journey_en_${day}_${s}`;
+  }
+  return `journey_en_${day}`;
+}
+
+/** @param {import("@/app/lib/i18n").UILang} L @param {number} day @param {'idol'|'drama'|'trip'} vibe */
+function translatedJourneyHomeTitle(L, day, vibe) {
+  if (day === JOURNEY_DONE_MARKER) return tx(L, "home_journeyMoreSoon");
+  return tx(L, journeyHomeTitleI18nKey(day, vibe));
+}
+
+/** @param {import("@/app/lib/i18n").UILang} L @param {number} day @param {'idol'|'drama'|'trip'} vibe */
+function translatedHeroCompanion(L, day, vibe) {
+  return tx(L, journeyHeroEnI18nKey(day, vibe));
 }
 
 /** Renders Korean line; gold-underlines `___` when present. */
@@ -79,12 +105,6 @@ function readJourneyCurrentFromStorage() {
   const n = parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1) return 1;
   return Math.min(n, JOURNEY_DONE_MARKER);
-}
-
-/** @param {string} L normalized lang @param {'idol'|'drama'|'trip'} vibe */
-function homeJourneyCardTitle(L, day, vibe) {
-  if (day === JOURNEY_DONE_MARKER) return tx(L, "home_journeyMoreSoon");
-  return getJourneyRow(day, vibe)?.homeTitle ?? `Day ${day}`;
 }
 
 function homeJourneyCardKo(day, vibe) {
@@ -157,6 +177,10 @@ export default function HomePage() {
     const sync = () => {
       setJourneyCurrent(readJourneyCurrentFromStorage());
       setSelectedVibe(normalizeVibe(window.localStorage.getItem(OGU_VIBE_KEY)));
+      const params = new URLSearchParams(window.location.search);
+      const urlLang = params.get("lang");
+      const stored = window.localStorage.getItem(OGU_LANG_KEY);
+      setLanguage(resolveLangFromUrlAndStorage(urlLang, stored));
     };
     sync();
     const onVis = () => {
@@ -336,8 +360,8 @@ export default function HomePage() {
   };
 
   const L = normalizeLang(language);
-  const activeSessionBannerParts =
-    activeSessionCount != null ? getActiveSessionBannerParts(L, activeSessionCount) : null;
+  const activeUsersBannerText =
+    activeSessionCount != null ? tx(L, "active_users", { n: activeSessionCount }) : null;
 
   const heroJourneyComplete = journeyCurrent >= JOURNEY_DONE_MARKER;
   const heroDay =
@@ -345,9 +369,7 @@ export default function HomePage() {
   const heroRow = heroDay != null ? getJourneyRow(heroDay, selectedVibe) : null;
   const heroLineLabel = heroJourneyComplete
     ? tx(L, "home_journeyCompleteBadge")
-    : journeyCurrent === 1
-      ? tx(L, "home_yourFirstLine")
-      : tx(L, "home_todaysLine");
+    : tx(L, "today_line", { n: journeyCurrent });
 
   const showSignInBanner = !authUser && journeyCurrent >= 3;
 
@@ -416,43 +438,29 @@ export default function HomePage() {
               id="onboarding-modal-title"
               className="text-[30px] font-extrabold leading-[1.1] tracking-[-0.8px] text-[var(--on-surface)] min-[480px]:text-[36px]"
             >
-              <span className="block">{tx(L, "modal_headlineBefore").trim()}</span>
-              <span className="block">{tx(L, "modal_headlineAccent")}</span>
+              <span className="block">Say your first</span>
+              <span className="block">Korean sentence</span>
               <span className="block">
-                {L === "en" ? (
-                  <>
-                    <span className="text-[var(--on-surface)]">in </span>
-                    <span className="font-light italic text-[var(--primary)]">30 seconds.</span>
-                  </>
-                ) : (
-                  <span
-                    className={
-                      L === "ko"
-                        ? "text-[var(--on-surface)]"
-                        : "font-light italic text-[var(--primary)]"
-                    }
-                  >
-                    {tx(L, "modal_headlineAfter").trim()}
-                  </span>
-                )}
+                <span className="text-[var(--on-surface)]">in </span>
+                <span className="font-light italic text-[var(--primary)]">30 seconds.</span>
               </span>
             </h2>
             <div className="mb-5 mt-4 space-y-1 text-[15px] leading-[1.65] text-[var(--on-surface-variant)]">
-              <p className="block">{tx(L, "modal_pickTopic")}</p>
-              <p className="block">{tx(L, "modal_noSignup")}</p>
+              <p className="block">Pick your vibe —</p>
+              <p className="block">we&apos;ll find the perfect first line for you.</p>
             </div>
             <p
               className="mb-2.5 mt-0 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--on-surface-variant)]"
               style={{ letterSpacing: "0.12em" }}
             >
-              {tx(L, "home_vibeTitle")}
+              CHOOSE YOUR STYLE
             </p>
             <div className="flex min-h-0 w-full max-w-full flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden min-[480px]:flex-none min-[480px]:overflow-visible">
               {[
-                { cat: "idol", key: "cat_idol_card", sub: "cat_idol_sub" },
-                { cat: "drama", key: "cat_drama_card", sub: "cat_drama_sub" },
-                { cat: "trip", key: "cat_trip_card", sub: "cat_trip_sub" }
-              ].map(({ cat, key, sub }) => (
+                { cat: "idol", title: "My favorite idol", sub: "Express your K-pop love" },
+                { cat: "drama", title: "K-drama line", sub: "Iconic drama moments" },
+                { cat: "trip", title: "Korea trip", sub: "Phrases for your visit" }
+              ].map(({ cat, title, sub }) => (
                 <button
                   key={cat}
                   type="button"
@@ -476,8 +484,8 @@ export default function HomePage() {
                     {cat === "idol" ? "👑" : cat === "drama" ? "🎬" : "✈️"}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-bold text-[var(--on-surface)]">{tx(L, key)}</span>
-                    <span className="mt-0.5 block text-[12px] text-[var(--on-surface-variant)]">{tx(L, sub)}</span>
+                    <span className="block text-[14px] font-bold text-[var(--on-surface)]">{title}</span>
+                    <span className="mt-0.5 block text-[12px] text-[var(--on-surface-variant)]">{sub}</span>
                   </span>
                 </button>
               ))}
@@ -685,7 +693,7 @@ export default function HomePage() {
                       <HeroKoreanLine ko={heroRow.ko} />
                     </p>
                     <p className="mt-2 text-center text-[15px] font-light italic leading-relaxed text-white/90">
-                      {heroJourneyEnglish(L, heroDay, selectedVibe)}
+                      {translatedHeroCompanion(L, heroDay, selectedVibe)}
                     </p>
                     <div className="mt-8 flex items-end justify-between gap-4">
                       <button
@@ -713,14 +721,14 @@ export default function HomePage() {
 
           <section className="mb-12">
             <h2 className="text-left text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--on-surface-variant)]">
-              {tx(L, "home_vibeTitle")}
+              {tx(L, "vibe_today")}
             </h2>
             <div className="mt-4 grid grid-cols-3 gap-[10px]">
               {[
-                { cat: "idol", label: "home_vibeIdol", sub: "cat_idol_sub" },
-                { cat: "drama", label: "home_vibeDrama", sub: "cat_drama_sub" },
-                { cat: "trip", label: "home_vibeTrip", sub: "cat_trip_sub" }
-              ].map(({ cat, label, sub }) => (
+                { cat: "idol", title: "vibe_idol_title", sub: "vibe_idol_sub" },
+                { cat: "drama", title: "vibe_drama_title", sub: "vibe_drama_sub" },
+                { cat: "trip", title: "vibe_trip_title", sub: "vibe_trip_sub" }
+              ].map(({ cat, title, sub }) => (
                 <button
                   key={cat}
                   type="button"
@@ -736,7 +744,7 @@ export default function HomePage() {
                     {cat === "idol" ? "👑" : cat === "drama" ? "🎬" : "✈️"}
                   </span>
                   <span className="mt-2 text-[11px] font-semibold leading-tight text-[var(--on-surface)]">
-                    {vibeStripEmoji(tx(L, label))}
+                    {vibeStripEmoji(tx(L, title))}
                   </span>
                   <span className="mt-1.5 line-clamp-2 text-[10px] leading-snug text-[var(--on-surface-variant)]">
                     {tx(L, sub)}
@@ -748,7 +756,7 @@ export default function HomePage() {
 
           <section className="mb-12">
             <p className="text-left text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--on-surface-variant)]">
-              {journeyCurrent >= 4 ? tx(L, "home_speakingJourney") : tx(L, "home_journeyTitle")}
+              {journeyCurrent >= 4 ? tx(L, "speaking_journey") : tx(L, "journey_three_day")}
             </p>
             <div className="mt-4 rounded-[32px] bg-[var(--surface-low)] px-4 py-2">
               {getJourneyWindowDays(journeyCurrent).map((d) => {
@@ -759,7 +767,11 @@ export default function HomePage() {
                 const isActive =
                   !isPlaceholder && d === journeyCurrent && journeyCurrent <= MAX_JOURNEY_DAY;
                 const isLocked = !isDone && !isActive;
-                const title = homeJourneyCardTitle(L, d, selectedVibe);
+                const title = isPlaceholder
+                  ? tx(L, "home_journeyMoreSoon")
+                  : isDone
+                    ? tx(L, "day_done", { n: d })
+                    : translatedJourneyHomeTitle(L, d, selectedVibe);
                 const koLine = homeJourneyCardKo(d, selectedVibe);
 
                 const row = (
@@ -807,7 +819,7 @@ export default function HomePage() {
                         </p>
                         {isActive ? (
                           <span className="rounded-[20px] bg-[#2a14b4] px-[9px] py-[3px] text-[9px] font-bold uppercase tracking-wide text-white">
-                            {tx(L, "home_today")}
+                            {tx(L, "today_badge")}
                           </span>
                         ) : null}
                       </div>
@@ -853,10 +865,10 @@ export default function HomePage() {
                   </span>
                   <div>
                     <p className="text-[15px] font-bold leading-snug text-[var(--on-surface)]">
-                      {tx(L, "home_signInBannerTitle")}
+                      {tx(L, "nudge_title")}
                     </p>
                     <p className="mt-1 text-[14px] leading-relaxed text-[var(--on-surface-variant)]">
-                      {tx(L, "home_signInBannerSub")}
+                      {tx(L, "nudge_sub")}
                     </p>
                   </div>
                 </div>
@@ -866,7 +878,7 @@ export default function HomePage() {
                   disabled={loginBusy}
                   className="shrink-0 rounded-[20px] bg-[var(--on-surface)] px-5 py-3 text-[14px] font-bold text-[var(--surface-lowest)] transition hover:opacity-90 disabled:opacity-50"
                 >
-                  {tx(L, "home_signInWithGoogle")}
+                  {tx(L, "sign_in")}
                 </button>
               </div>
             </div>
@@ -891,15 +903,7 @@ export default function HomePage() {
                 <span className="relative z-[1] h-2 w-2 rounded-full bg-[#22c55e]" />
               </span>
               <p className="min-w-0 text-[13px] font-semibold leading-snug text-[rgba(255,255,255,0.9)]">
-                {activeSessionBannerParts ? (
-                  <>
-                    {activeSessionBannerParts.before ? (
-                      <span>{activeSessionBannerParts.before}</span>
-                    ) : null}
-                    <span className="font-extrabold text-white">{activeSessionBannerParts.count}</span>
-                    <span>{activeSessionBannerParts.after}</span>
-                  </>
-                ) : null}
+                {activeUsersBannerText}
               </p>
             </div>
             <div className="flex shrink-0 items-center">
