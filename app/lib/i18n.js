@@ -1,6 +1,7 @@
 /** @typedef {'ko'|'en'|'id'|'fr'|'pt'} UILang */
 
 import { JOURNEY_UI } from "./journey-ui-strings";
+import { FL5_STR } from "./fl5-strings";
 
 export const LANG_CODES = /** @type {const} */ (["ko", "en", "id", "fr", "pt"]);
 export const OGU_LANG_KEY = "ogu_lang";
@@ -66,6 +67,7 @@ export function tx(lang, key, vars) {
 
 const STR = {
   ko: {
+    ...FL5_STR.ko,
     ...JOURNEY_UI.ko,
     today_line: "오늘의 한마디 · Day {n}",
     vibe_today: "오늘 무드는 뭐예요?",
@@ -190,6 +192,7 @@ const STR = {
     fl_sttEmptyHint: "다시 말해보기를 눌러주세요"
   },
   en: {
+    ...FL5_STR.en,
     ...JOURNEY_UI.en,
     today_line: "Today's Line · Day {n}",
     vibe_today: "What's your vibe today?",
@@ -314,6 +317,7 @@ const STR = {
     fl_sttEmptyHint: "Tap “Try again” to speak once more"
   },
   id: {
+    ...FL5_STR.id,
     ...JOURNEY_UI.id,
     today_line: "Kalimat Hari Ini · Day {n}",
     vibe_today: "Suasana hari ini?",
@@ -438,6 +442,7 @@ const STR = {
     fl_sttEmptyHint: "Ketuk “Coba lagi” untuk berbicara lagi"
   },
   fr: {
+    ...FL5_STR.fr,
     ...JOURNEY_UI.fr,
     today_line: "Phrase du Jour · Day {n}",
     vibe_today: "Quelle est votre vibe aujourd'hui ?",
@@ -562,6 +567,7 @@ const STR = {
     fl_sttEmptyHint: "Appuyez sur « Réessayer » pour réessayer"
   },
   pt: {
+    ...FL5_STR.pt,
     ...JOURNEY_UI.pt,
     today_line: "Frase de Hoje · Day {n}",
     vibe_today: "Qual é o seu vibe hoje?",

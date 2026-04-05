@@ -56,7 +56,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "TTS failed" }, { status: 400 });
     }
 
-    const { text, lang } = body || {};
+    const { text, lang, speakingRate: rawRate } = body || {};
     if (!text || typeof text !== "string" || !text.trim()) {
       return NextResponse.json({ error: "TTS failed" }, { status: 400 });
     }
@@ -80,7 +80,8 @@ export async function POST(request) {
       },
       audioConfig: {
         audioEncoding: "MP3",
-        speakingRate: 0.9,
+        speakingRate:
+          typeof rawRate === "number" && rawRate >= 0.25 && rawRate <= 4 ? rawRate : 0.9,
         pitch: 0
       }
     };
