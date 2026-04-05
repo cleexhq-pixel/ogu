@@ -504,7 +504,7 @@ export default function HomePage() {
                 boxShadow: "var(--shadow-active)"
               }}
             >
-              <span>{tx(L, "home_sayItNow")}</span>
+              <span>Say it now</span>
               <ArrowCircleIcon />
             </button>
             <button
@@ -512,10 +512,11 @@ export default function HomePage() {
               onClick={() => setShowOnboardingModal(false)}
               className="w-full max-w-full text-center text-[13px] text-[var(--on-surface-variant)] underline underline-offset-2 transition hover:opacity-80"
             >
-              {tx(L, "modal_browseBefore")}
-              {tx(L, "modal_browseAccent")}
+              or browse first
             </button>
-            <p className="text-center text-[11px] opacity-50 text-[var(--on-surface)]">{tx(L, "modal_footer")}</p>
+            <p className="text-center text-[11px] opacity-50 text-[var(--on-surface)]">
+              No account required · Free to try
+            </p>
           </div>
           </div>
         </div>
