@@ -400,19 +400,21 @@ export default function HomePage() {
       <Analytics />
       {showOnboardingModal && (
         <div
-          className="fixed inset-0 z-50 flex h-[100dvh] min-h-0 flex-col justify-between bg-[var(--surface-lowest)] font-jakarta"
-          style={{ padding: "36px 28px 32px" }}
+          className="fixed inset-0 z-50 flex font-jakarta max-[479px]:h-[100dvh] max-[479px]:min-h-0 max-[479px]:flex-col max-[479px]:bg-[var(--surface-lowest)] min-[480px]:min-h-screen min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-center min-[480px]:bg-[#f3f3f5]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="onboarding-modal-title"
         >
-          <div className="flex min-h-0 flex-1 flex-col">
-            <p className="mb-5 inline-flex rounded-[20px] bg-[var(--surface-low)] px-[14px] py-[7px] text-[11px] font-bold text-[var(--on-surface-variant)]">
+          <div
+            className="mx-auto flex w-full max-w-[480px] flex-1 flex-col min-h-0 justify-between px-6 pt-9 pb-8 min-[480px]:mt-[60px] min-[480px]:max-h-[calc(100vh-80px)] min-[480px]:flex-none min-[480px]:overflow-y-auto min-[480px]:rounded-[32px] min-[480px]:bg-[#ffffff] min-[480px]:px-10 min-[480px]:pt-12 min-[480px]:pb-10 min-[480px]:shadow-[0_20px_60px_rgba(0,0,0,0.12)]"
+          >
+          <div className="flex min-h-0 flex-1 flex-col min-[480px]:flex-none">
+            <p className="mb-5 inline-flex max-w-full rounded-[20px] bg-[var(--surface-low)] px-[14px] py-[7px] text-[11px] font-bold text-[var(--on-surface-variant)]">
               🪄 Speak 한국어 from Day 1
             </p>
             <h2
               id="onboarding-modal-title"
-              className="text-[28px] font-extrabold leading-[1.1] tracking-[-0.8px] text-[var(--on-surface)]"
+              className="text-[30px] font-extrabold leading-[1.1] tracking-[-0.8px] text-[var(--on-surface)] min-[480px]:text-[36px]"
             >
               <span className="block">{tx(L, "modal_headlineBefore").trim()}</span>
               <span className="block">{tx(L, "modal_headlineAccent")}</span>
@@ -430,14 +432,14 @@ export default function HomePage() {
                         : "font-light italic text-[var(--primary)]"
                     }
                   >
-                    {tx(L, "modal_headlineAfter")}
+                    {tx(L, "modal_headlineAfter").trim()}
                   </span>
                 )}
               </span>
             </h2>
-            <div className="mb-5 mt-4 text-[15px] leading-[1.65] text-[var(--on-surface-variant)]">
-              <p>{tx(L, "modal_pickTopic")}</p>
-              <p>{tx(L, "modal_noSignup")}</p>
+            <div className="mb-5 mt-4 space-y-1 text-[15px] leading-[1.65] text-[var(--on-surface-variant)]">
+              <p className="block">{tx(L, "modal_pickTopic")}</p>
+              <p className="block">{tx(L, "modal_noSignup")}</p>
             </div>
             <p
               className="mb-2.5 mt-0 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--on-surface-variant)]"
@@ -445,7 +447,7 @@ export default function HomePage() {
             >
               {tx(L, "home_vibeTitle")}
             </p>
-            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+            <div className="flex min-h-0 w-full max-w-full flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden min-[480px]:flex-none min-[480px]:overflow-visible">
               {[
                 { cat: "idol", key: "cat_idol_card", sub: "cat_idol_sub" },
                 { cat: "drama", key: "cat_drama_card", sub: "cat_drama_sub" },
@@ -461,7 +463,7 @@ export default function HomePage() {
                     setOnboardingVibe(cat);
                     setSelectedVibe(normalizeVibe(cat));
                   }}
-                  className={`group flex w-full shrink-0 items-center gap-3 rounded-[32px] border-2 px-4 py-3 text-left transition ${
+                  className={`group flex w-full max-w-full shrink-0 items-center gap-3 rounded-[32px] border-2 border-solid px-4 py-3 text-left transition ${
                     onboardingVibe === cat
                       ? "border-[#2a14b4] bg-[#edeafd]"
                       : "border-transparent bg-[var(--surface-low)] hover:border-[rgba(42,20,180,0.2)] hover:bg-[#edeafd]"
@@ -481,14 +483,14 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-          <div className="shrink-0 space-y-4 pt-2">
+          <div className="w-full max-w-full shrink-0 space-y-4 pt-2">
             <button
               type="button"
               onClick={() => {
                 setShowOnboardingModal(false);
                 goFirstLine(onboardingVibe);
               }}
-              className="flex w-full items-center justify-between gap-3 rounded-[24px] px-6 py-[14px] text-[15px] font-bold text-white transition hover:brightness-105 active:scale-[0.99]"
+              className="flex min-h-[56px] w-full max-w-full items-center justify-between gap-3 rounded-[24px] px-6 py-[14px] text-[15px] font-bold text-white transition hover:brightness-105 active:scale-[0.99]"
               style={{
                 background: "linear-gradient(135deg, #2a14b4, #4338ca)",
                 boxShadow: "var(--shadow-active)"
@@ -500,12 +502,13 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setShowOnboardingModal(false)}
-              className="w-full text-center text-[13px] text-[var(--on-surface-variant)] underline underline-offset-2 transition hover:opacity-80"
+              className="w-full max-w-full text-center text-[13px] text-[var(--on-surface-variant)] underline underline-offset-2 transition hover:opacity-80"
             >
               {tx(L, "modal_browseBefore")}
               {tx(L, "modal_browseAccent")}
             </button>
             <p className="text-center text-[11px] opacity-50 text-[var(--on-surface)]">{tx(L, "modal_footer")}</p>
+          </div>
           </div>
         </div>
       )}
