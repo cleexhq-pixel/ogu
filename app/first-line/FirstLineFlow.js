@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { pageview, trackSendVoice } from "@/app/lib/gtag";
 import Analytics from "@/app/components/Analytics";
@@ -63,6 +63,14 @@ function readStoredCurrentDay() {
   return Math.min(n, JOURNEY_DONE_MARKER);
 }
 
+/** Local calendar YYYY-MM-DD (avoid UTC drift from toISOString). */
+function formatLocalYmd(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function readStreakCount() {
   if (typeof window === "undefined") return 1;
   const raw = window.localStorage.getItem(OGU_STREAK_KEY);
@@ -72,13 +80,13 @@ function readStreakCount() {
 
 function bumpStudyStreakOnMissionComplete() {
   if (typeof window === "undefined") return;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatLocalYmd(new Date());
   const last = window.localStorage.getItem(OGU_STREAK_LAST_KEY);
   const prev = parseInt(window.localStorage.getItem(OGU_STREAK_KEY) || "0", 10);
   if (last === today) return;
   const y = new Date();
   y.setDate(y.getDate() - 1);
-  const ystr = y.toISOString().slice(0, 10);
+  const ystr = formatLocalYmd(y);
   let next = 1;
   if (last === ystr) {
     next = (Number.isFinite(prev) && prev > 0 ? prev : 0) + 1;
@@ -663,7 +671,7 @@ export default function FirstLineFlow() {
   const gaCategory =
     journeyVibe === "drama" ? "kdrama" : journeyVibe === "trip" ? "trip" : "idol";
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (flowStep !== "result" || !journeyActive || !content) return;
     if (typeof window === "undefined") return;
     const k = `ogu_mission_ga_${journeyDay}`;
@@ -682,7 +690,7 @@ export default function FirstLineFlow() {
     setStreakDisplay(readStreakCount());
   }, [flowStep, journeyActive, content, journeyDay, gaCategory]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (flowStep !== "result") return;
     setStreakDisplay(readStreakCount());
   }, [flowStep]);
