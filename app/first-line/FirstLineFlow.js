@@ -34,6 +34,10 @@ const OGU_STREAK_LAST_KEY = "ogu_streak_last_date";
 
 const STT_MAX_MS = 10000;
 const STT_SILENCE_MS = 1500;
+const MIC_PREPARE_MS = 300;
+const KKOBI_ONBOARDING_DONE_KEY = "kkobi_onboarding_done";
+
+/** @typedef {'idle' | 'preparing' | 'recording' | 'done'} MicUiPhase */
 
 /** @param {string} ko */
 function splitSentenceWords(ko) {
@@ -418,6 +422,11 @@ export default function FirstLineFlow() {
   const sttSilenceTimerRef = useRef(null);
   const sttMaxTimerRef = useRef(null);
   const wordAudioRef = useRef(null);
+  const flowStepRef = useRef(/** @type {FlowStep} */ ("listen"));
+  const prepareTimerRef = useRef(null);
+  const listenBtnRef = useRef(null);
+  const heroCardWrapRef = useRef(null);
+  const speakPreviewRef = useRef(null);
 
   const [listenCount, setListenCount] = useState(0);
   const [listenedWords, setListenedWords] = useState(() => new Set());
@@ -428,6 +437,11 @@ export default function FirstLineFlow() {
   /** 칩 TTS 재생 중 하이라이트 (phrase `swapOptions` 값과 동일 문자열) */
   const [activeSel, setActiveSel] = useState(/** @type {string | null} */ (null));
   const [streakDisplay, setStreakDisplay] = useState(1);
+  /** @type {[MicUiPhase, import('react').Dispatch<import('react').SetStateAction<MicUiPhase>>]} */
+  const [repeatMicUi, setRepeatMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
+  /** @type {[MicUiPhase, import('react').Dispatch<import('react').SetStateAction<MicUiPhase>>]} */
+  const [recallMicUi, setRecallMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
+  const [onboardingStep, setOnboardingStep] = useState(0);
 
   const clearSttTimers = useCallback(() => {
     if (sttSilenceTimerRef.current != null) {
@@ -439,6 +453,17 @@ export default function FirstLineFlow() {
       sttMaxTimerRef.current = null;
     }
   }, []);
+
+  const clearPrepareTimer = useCallback(() => {
+    if (prepareTimerRef.current != null) {
+      clearTimeout(prepareTimerRef.current);
+      prepareTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    flowStepRef.current = flowStep;
+  }, [flowStep]);
 
   const journeyActive = journeyDay >= 1 && journeyDay <= MAX_JOURNEY_DAY;
   const journeyVibe = category ? normalizeVibe(category) : "idol";
@@ -484,7 +509,10 @@ export default function FirstLineFlow() {
     setUserInput("");
     setActiveSel(null);
     missionResultGaFiredRef.current = false;
-  }, []);
+    setRepeatMicUi("idle");
+    setRecallMicUi("idle");
+    clearPrepareTimer();
+  }, [clearPrepareTimer]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -525,6 +553,31 @@ export default function FirstLineFlow() {
   useEffect(() => {
     resetFlowState();
   }, [journeyDay, category, journeyActive, resetFlowState]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (phase !== "flow" || flowStep !== "listen") {
+      setOnboardingStep(0);
+      return;
+    }
+    try {
+      if (window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY)) return;
+    } catch {
+      return;
+    }
+    setOnboardingStep((prev) => (prev > 0 ? prev : 1));
+  }, [phase, flowStep]);
+
+  useEffect(() => {
+    if (flowStep !== "repeat") {
+      setRepeatMicUi("idle");
+      clearPrepareTimer();
+    }
+    if (flowStep !== "recall") {
+      setRecallMicUi("idle");
+      clearPrepareTimer();
+    }
+  }, [flowStep, clearPrepareTimer]);
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
@@ -690,6 +743,9 @@ export default function FirstLineFlow() {
     trackEvent("mission_complete", { day_number: completed });
     bumpStudyStreakOnMissionComplete();
     setStreakDisplay(readStreakCount());
+    if (process.env.NODE_ENV === "development") {
+      console.log("[GA4] mission_complete / day_complete fired for day:", completed);
+    }
   }, [flowStep, journeyActive, content, journeyDay, gaCategory]);
 
   useLayoutEffect(() => {
@@ -744,6 +800,9 @@ export default function FirstLineFlow() {
       setIsListening(true);
       setMicHint(null);
       sttTranscriptRef.current = "";
+      const p = sttPurposeRef.current;
+      if (p === "repeat") setRepeatMicUi("recording");
+      if (p === "recall") setRecallMicUi("recording");
       sttMaxTimerRef.current = setTimeout(() => {
         sttMaxTimerRef.current = null;
         try {
@@ -754,8 +813,12 @@ export default function FirstLineFlow() {
 
     recognition.onerror = (event) => {
       clearSttTimers();
+      clearPrepareTimer();
       setIsRequestingMic(false);
       setIsListening(false);
+      const p = sttPurposeRef.current;
+      if (p === "repeat") setRepeatMicUi("idle");
+      if (p === "recall") setRecallMicUi("idle");
       if (event.error === "not-allowed" || event.error === "denied" || event.error === "service-not-allowed") {
         setMicHint(tx(uiLangRef.current, "fl_micAllow"));
       } else if (event.error !== "aborted") {
@@ -765,20 +828,32 @@ export default function FirstLineFlow() {
 
     recognition.onend = () => {
       clearSttTimers();
+      clearPrepareTimer();
       setIsListening(false);
       setIsRequestingMic(false);
+      const t = sttTranscriptRef.current.trim();
+      const purpose = sttPurposeRef.current;
+      if (typeof window !== "undefined") {
+        console.log("[Speech] onend fired. transcript:", t);
+        console.log("[Speech] purpose:", purpose, "current step:", flowStepRef.current);
+      }
       if (userStoppedMicRef.current) {
         userStoppedMicRef.current = false;
+        if (purpose === "repeat") setRepeatMicUi("idle");
+        if (purpose === "recall") setRecallMicUi("idle");
+        sttPurposeRef.current = null;
         return;
       }
-      const t = sttTranscriptRef.current.trim();
       setUserInput(t);
-      const purpose = sttPurposeRef.current;
-      if (purpose === "repeat" && t) {
+      if (purpose === "repeat") {
         setRepeatDone(true);
+        setRepeatMicUi("done");
+        if (!t) setMicHint(tx(uiLangRef.current, "fl5_stt_empty"));
       } else if (purpose === "recall") {
         setRecallText(t);
         setRecallDone(true);
+        setRecallMicUi("done");
+        if (!t) setMicHint(tx(uiLangRef.current, "fl5_stt_empty"));
       }
       sttPurposeRef.current = null;
     };
@@ -786,12 +861,13 @@ export default function FirstLineFlow() {
     recognitionRef.current = recognition;
     return () => {
       clearSttTimers();
+      clearPrepareTimer();
       try {
         recognition.abort();
       } catch (_) {}
       recognitionRef.current = null;
     };
-  }, [clearSttTimers]);
+  }, [clearSttTimers, clearPrepareTimer]);
 
   useEffect(() => {
     if (flowStep !== "repeat" && flowStep !== "recall") {
@@ -804,27 +880,18 @@ export default function FirstLineFlow() {
     }
   }, [flowStep, clearSttTimers]);
 
-  const toggleVoiceInput = useCallback(
-    async (purpose) => {
+  const startVoiceSession = useCallback(
+    async (/** @type {'repeat'|'recall'} */ purpose) => {
       const recognition = recognitionRef.current;
       if (!recognition) return;
-
-      if (isListening) {
-        userStoppedMicRef.current = true;
-        clearSttTimers();
-        try {
-          recognition.stop();
-        } catch (_) {}
-        setIsListening(false);
-        setIsRequestingMic(false);
-        return;
-      }
 
       try {
         if (navigator.permissions?.query) {
           const result = await navigator.permissions.query({ name: "microphone" });
           if (result.state === "denied") {
             setMicHint(tx(uiLangRef.current, "fl_micAllow"));
+            if (purpose === "repeat") setRepeatMicUi("idle");
+            if (purpose === "recall") setRecallMicUi("idle");
             return;
           }
         }
@@ -840,6 +907,8 @@ export default function FirstLineFlow() {
         if (!mic.ok && mic.denied) {
           setIsRequestingMic(false);
           setMicHint(tx(uiLangRef.current, "fl_micAllow"));
+          if (purpose === "repeat") setRepeatMicUi("idle");
+          if (purpose === "recall") setRecallMicUi("idle");
           return;
         }
         userStoppedMicRef.current = false;
@@ -851,10 +920,72 @@ export default function FirstLineFlow() {
         clearSttTimers();
         setIsRequestingMic(false);
         setMicHint(tx(uiLangRef.current, "fl_micAllow"));
+        if (purpose === "repeat") setRepeatMicUi("idle");
+        if (purpose === "recall") setRecallMicUi("idle");
       }
     },
-    [isListening, clearSttTimers]
+    [clearSttTimers]
   );
+
+  const scheduleMicPrepare = useCallback(
+    (/** @type {'repeat'|'recall'} */ purpose) => {
+      if (typeof window === "undefined") return;
+      clearPrepareTimer();
+      if (purpose === "repeat") setRepeatMicUi("preparing");
+      else setRecallMicUi("preparing");
+      prepareTimerRef.current = window.setTimeout(() => {
+        prepareTimerRef.current = null;
+        void startVoiceSession(purpose);
+      }, MIC_PREPARE_MS);
+    },
+    [clearPrepareTimer, startVoiceSession]
+  );
+
+  const stopVoiceInput = useCallback(() => {
+    const recognition = recognitionRef.current;
+    if (!recognition || !isListening) return;
+    userStoppedMicRef.current = true;
+    clearSttTimers();
+    clearPrepareTimer();
+    try {
+      recognition.stop();
+    } catch (_) {}
+    setIsListening(false);
+    setIsRequestingMic(false);
+  }, [isListening, clearSttTimers, clearPrepareTimer]);
+
+  const handleRepeatMicPress = useCallback(() => {
+    if (!getSpeechRecognition()) return;
+    if (isListening) {
+      stopVoiceInput();
+      return;
+    }
+    if (repeatMicUi === "preparing") return;
+    if (repeatDone) {
+      setRepeatDone(false);
+      setUserInput("");
+      setMicHint(null);
+      setRepeatMicUi("idle");
+    }
+    scheduleMicPrepare("repeat");
+  }, [isListening, repeatMicUi, repeatDone, stopVoiceInput, scheduleMicPrepare]);
+
+  const handleRecallMicPress = useCallback(() => {
+    if (!getSpeechRecognition()) return;
+    if (isListening) {
+      stopVoiceInput();
+      return;
+    }
+    if (recallMicUi === "preparing") return;
+    if (recallDone) {
+      setRecallDone(false);
+      setRecallText("");
+      setUserInput("");
+      setMicHint(null);
+      setRecallMicUi("idle");
+    }
+    scheduleMicPrepare("recall");
+  }, [isListening, recallMicUi, recallDone, stopVoiceInput, scheduleMicPrepare]);
 
   const onListenMain = () => {
     if (!content?.ko) return;
@@ -1311,12 +1442,18 @@ export default function FirstLineFlow() {
                   <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
                     {tx(L, "fl5_over_listen")}
                   </p>
-                  <div className="mt-4">{heroCard}</div>
+                  <div
+                    ref={heroCardWrapRef}
+                    className={`mt-4 ${onboardingStep === 2 ? "rounded-[28px] ring-[3px] ring-white/80 ring-offset-2 ring-offset-[var(--surface)]" : ""}`}
+                  >
+                    {heroCard}
+                  </div>
                   <button
+                    ref={listenBtnRef}
                     type="button"
                     onClick={onListenMain}
                     disabled={ttsLoading}
-                    className={`${step1PrimaryBtn} mt-6`}
+                    className={`${step1PrimaryBtn} mt-6 ${onboardingStep === 1 ? "ring-[3px] ring-white/80 ring-offset-2 ring-offset-[var(--surface)]" : ""}`}
                     style={primaryStyle}
                   >
                     <span>{tx(L, "fl5_btn_listen")}</span>
@@ -1330,6 +1467,16 @@ export default function FirstLineFlow() {
                   <button type="button" onClick={onListenSlow} disabled={ttsLoading} className={`${secondaryBtn} mt-3`}>
                     {tx(L, "fl5_btn_slow")}
                   </button>
+                  {onboardingStep === 3 ? (
+                    <div
+                      ref={speakPreviewRef}
+                      className="mt-4 flex justify-center rounded-2xl p-3 ring-[3px] ring-white/80 ring-offset-2 ring-offset-[var(--surface)]"
+                    >
+                      <span className="text-[13px] font-semibold text-[#2a14b4]" aria-hidden>
+                        🎤
+                      </span>
+                    </div>
+                  ) : null}
                   {listenCount >= 3 ? (
                     <button type="button" onClick={goNextFromListen} className={`${nextStepBtn} mt-6`}>
                       {tx(L, "fl5_next_vocab")}
@@ -1418,14 +1565,38 @@ export default function FirstLineFlow() {
                   >
                     {tx(L, "fl5_btn_listen_again")}
                   </button>
+                  <p className="mx-auto mt-4 max-w-[340px] text-center text-[13px] leading-snug text-[#6b6f72]">
+                    {repeatDone
+                      ? tx(L, "fl5_mic_hint_done")
+                      : repeatMicUi === "preparing" || isListening
+                        ? tx(L, "fl5_mic_hint_listening")
+                        : tx(L, "fl5_mic_hint_idle_repeat")}
+                  </p>
                   <button
                     type="button"
-                    onClick={() => void toggleVoiceInput("repeat")}
-                    disabled={!getSpeechRecognition() || isRequestingMic}
-                    className={`${primaryBtn} mt-4`}
-                    style={primaryStyle}
+                    onClick={() => void handleRepeatMicPress()}
+                    disabled={!getSpeechRecognition() || repeatMicUi === "preparing"}
+                    className={`${repeatDone && !isListening && repeatMicUi !== "preparing" ? secondaryBtn : primaryBtn} mt-3 flex items-center justify-center gap-2`}
+                    style={
+                      repeatDone && !isListening && repeatMicUi !== "preparing"
+                        ? undefined
+                        : isListening || repeatMicUi === "recording"
+                          ? { background: "#dc2626", boxShadow: "0 8px 24px rgba(220,38,38,0.25)", color: "#fff" }
+                          : primaryStyle
+                    }
                   >
-                    {isListening ? tx(L, "fl5_btn_follow_speaking") : tx(L, "fl5_btn_follow_speak")}
+                    {(isListening || repeatMicUi === "recording") && (
+                      <span className="fl5-recording-dot" aria-hidden />
+                    )}
+                    <span className={repeatMicUi === "preparing" ? "fl5-mic-prepare-blink" : undefined}>
+                      {isListening || repeatMicUi === "recording"
+                        ? tx(L, "fl5_btn_mic_listening")
+                        : repeatMicUi === "preparing"
+                          ? tx(L, "fl5_btn_mic_prepare")
+                          : repeatDone
+                            ? tx(L, "fl5_btn_retry_speak")
+                            : tx(L, "fl5_btn_follow_speak")}
+                    </span>
                   </button>
                   {micHint ? <p className="mt-2 text-center text-xs text-red-600">{micHint}</p> : null}
                   {repeatDone ? (
@@ -1487,27 +1658,53 @@ export default function FirstLineFlow() {
                     ) : null}
                   </div>
                   {!recallDone ? (
-                    <button
-                      type="button"
-                      onClick={() => void toggleVoiceInput("recall")}
-                      disabled={!getSpeechRecognition() || isRequestingMic}
-                      className={`${primaryBtn} mt-6`}
-                      style={primaryStyle}
-                    >
-                      {isListening ? tx(L, "fl5_btn_speaking") : tx(L, "fl5_btn_speak_practice")}
-                    </button>
+                    <>
+                      <p className="mx-auto mt-6 max-w-[340px] text-center text-[13px] leading-snug text-[#6b6f72]">
+                        {recallMicUi === "preparing" || isListening
+                          ? tx(L, "fl5_mic_hint_listening")
+                          : tx(L, "fl5_mic_hint_idle_recall")}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handleRecallMicPress()}
+                        disabled={!getSpeechRecognition() || recallMicUi === "preparing"}
+                        className={`${primaryBtn} mt-3 flex items-center justify-center gap-2`}
+                        style={
+                          isListening || recallMicUi === "recording"
+                            ? { background: "#dc2626", boxShadow: "0 8px 24px rgba(220,38,38,0.25)", color: "#fff" }
+                            : primaryStyle
+                        }
+                      >
+                        {(isListening || recallMicUi === "recording") && (
+                          <span className="fl5-recording-dot" aria-hidden />
+                        )}
+                        <span className={recallMicUi === "preparing" ? "fl5-mic-prepare-blink" : undefined}>
+                          {isListening || recallMicUi === "recording"
+                            ? tx(L, "fl5_btn_mic_listening")
+                            : recallMicUi === "preparing"
+                              ? tx(L, "fl5_btn_mic_prepare")
+                              : tx(L, "fl5_btn_speak_practice")}
+                        </span>
+                      </button>
+                    </>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRecallDone(false);
-                        setRecallText("");
-                        void toggleVoiceInput("recall");
-                      }}
-                      className={`${secondaryBtn} mt-6`}
-                    >
-                      {tx(L, "fl5_btn_retry_speak")}
-                    </button>
+                    <>
+                      <p className="mx-auto mt-6 max-w-[340px] text-center text-[13px] leading-snug text-[#6b6f72]">
+                        {tx(L, "fl5_mic_hint_done")}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handleRecallMicPress()}
+                        disabled={!getSpeechRecognition() || recallMicUi === "preparing"}
+                        className={`${secondaryBtn} mt-3 flex items-center justify-center gap-2`}
+                      >
+                        {recallMicUi === "preparing" ? (
+                          <span className="fl5-mic-prepare-blink">{tx(L, "fl5_btn_mic_prepare")}</span>
+                        ) : (
+                          tx(L, "fl5_btn_retry_speak")
+                        )}
+                      </button>
+                    </>
                   )}
                   {micHint ? <p className="mt-2 text-center text-xs text-red-600">{micHint}</p> : null}
                   {recallDone ? (
@@ -1552,7 +1749,9 @@ export default function FirstLineFlow() {
                               {tx(L, tier.badgeKey)}
                             </div>
                             <p className="mt-4 text-[11px] text-[var(--on-surface-variant)]">{tx(L, "fl5_you_said")}</p>
-                            <p className="font-korean mt-1 text-[16px] font-semibold">{recallText}</p>
+                            <p className="font-korean mt-1 text-[16px] font-semibold">
+                              {(recallText || "").trim() ? recallText : tx(L, "fl5_stt_empty")}
+                            </p>
                             <div className="mt-3 flex items-center gap-2">
                               <TierCheckIcon fill={tier.check} />
                               <p className="text-[13px] font-semibold" style={{ color: tier.check }}>
@@ -1585,6 +1784,49 @@ export default function FirstLineFlow() {
           )}
         </div>
       </main>
+      {phase === "flow" && flowStep === "listen" && onboardingStep > 0 ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center p-4 pb-8 sm:items-center sm:p-6"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="fl-onboard-title"
+        >
+          <div
+            className="w-full max-w-[340px] rounded-2xl bg-white px-4 py-[14px]"
+            style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.15)" }}
+          >
+            <p id="fl-onboard-title" className="text-center text-[14px] font-semibold leading-snug text-[#1a1c1d]">
+              {onboardingStep === 1
+                ? tx(L, "fl5_onboard_1")
+                : onboardingStep === 2
+                  ? tx(L, "fl5_onboard_2")
+                  : tx(L, "fl5_onboard_3")}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (onboardingStep < 3) {
+                  setOnboardingStep(onboardingStep + 1);
+                  return;
+                }
+                if (typeof window !== "undefined") {
+                  try {
+                    window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
+                  } catch {
+                    // ignore
+                  }
+                }
+                setOnboardingStep(0);
+              }}
+              className={`${primaryBtn} mx-auto mt-4 max-w-[200px] px-5 py-2 text-[13px]`}
+              style={primaryStyle}
+            >
+              {onboardingStep < 3 ? tx(L, "fl5_onboard_cta") : tx(L, "fl5_onboard_start")}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

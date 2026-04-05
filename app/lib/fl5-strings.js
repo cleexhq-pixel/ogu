@@ -53,7 +53,19 @@ export const FL5_STR = {
     fl5_day_done_title: "Day {n} complete!",
     fl5_day_done_sub: "You spoke Korean today",
     fl5_recall_hidden: "Sentence hidden — use the pronunciation hint.",
-    fl5_btn_retry_speak: "Try again"
+    fl5_btn_retry_speak: "Try again",
+    fl5_btn_mic_prepare: "Get ready...",
+    fl5_btn_mic_listening: "Listening...",
+    fl5_mic_hint_idle_repeat: "Tap the button and speak the sentence above",
+    fl5_mic_hint_idle_recall: "Tap the button and speak from memory",
+    fl5_mic_hint_listening: "Keep speaking... I'm listening 👂",
+    fl5_mic_hint_done: "Done! Tap next when ready",
+    fl5_stt_empty: "We couldn't catch that. Try again!",
+    fl5_onboard_1: "👆 First, listen to the sentence 3 times",
+    fl5_onboard_2: "📖 Learn each word by tapping it",
+    fl5_onboard_3: "🎤 Then repeat after the audio!",
+    fl5_onboard_cta: "Got it →",
+    fl5_onboard_start: "Let's start!"
   },
   id: {
     fl5_over_listen: "STEP 1 · DENGAR",
@@ -108,7 +120,19 @@ export const FL5_STR = {
     fl5_day_done_title: "Hari {n} selesai!",
     fl5_day_done_sub: "Kamu berbicara bahasa Korea hari ini",
     fl5_recall_hidden: "Kalimat tersembunyi — gunakan petunjuk pelafalan.",
-    fl5_btn_retry_speak: "Coba lagi"
+    fl5_btn_retry_speak: "Coba lagi",
+    fl5_btn_mic_prepare: "Bersiap...",
+    fl5_btn_mic_listening: "Mendengarkan...",
+    fl5_mic_hint_idle_repeat: "Ketuk tombol dan ucapkan kalimat di atas",
+    fl5_mic_hint_idle_recall: "Ketuk tombol dan ucapkan dari ingatan",
+    fl5_mic_hint_listening: "Terus bicara... Aku mendengarkan 👂",
+    fl5_mic_hint_done: "Selesai! Ketuk lanjut jika siap",
+    fl5_stt_empty: "Kami tidak menangkap suara. Coba lagi!",
+    fl5_onboard_1: "Pertama, dengarkan kalimat 3 kali",
+    fl5_onboard_2: "Pelajari setiap kata dengan mengetuknya",
+    fl5_onboard_3: "Lalu tirukan audionya!",
+    fl5_onboard_cta: "Mengerti →",
+    fl5_onboard_start: "Mulai!"
   },
   fr: {
     fl5_over_listen: "STEP 1 · ÉCOUTER",
@@ -163,7 +187,19 @@ export const FL5_STR = {
     fl5_day_done_title: "Jour {n} terminé !",
     fl5_day_done_sub: "Vous avez parlé coréen aujourd'hui",
     fl5_recall_hidden: "Phrase masquée — utilise l’indice de prononciation.",
-    fl5_btn_retry_speak: "Réessayer"
+    fl5_btn_retry_speak: "Réessayer",
+    fl5_btn_mic_prepare: "Prêt...",
+    fl5_btn_mic_listening: "J'écoute...",
+    fl5_mic_hint_idle_repeat: "Touche le bouton et dis la phrase ci-dessus",
+    fl5_mic_hint_idle_recall: "Touche le bouton et parle de mémoire",
+    fl5_mic_hint_listening: "Continue de parler... J'écoute 👂",
+    fl5_mic_hint_done: "Terminé ! Touche suivant quand tu es prêt",
+    fl5_stt_empty: "On n'a pas bien entendu. Réessaie !",
+    fl5_onboard_1: "D'abord, écoutez la phrase 3 fois",
+    fl5_onboard_2: "Apprenez chaque mot en appuyant dessus",
+    fl5_onboard_3: "Puis répétez après l'audio !",
+    fl5_onboard_cta: "OK →",
+    fl5_onboard_start: "C'est parti !"
   },
   pt: {
     fl5_over_listen: "STEP 1 · OUVIR",
@@ -218,6 +254,18 @@ export const FL5_STR = {
     fl5_day_done_title: "Dia {n} completo!",
     fl5_day_done_sub: "Você falou coreano hoje",
     fl5_recall_hidden: "Frase oculta — use a dica de pronúncia.",
-    fl5_btn_retry_speak: "Tentar de novo"
+    fl5_btn_retry_speak: "Tentar de novo",
+    fl5_btn_mic_prepare: "Preparando...",
+    fl5_btn_mic_listening: "Ouvindo...",
+    fl5_mic_hint_idle_repeat: "Toque no botão e fale a frase acima",
+    fl5_mic_hint_idle_recall: "Toque no botão e fale de memória",
+    fl5_mic_hint_listening: "Continue falando... Estou ouvindo 👂",
+    fl5_mic_hint_done: "Pronto! Toque em avançar quando quiser",
+    fl5_stt_empty: "Não captamos o áudio. Tente de novo!",
+    fl5_onboard_1: "Primeiro, ouça a frase 3 vezes",
+    fl5_onboard_2: "Aprenda cada palavra tocando nela",
+    fl5_onboard_3: "Depois repita após o áudio!",
+    fl5_onboard_cta: "Entendi →",
+    fl5_onboard_start: "Vamos lá!"
   }
 };
