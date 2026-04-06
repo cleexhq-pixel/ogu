@@ -35,7 +35,6 @@ const OGU_STREAK_LAST_KEY = "ogu_streak_last_date";
 const STT_MAX_MS = 10000;
 const STT_SILENCE_MS = 1500;
 const MIC_PREPARE_MS = 300;
-const KKOBI_ONBOARDING_DONE_KEY = "kkobi_onboarding_done";
 
 /** @typedef {'idle' | 'preparing' | 'recording' | 'done'} MicUiPhase */
 
@@ -441,11 +440,6 @@ export default function FirstLineFlow() {
   const [repeatMicUi, setRepeatMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
   /** @type {[MicUiPhase, import('react').Dispatch<import('react').SetStateAction<MicUiPhase>>]} */
   const [recallMicUi, setRecallMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
-  const [showPreTooltip, setShowPreTooltip] = useState(false);
-  const [preTooltipStep, setPreTooltipStep] = useState(1);
-  const [pendingPickCategory, setPendingPickCategory] = useState(
-    /** @type {'idol'|'drama'|'trip'|null} */ (null)
-  );
 
   const clearSttTimers = useCallback(() => {
     if (sttSilenceTimerRef.current != null) {
@@ -698,40 +692,7 @@ export default function FirstLineFlow() {
     [buildQs, router, resetFlowState]
   );
 
-  const handlePickPreTooltipNext = useCallback(() => {
-    if (preTooltipStep < 3) {
-      setPreTooltipStep((s) => s + 1);
-      return;
-    }
-    if (typeof window !== "undefined") {
-      try {
-        window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
-      } catch {
-        // ignore
-      }
-    }
-    const key = pendingPickCategory;
-    setShowPreTooltip(false);
-    setPreTooltipStep(1);
-    setPendingPickCategory(null);
-    if (key) applyCategorySelection(key);
-  }, [preTooltipStep, pendingPickCategory, applyCategorySelection]);
-
-  const selectCategory = (key) => {
-    if (typeof window !== "undefined") {
-      try {
-        if (!window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY)) {
-          setPendingPickCategory(key);
-          setPreTooltipStep(1);
-          setShowPreTooltip(true);
-          return;
-        }
-      } catch {
-        // proceed
-      }
-    }
-    applyCategorySelection(key);
-  };
+  const selectCategory = applyCategorySelection;
 
   const goChooseTopic = () => {
     stopAudio();
@@ -1802,77 +1763,6 @@ export default function FirstLineFlow() {
           )}
         </div>
       </main>
-      {showPreTooltip && pendingPickCategory && phase === "pick" ? (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.55)",
-            zIndex: 9999,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-end",
-            padding: "0 24px 48px"
-          }}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Onboarding tips"
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: 20,
-              padding: 20,
-              boxShadow: "0 20px 50px rgba(0,0,0,0.2)"
-            }}
-          >
-            <p
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "#2a14b4",
-                marginBottom: 6
-              }}
-            >
-              {tx(L, "fl_pre_tooltip_step", { n: preTooltipStep })}
-            </p>
-            <p
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#1a1c1d",
-                lineHeight: 1.5,
-                marginBottom: 16
-              }}
-            >
-              {preTooltipStep === 1
-                ? tx(L, "fl_pre_tooltip_1")
-                : preTooltipStep === 2
-                  ? tx(L, "fl_pre_tooltip_2")
-                  : tx(L, "fl_pre_tooltip_3")}
-            </p>
-            <button
-              type="button"
-              onClick={handlePickPreTooltipNext}
-              style={{
-                width: "100%",
-                padding: 13,
-                background: "linear-gradient(135deg, #2a14b4, #4338ca)",
-                color: "white",
-                borderRadius: 14,
-                fontSize: 14,
-                fontWeight: 700,
-                border: "none",
-                cursor: "pointer"
-              }}
-            >
-              {preTooltipStep === 3 ? tx(L, "fl_pre_tooltip_start") : tx(L, "fl5_onboard_cta")}
-            </button>
-          </div>
-        </div>
-      ) : null}
     </>
   );
 }
