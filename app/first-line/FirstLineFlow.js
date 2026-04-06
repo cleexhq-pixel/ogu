@@ -38,7 +38,7 @@ const MIC_PREPARE_MS = 300;
 const KKOBI_ONBOARDING_DONE_KEY = "kkobi_onboarding_done";
 
 /** @typedef {'idle' | 'preparing' | 'recording' | 'done'} MicUiPhase */
-/** @typedef {'listen'|'words'|'repeat'} OnboardingKey */
+/** @typedef {1|2|3} TooltipStep */
 
 /** @param {string} ko */
 function splitSentenceWords(ko) {
@@ -442,44 +442,9 @@ export default function FirstLineFlow() {
   const [repeatMicUi, setRepeatMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
   /** @type {[MicUiPhase, import('react').Dispatch<import('react').SetStateAction<MicUiPhase>>]} */
   const [recallMicUi, setRecallMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
-  const dismissedOnboardingRef = useRef(new Set());
-  const [onboarding, setOnboarding] = useState(
-    /** @type {{ open: boolean; key: OnboardingKey | null; source: 'auto' | 'help' }} */ ({
-      open: false,
-      key: null,
-      source: "auto"
-    })
-  );
-
-  const closeOnboarding = useCallback((opts) => {
-    const markDismissed = opts?.markDismissed === true;
-    setOnboarding((prev) => {
-      if (markDismissed && prev.key) dismissedOnboardingRef.current.add(prev.key);
-      return { open: false, key: null, source: prev.source };
-    });
-  }, []);
-
-  const setOnboardingDone = useCallback(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const openOnboarding = useCallback((/** @type {OnboardingKey} */ key, source) => {
-    if (source === "auto") {
-      if (typeof window === "undefined") return;
-      try {
-        if (window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY)) return;
-      } catch {
-        return;
-      }
-      if (dismissedOnboardingRef.current.has(key)) return;
-    }
-    setOnboarding({ open: true, key, source: source === "help" ? "help" : "auto" });
-  }, []);
+  const [canShowTooltip, setCanShowTooltip] = useState(false);
+  /** @type {[number, import('react').Dispatch<import('react').SetStateAction<number>>]} */
+  const [tooltipStep, setTooltipStep] = useState(0);
 
   const clearSttTimers = useCallback(() => {
     if (sttSilenceTimerRef.current != null) {
@@ -593,15 +558,45 @@ export default function FirstLineFlow() {
   }, [journeyDay, category, journeyActive, resetFlowState]);
 
   useEffect(() => {
-    if (phase !== "flow") {
-      closeOnboarding();
+    if (typeof window === "undefined") return;
+    try {
+      setCanShowTooltip(!window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY));
+    } catch {
+      setCanShowTooltip(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!canShowTooltip) return;
+    if (tooltipStep !== 0) return;
+    if (phase !== "flow") return;
+    if (flowStep !== "listen") return;
+    setTooltipStep(1);
+  }, [canShowTooltip, tooltipStep, phase, flowStep]);
+
+  const handleTooltipNext = useCallback(() => {
+    if (tooltipStep === 1) {
+      setTooltipStep(2);
+      setFlowStep("understand");
       return;
     }
-    if (flowStep === "listen") openOnboarding("listen", "auto");
-    else if (flowStep === "understand") openOnboarding("words", "auto");
-    else if (flowStep === "repeat") openOnboarding("repeat", "auto");
-    else closeOnboarding();
-  }, [phase, flowStep, openOnboarding, closeOnboarding]);
+    if (tooltipStep === 2) {
+      setTooltipStep(3);
+      setFlowStep("repeat");
+      return;
+    }
+    if (tooltipStep === 3) {
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
+        } catch {
+          // ignore
+        }
+      }
+      setTooltipStep(0);
+      setCanShowTooltip(false);
+    }
+  }, [tooltipStep]);
 
   useEffect(() => {
     if (flowStep !== "repeat") {
@@ -991,10 +986,6 @@ export default function FirstLineFlow() {
 
   const handleRepeatMicPress = useCallback(() => {
     if (!getSpeechRecognition()) return;
-    if (onboarding.open && onboarding.key === "repeat") {
-      setOnboardingDone();
-      closeOnboarding({ markDismissed: true });
-    }
     if (isListening) {
       stopVoiceInput();
       return;
@@ -1007,7 +998,7 @@ export default function FirstLineFlow() {
       setRepeatMicUi("idle");
     }
     scheduleMicPrepare("repeat");
-  }, [onboarding.open, onboarding.key, setOnboardingDone, closeOnboarding, isListening, repeatMicUi, repeatDone, stopVoiceInput, scheduleMicPrepare]);
+  }, [isListening, repeatMicUi, repeatDone, stopVoiceInput, scheduleMicPrepare]);
 
   const handleRecallMicPress = useCallback(() => {
     if (!getSpeechRecognition()) return;
@@ -1030,7 +1021,6 @@ export default function FirstLineFlow() {
     if (!content?.ko) return;
     void playTts(content.ko);
     setListenCount((c) => Math.min(c + 1, 3));
-    if (onboarding.open && onboarding.key === "listen") closeOnboarding({ markDismissed: true });
   };
 
   const onListenSlow = () => {
@@ -1042,7 +1032,6 @@ export default function FirstLineFlow() {
   const onWordRow = (word, idx) => {
     setListenedWords((prev) => new Set([...prev, idx]));
     void playWordTts(word, idx);
-    if (onboarding.open && onboarding.key === "words") closeOnboarding({ markDismissed: true });
   };
 
   const goNextFromListen = () => {
@@ -1494,14 +1483,9 @@ export default function FirstLineFlow() {
                     type="button"
                     onClick={onListenMain}
                     disabled={ttsLoading}
-                    className={`${step1PrimaryBtn} mt-6 ${onboarding.open && onboarding.key === "listen" ? "onboarding-highlight" : ""}`}
+                    className={`${step1PrimaryBtn} mt-6`}
                     style={primaryStyle}
                   >
-                    {onboarding.open && onboarding.key === "listen" ? (
-                      <div className="onboarding-tooltip">
-                        👆 Tap to hear the sentence — listen 3 times before moving on!
-                      </div>
-                    ) : null}
                     <span>{tx(L, "fl5_btn_listen")}</span>
                     <span
                       className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
@@ -1820,6 +1804,89 @@ export default function FirstLineFlow() {
           )}
         </div>
       </main>
+      {canShowTooltip ? (
+        (() => {
+          const visible =
+            tooltipStep !== 0 &&
+            ((tooltipStep === 1 && flowStep === "listen") ||
+              (tooltipStep === 2 && flowStep === "understand") ||
+              (tooltipStep === 3 && flowStep === "repeat"));
+          if (!visible) return null;
+          const text =
+            tooltipStep === 1
+              ? tx(L, "fl5_onboard_1")
+              : tooltipStep === 2
+                ? tx(L, "fl5_onboard_2")
+                : tx(L, "fl5_onboard_3");
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.55)",
+                zIndex: 9999,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "flex-end",
+                padding: "0 24px 48px"
+              }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Onboarding"
+            >
+              <div
+                style={{
+                  background: "#ffffff",
+                  borderRadius: 20,
+                  padding: 20,
+                  boxShadow: "0 20px 50px rgba(0,0,0,0.2)"
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "#2a14b4",
+                    marginBottom: 6
+                  }}
+                >
+                  {tx(L, "fl5_onboard_step", { n: tooltipStep })}
+                </p>
+                <p
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: "#1a1c1d",
+                    lineHeight: 1.5,
+                    marginBottom: 16
+                  }}
+                >
+                  {text}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleTooltipNext}
+                  style={{
+                    width: "100%",
+                    padding: 13,
+                    background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                    color: "white",
+                    borderRadius: 14,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    border: "none",
+                    cursor: "pointer"
+                  }}
+                >
+                  {tooltipStep === 3 ? tx(L, "fl5_onboard_start") : tx(L, "fl5_onboard_cta")}
+                </button>
+              </div>
+            </div>
+          );
+        })()
+      ) : null}
     </>
   );
 }
