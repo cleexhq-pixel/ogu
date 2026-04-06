@@ -66,7 +66,12 @@ export const FL5_STR = {
     fl5_onboard_2: "Tap each word to hear how it sounds.",
     fl5_onboard_3: "Now tap 'Tap to speak' and say the sentence out loud!",
     fl5_onboard_cta: "Got it →",
-    fl5_onboard_start: "Let's start!"
+    fl5_onboard_start: "Let's start!",
+    fl_pre_tooltip_step: "Step {n} of 3",
+    fl_pre_tooltip_1: "Listen to the sentence 3 times before speaking",
+    fl_pre_tooltip_2: "Tap each word to hear how it sounds",
+    fl_pre_tooltip_3: "Tap 'Tap to speak' and say the sentence out loud!",
+    fl_pre_tooltip_start: "Let's start! →"
   },
   id: {
     fl5_over_listen: "STEP 1 · DENGAR",
@@ -134,7 +139,12 @@ export const FL5_STR = {
     fl5_onboard_2: "Ketuk setiap kata untuk mendengar bunyinya.",
     fl5_onboard_3: "Sekarang ketuk 'Tap to speak' dan ucapkan kalimatnya!",
     fl5_onboard_cta: "Mengerti →",
-    fl5_onboard_start: "Mulai!"
+    fl5_onboard_start: "Mulai!",
+    fl_pre_tooltip_step: "Langkah {n} dari 3",
+    fl_pre_tooltip_1: "Dengarkan kalimat 3 kali sebelum berbicara",
+    fl_pre_tooltip_2: "Ketuk setiap kata untuk mendengar bunyinya",
+    fl_pre_tooltip_3: "Ketuk 'Tap to speak' dan ucapkan kalimatnya keras-keras!",
+    fl_pre_tooltip_start: "Let's start! →"
   },
   fr: {
     fl5_over_listen: "STEP 1 · ÉCOUTER",
@@ -202,7 +212,12 @@ export const FL5_STR = {
     fl5_onboard_2: "Appuyez sur chaque mot pour entendre sa prononciation.",
     fl5_onboard_3: "Maintenant appuyez sur 'Tap to speak' et dites la phrase!",
     fl5_onboard_cta: "OK →",
-    fl5_onboard_start: "C'est parti !"
+    fl5_onboard_start: "C'est parti !",
+    fl_pre_tooltip_step: "Étape {n} sur 3",
+    fl_pre_tooltip_1: "Écoutez la phrase 3 fois avant de parler",
+    fl_pre_tooltip_2: "Appuyez sur chaque mot pour entendre sa prononciation",
+    fl_pre_tooltip_3: "Appuyez sur 'Tap to speak' et dites la phrase à voix haute!",
+    fl_pre_tooltip_start: "Let's start! →"
   },
   pt: {
     fl5_over_listen: "STEP 1 · OUVIR",
@@ -270,6 +285,11 @@ export const FL5_STR = {
     fl5_onboard_2: "Toque em cada palavra para ouvir como soa.",
     fl5_onboard_3: "Agora toque em 'Tap to speak' e diga a frase em voz alta!",
     fl5_onboard_cta: "Entendi →",
-    fl5_onboard_start: "Vamos lá!"
+    fl5_onboard_start: "Vamos lá!",
+    fl_pre_tooltip_step: "Etapa {n} de 3",
+    fl_pre_tooltip_1: "Ouça a frase 3 vezes antes de falar",
+    fl_pre_tooltip_2: "Toque em cada palavra para ouvir como soa",
+    fl_pre_tooltip_3: "Toque em 'Tap to speak' e diga a frase em voz alta!",
+    fl_pre_tooltip_start: "Let's start! →"
   }
 };

@@ -23,6 +23,8 @@ import {
 } from "@/lib/journey-data";
 import { useActiveSession } from "@/hooks/useActiveSession";
 
+const KKOBI_ONBOARDING_DONE_KEY = "kkobi_onboarding_done";
+
 const HERO_UNDERLINE = "border-b-[3px] pb-0.5";
 const heroUnderlineStyle = { borderColor: "rgba(255,255,255,0.65)" };
 
@@ -133,6 +135,9 @@ export default function HomePage() {
   const langMenuRef = useRef(null);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [selectedVibe, setSelectedVibe] = useState("idol");
+  const [showPreFlowTooltip, setShowPreFlowTooltip] = useState(false);
+  const [preFlowTooltipStep, setPreFlowTooltipStep] = useState(1);
+  const [pendingCategory, setPendingCategory] = useState(/** @type {'idol'|'drama'|'trip'|null} */ (null));
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -302,19 +307,62 @@ export default function HomePage() {
     setSelectedVibe(normalizeVibe(cat));
   }, []);
 
-  const goFirstLine = (category) => {
+  const goFirstLine = useCallback(
+    (category) => {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(OGU_VIBE_KEY, category);
+      }
+      setSelectedVibe(normalizeVibe(category));
+      trackStartDailyPhrase();
+      const params = new URLSearchParams();
+      params.set("lang", language);
+      if (category === "idol" || category === "drama" || category === "trip") {
+        params.set("category", category);
+      }
+      router.push(`/first-line?${params.toString()}`);
+    },
+    [language, router]
+  );
+
+  const handleModalCategoryChoice = useCallback(
+    (/** @type {'idol'|'drama'|'trip'} */ cat) => {
+      if (typeof window !== "undefined") {
+        try {
+          if (!window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY)) {
+            setPendingCategory(cat);
+            setPreFlowTooltipStep(1);
+            setShowPreFlowTooltip(true);
+            setShowOnboardingModal(false);
+            return;
+          }
+        } catch {
+          // proceed
+        }
+      }
+      setShowOnboardingModal(false);
+      goFirstLine(cat);
+    },
+    [goFirstLine]
+  );
+
+  const handlePreFlowTooltipNext = useCallback(() => {
+    if (preFlowTooltipStep < 3) {
+      setPreFlowTooltipStep((s) => s + 1);
+      return;
+    }
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(OGU_VIBE_KEY, category);
+      try {
+        window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
+      } catch {
+        // ignore
+      }
     }
-    setSelectedVibe(normalizeVibe(category));
-    trackStartDailyPhrase();
-    const params = new URLSearchParams();
-    params.set("lang", language);
-    if (category === "idol" || category === "drama" || category === "trip") {
-      params.set("category", category);
-    }
-    router.push(`/first-line?${params.toString()}`);
-  };
+    const cat = pendingCategory;
+    setShowPreFlowTooltip(false);
+    setPreFlowTooltipStep(1);
+    setPendingCategory(null);
+    if (cat) goFirstLine(cat);
+  }, [preFlowTooltipStep, pendingCategory, goFirstLine]);
 
   const goBrowseFirstLine = () => {
     const qs = new URLSearchParams();
@@ -350,9 +398,8 @@ export default function HomePage() {
     switch (L) {
       case "id":
         return {
-          headlineA: "Pilih gayamu",
-          accent: "bicara.",
-          subtitle: "Pilih gaya — kami akan memberi kamu kalimat pertama yang sempurna.",
+          headline1: "Pilih gayamu —",
+          headlineAccent: "dan mulai berbicara.",
           overline: "YOUR STYLE",
           browse: "atau jelajahi dulu",
           noAccount: "Tidak perlu akun · Gratis dicoba",
@@ -364,9 +411,8 @@ export default function HomePage() {
         };
       case "fr":
         return {
-          headlineA: "Choisissez votre style",
-          accent: "parlez.",
-          subtitle: "Choisissez un style — nous vous donnerons la première ligne parfaite.",
+          headline1: "Choisissez votre style —",
+          headlineAccent: "et commencez à parler.",
           overline: "YOUR STYLE",
           browse: "ou parcourir d'abord",
           noAccount: "Aucun compte requis · Gratuit",
@@ -378,9 +424,8 @@ export default function HomePage() {
         };
       case "pt":
         return {
-          headlineA: "Escolha seu estilo",
-          accent: "fale.",
-          subtitle: "Escolha um estilo — daremos a você a linha perfeita para começar.",
+          headline1: "Escolha seu estilo —",
+          headlineAccent: "e comece a falar.",
           overline: "YOUR STYLE",
           browse: "ou explorar primeiro",
           noAccount: "Sem conta necessária · Grátis",
@@ -392,9 +437,8 @@ export default function HomePage() {
         };
       default:
         return {
-          headlineA: "Pick your vibe",
-          accent: "speak.",
-          subtitle: "Choose a style — we'll give you the perfect first line.",
+          headline1: "Choose your style —",
+          headlineAccent: "and start speaking.",
           overline: "YOUR STYLE",
           browse: "or browse first",
           noAccount: "No account required · Free to try",
@@ -476,18 +520,27 @@ export default function HomePage() {
             style={{ padding: "48px 24px 40px" }}
           >
             <div className="flex min-h-0 flex-1 flex-col min-[480px]:flex-none">
+              <p
+                className="inline-flex items-center gap-1.5 self-start text-[13px] font-semibold text-[#2a14b4]"
+                style={{
+                  background: "#f3f0ff",
+                  padding: "7px 16px",
+                  borderRadius: 99,
+                  marginBottom: 20
+                }}
+              >
+                <span aria-hidden>🪄</span>
+                <span>Speak 한국어 from Day 1</span>
+              </p>
               <h1
                 id="onboarding-modal-title"
-                className="text-[34px] font-extrabold leading-[1.15] tracking-[-0.8px] text-[#1a1c1d]"
-                style={{ wordBreak: L === "en" ? "break-word" : "keep-all" }}
+                className="text-[32px] font-extrabold leading-[1.2] tracking-[-0.6px] text-[#1a1c1d]"
+                style={{ wordBreak: L === "en" ? "break-word" : "keep-all", marginBottom: 8 }}
               >
-                {onboardingCopy.headlineA}
-                <br />&{" "}
-                <span style={{ color: "#2a14b4", fontStyle: "italic" }}>{onboardingCopy.accent}</span>
+                {onboardingCopy.headline1}
+                <br />
+                <span style={{ color: "#2a14b4", fontStyle: "italic" }}>{onboardingCopy.headlineAccent}</span>
               </h1>
-              <p className="mt-2 text-[15px] leading-[1.5] text-[#6b6f72]" style={{ marginBottom: 32 }}>
-                {onboardingCopy.subtitle}
-              </p>
 
               <p
                 className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b6f72]"
@@ -510,10 +563,7 @@ export default function HomePage() {
                     <button
                       key={cat}
                       type="button"
-                      onClick={() => {
-                        setShowOnboardingModal(false);
-                        goFirstLine(cat);
-                      }}
+                      onClick={() => handleModalCategoryChoice(cat)}
                       className="group mb-[10px] flex w-full max-w-full items-center gap-[14px] rounded-[20px] border-2 border-transparent bg-[#f9f9fb] px-[18px] py-4 text-left transition-all duration-150 hover:border-[#2a14b4] hover:bg-[#2a14b4] active:scale-[0.99]"
                     >
                       <span
@@ -563,6 +613,78 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {showPreFlowTooltip && pendingCategory ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            padding: "0 24px 48px"
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Onboarding tips"
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 20,
+              padding: 20,
+              boxShadow: "0 20px 50px rgba(0,0,0,0.2)"
+            }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "#2a14b4",
+                marginBottom: 6
+              }}
+            >
+              {tx(L, "fl_pre_tooltip_step", { n: preFlowTooltipStep })}
+            </p>
+            <p
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#1a1c1d",
+                lineHeight: 1.5,
+                marginBottom: 16
+              }}
+            >
+              {preFlowTooltipStep === 1
+                ? tx(L, "fl_pre_tooltip_1")
+                : preFlowTooltipStep === 2
+                  ? tx(L, "fl_pre_tooltip_2")
+                  : tx(L, "fl_pre_tooltip_3")}
+            </p>
+            <button
+              type="button"
+              onClick={handlePreFlowTooltipNext}
+              style={{
+                width: "100%",
+                padding: 13,
+                background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                color: "white",
+                borderRadius: 14,
+                fontSize: 14,
+                fontWeight: 700,
+                border: "none",
+                cursor: "pointer"
+              }}
+            >
+              {preFlowTooltipStep === 3 ? tx(L, "fl_pre_tooltip_start") : tx(L, "fl5_onboard_cta")}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <main
         className={`min-h-screen bg-[var(--surface)] pt-0 font-jakarta text-[var(--on-surface)] ${
