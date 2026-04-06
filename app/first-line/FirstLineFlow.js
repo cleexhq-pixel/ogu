@@ -35,6 +35,7 @@ const OGU_STREAK_LAST_KEY = "ogu_streak_last_date";
 const STT_MAX_MS = 10000;
 const STT_SILENCE_MS = 1500;
 const MIC_PREPARE_MS = 300;
+const KKOBI_ONBOARDING_DONE_KEY = "kkobi_onboarding_done";
 
 /** @typedef {'idle' | 'preparing' | 'recording' | 'done'} MicUiPhase */
 
@@ -440,6 +441,22 @@ export default function FirstLineFlow() {
   const [repeatMicUi, setRepeatMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
   /** @type {[MicUiPhase, import('react').Dispatch<import('react').SetStateAction<MicUiPhase>>]} */
   const [recallMicUi, setRecallMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
+  const [onboardingDone, setOnboardingDone] = useState(true);
+  const [onboardingHydrated, setOnboardingHydrated] = useState(false);
+  const [dismissListenGuide, setDismissListenGuide] = useState(false);
+  const [dismissWordsGuide, setDismissWordsGuide] = useState(false);
+  const [dismissRepeatGuide, setDismissRepeatGuide] = useState(false);
+  const [helpReplayActive, setHelpReplayActive] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setOnboardingDone(!!window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY));
+    } catch {
+      setOnboardingDone(true);
+    }
+    setOnboardingHydrated(true);
+  }, []);
 
   const clearSttTimers = useCallback(() => {
     if (sttSilenceTimerRef.current != null) {
@@ -510,6 +527,18 @@ export default function FirstLineFlow() {
     setRepeatMicUi("idle");
     setRecallMicUi("idle");
     clearPrepareTimer();
+    if (typeof window !== "undefined") {
+      try {
+        if (!window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY)) {
+          setDismissListenGuide(false);
+          setDismissWordsGuide(false);
+          setDismissRepeatGuide(false);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    setHelpReplayActive(false);
   }, [clearPrepareTimer]);
 
   useEffect(() => {
@@ -949,6 +978,24 @@ export default function FirstLineFlow() {
       stopVoiceInput();
       return;
     }
+    const inRepeatGuide =
+      onboardingHydrated &&
+      phase === "flow" &&
+      flowStep === "repeat" &&
+      content &&
+      ((!onboardingDone && !dismissRepeatGuide) || (onboardingDone && helpReplayActive));
+    if (inRepeatGuide) {
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
+        } catch {
+          // ignore
+        }
+      }
+      setOnboardingDone(true);
+      setDismissRepeatGuide(true);
+      setHelpReplayActive(false);
+    }
     if (repeatMicUi === "preparing") return;
     if (repeatDone) {
       setRepeatDone(false);
@@ -957,7 +1004,20 @@ export default function FirstLineFlow() {
       setRepeatMicUi("idle");
     }
     scheduleMicPrepare("repeat");
-  }, [isListening, repeatMicUi, repeatDone, stopVoiceInput, scheduleMicPrepare]);
+  }, [
+    isListening,
+    repeatMicUi,
+    repeatDone,
+    stopVoiceInput,
+    scheduleMicPrepare,
+    onboardingHydrated,
+    phase,
+    flowStep,
+    content,
+    onboardingDone,
+    dismissRepeatGuide,
+    helpReplayActive
+  ]);
 
   const handleRecallMicPress = useCallback(() => {
     if (!getSpeechRecognition()) return;
@@ -978,6 +1038,15 @@ export default function FirstLineFlow() {
 
   const onListenMain = () => {
     if (!content?.ko) return;
+    const gl =
+      onboardingHydrated &&
+      phase === "flow" &&
+      flowStep === "listen" &&
+      ((!onboardingDone && !dismissListenGuide) || (onboardingDone && helpReplayActive));
+    if (gl) {
+      setDismissListenGuide(true);
+      setHelpReplayActive(false);
+    }
     void playTts(content.ko);
     setListenCount((c) => Math.min(c + 1, 3));
   };
@@ -989,6 +1058,17 @@ export default function FirstLineFlow() {
   };
 
   const onWordRow = (word, idx) => {
+    const gw =
+      idx === 0 &&
+      onboardingHydrated &&
+      phase === "flow" &&
+      flowStep === "understand" &&
+      vocab.length > 0 &&
+      ((!onboardingDone && !dismissWordsGuide) || (onboardingDone && helpReplayActive));
+    if (gw) {
+      setDismissWordsGuide(true);
+      setHelpReplayActive(false);
+    }
     setListenedWords((prev) => new Set([...prev, idx]));
     void playWordTts(word, idx);
   };
@@ -1104,9 +1184,38 @@ export default function FirstLineFlow() {
     </div>
   );
 
+  const guideListen =
+    onboardingHydrated &&
+    phase === "flow" &&
+    content &&
+    flowStep === "listen" &&
+    ((!onboardingDone && !dismissListenGuide) || (onboardingDone && helpReplayActive));
+
+  const guideWords =
+    onboardingHydrated &&
+    phase === "flow" &&
+    content &&
+    flowStep === "understand" &&
+    vocab.length > 0 &&
+    ((!onboardingDone && !dismissWordsGuide) || (onboardingDone && helpReplayActive));
+
+  const guideRepeat =
+    onboardingHydrated &&
+    phase === "flow" &&
+    content &&
+    flowStep === "repeat" &&
+    ((!onboardingDone && !dismissRepeatGuide) || (onboardingDone && helpReplayActive));
+
+  const showOnboardingDim = guideListen || guideWords || guideRepeat;
+
   return (
     <>
       <Analytics />
+      {onboardingHydrated && onboardingDone && phase === "flow" && (flowStep === "listen" || flowStep === "understand" || flowStep === "repeat") ? (
+        <button type="button" className="help-button font-jakarta" onClick={() => setHelpReplayActive(true)}>
+          ? How to use
+        </button>
+      ) : null}
       {showDay3SignupModal ? (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 font-jakarta"
@@ -1158,8 +1267,12 @@ export default function FirstLineFlow() {
         </div>
       ) : null}
 
-      <main className="min-h-screen px-4 py-8 font-jakarta" style={{ backgroundColor: "var(--surface)", color: "var(--on-surface)" }}>
-        <div className="mx-auto w-full max-w-[480px]">
+      <main
+        className="relative min-h-screen px-4 py-8 font-jakarta"
+        style={{ backgroundColor: "var(--surface)", color: "var(--on-surface)" }}
+      >
+        {showOnboardingDim ? <div className="onboarding-overlay" aria-hidden /> : null}
+        <div className="relative z-[110] mx-auto w-full max-w-[480px]">
           {phase === "pick" && (
             <div className="animate-fade-in-up">
               <h1 className="text-center text-xl font-bold leading-snug sm:text-2xl">{tx(L, "fl_vibeHeading")}</h1>
@@ -1442,9 +1555,12 @@ export default function FirstLineFlow() {
                     type="button"
                     onClick={onListenMain}
                     disabled={ttsLoading}
-                    className={`${step1PrimaryBtn} mt-6`}
+                    className={`${step1PrimaryBtn} mt-6 ${guideListen ? "onboarding-highlight" : ""}`}
                     style={primaryStyle}
                   >
+                    {guideListen ? (
+                      <div className="onboarding-tooltip">👆 Tap to hear the sentence — listen 3 times!</div>
+                    ) : null}
                     <span>{tx(L, "fl5_btn_listen")}</span>
                     <span
                       className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
@@ -1486,15 +1602,19 @@ export default function FirstLineFlow() {
                       {vocab.map((row, i) => {
                         const done = listenedWords.has(i);
                         const playing = playingWordIdx === i;
+                        const wordGuide = guideWords && i === 0;
                         return (
                           <li
                             key={`${row.word}-${i}`}
-                            className="flex items-center justify-between gap-3 rounded-[20px] px-3 py-3 transition"
+                            className={`flex items-center justify-between gap-3 rounded-[20px] px-3 py-3 transition ${wordGuide ? "onboarding-highlight" : ""}`}
                             style={{
                               opacity: done ? 0.65 : 1,
                               backgroundColor: playing ? "rgba(42,20,180,0.06)" : "transparent"
                             }}
                           >
+                            {wordGuide ? (
+                              <div className="onboarding-tooltip">👆 Tap each word to hear how it sounds!</div>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => onWordRow(row.word, i)}
@@ -1555,7 +1675,7 @@ export default function FirstLineFlow() {
                     type="button"
                     onClick={() => void handleRepeatMicPress()}
                     disabled={!getSpeechRecognition() || repeatMicUi === "preparing"}
-                    className={`${repeatDone && !isListening && repeatMicUi !== "preparing" ? secondaryBtn : primaryBtn} mt-3 flex items-center justify-center gap-2`}
+                    className={`${repeatDone && !isListening && repeatMicUi !== "preparing" ? secondaryBtn : primaryBtn} mt-3 flex items-center justify-center gap-2 ${guideRepeat ? "onboarding-highlight" : ""}`}
                     style={
                       repeatDone && !isListening && repeatMicUi !== "preparing"
                         ? undefined
@@ -1564,6 +1684,9 @@ export default function FirstLineFlow() {
                           : primaryStyle
                     }
                   >
+                    {guideRepeat ? (
+                      <div className="onboarding-tooltip">🎤 Tap the mic and say the sentence out loud!</div>
+                    ) : null}
                     {(isListening || repeatMicUi === "recording") && (
                       <span className="fl5-recording-dot" aria-hidden />
                     )}

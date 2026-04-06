@@ -1,13 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { normalizeLang, tx } from "@/app/lib/i18n";
-
-const KKOBI_ONBOARDING_DONE_KEY = "kkobi_onboarding_done";
+import { normalizeLang } from "@/app/lib/i18n";
 
 /**
- * First-visit full-screen onboarding: vibe cards + optional 3-step pre-flow tooltip.
- * Tooltip and kkobi_onboarding_done checks exist only here (not on home main UI).
+ * First-visit full-screen vibe picker. Flow onboarding (Listen / Words / Repeat)
+ * happens on /first-line, not here.
  *
  * @param {{
  *   open: boolean;
@@ -19,18 +16,6 @@ const KKOBI_ONBOARDING_DONE_KEY = "kkobi_onboarding_done";
  */
 export default function OnboardingModal({ open, onRequestClose, onProceedToFlow, onBrowseFirst, language }) {
   const L = normalizeLang(language);
-
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [tooltipStep, setTooltipStep] = useState(1);
-  const [pendingCategory, setPendingCategory] = useState(/** @type {'idol'|'drama'|'trip'|null} */ (null));
-
-  useEffect(() => {
-    if (!open) {
-      setShowTooltip(false);
-      setTooltipStep(1);
-      setPendingCategory(null);
-    }
-  }, [open]);
 
   const onboardingCopy = (() => {
     switch (L) {
@@ -89,44 +74,10 @@ export default function OnboardingModal({ open, onRequestClose, onProceedToFlow,
     }
   })();
 
-  const handleCategoryClick = useCallback(
-    (/** @type {'idol'|'drama'|'trip'} */ cat) => {
-      if (typeof window === "undefined") return;
-      try {
-        if (!window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY)) {
-          setPendingCategory(cat);
-          setTooltipStep(1);
-          setShowTooltip(true);
-          return;
-        }
-      } catch {
-        // proceed
-      }
-      onRequestClose();
-      onProceedToFlow(cat);
-    },
-    [onRequestClose, onProceedToFlow]
-  );
-
-  const handleTooltipNext = useCallback(() => {
-    if (tooltipStep < 3) {
-      setTooltipStep((s) => s + 1);
-      return;
-    }
-    if (typeof window !== "undefined") {
-      try {
-        window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
-      } catch {
-        // ignore
-      }
-    }
-    const cat = pendingCategory;
-    setShowTooltip(false);
-    setTooltipStep(1);
-    setPendingCategory(null);
+  const handleCategoryClick = (/** @type {'idol'|'drama'|'trip'} */ cat) => {
     onRequestClose();
-    if (cat) onProceedToFlow(cat);
-  }, [tooltipStep, pendingCategory, onRequestClose, onProceedToFlow]);
+    onProceedToFlow(cat);
+  };
 
   if (!open) return null;
 
@@ -230,78 +181,6 @@ export default function OnboardingModal({ open, onRequestClose, onProceedToFlow,
           </button>
           <p className="mt-[10px] text-center text-[12px] text-[#9ca3af]">{onboardingCopy.noAccount}</p>
         </div>
-
-        {showTooltip && pendingCategory ? (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.55)",
-              zIndex: 10000,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "flex-end",
-              padding: "0 24px 48px"
-            }}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Onboarding tips"
-          >
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: 20,
-                padding: 20,
-                boxShadow: "0 20px 50px rgba(0,0,0,0.2)"
-              }}
-            >
-              <p
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: "#2a14b4",
-                  marginBottom: 6
-                }}
-              >
-                {tx(L, "fl_pre_tooltip_step", { n: tooltipStep })}
-              </p>
-              <p
-                style={{
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "#1a1c1d",
-                  lineHeight: 1.5,
-                  marginBottom: 16
-                }}
-              >
-                {tooltipStep === 1
-                  ? tx(L, "fl_pre_tooltip_1")
-                  : tooltipStep === 2
-                    ? tx(L, "fl_pre_tooltip_2")
-                    : tx(L, "fl_pre_tooltip_3")}
-              </p>
-              <button
-                type="button"
-                onClick={handleTooltipNext}
-                style={{
-                  width: "100%",
-                  padding: 13,
-                  background: "linear-gradient(135deg, #2a14b4, #4338ca)",
-                  color: "white",
-                  borderRadius: 14,
-                  fontSize: 14,
-                  fontWeight: 700,
-                  border: "none",
-                  cursor: "pointer"
-                }}
-              >
-                {tooltipStep === 3 ? tx(L, "fl_pre_tooltip_start") : tx(L, "fl5_onboard_cta")}
-              </button>
-            </div>
-          </div>
-        ) : null}
       </div>
     </div>
   );
