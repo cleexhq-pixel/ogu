@@ -37,23 +37,82 @@ const STT_SILENCE_MS = 1500;
 const MIC_PREPARE_MS = 300;
 const KKOBI_ONBOARDING_DONE_KEY = "kkobi_onboarding_done";
 
-const ONBOARDING_GUIDE = /** @type {const} */ ({
+/** First-line flow onboarding copy (Listen → Words → Repeat). */
+const FL_ONBOARDING_GUIDE = /** @type {const} */ ({
   listen: {
     label: "STEP 1 · LISTEN",
     text: "👆 Tap Listen to hear the sentence — 3 times before moving on",
-    firstVisitBtn: "Got it →"
+    btn: "Got it →"
   },
   understand: {
     label: "STEP 2 · WORDS",
     text: "👆 Tap each word to hear how it sounds",
-    firstVisitBtn: "Got it →"
+    btn: "Got it →"
   },
   repeat: {
     label: "STEP 3 · REPEAT",
     text: "🎤 Tap the mic and say the sentence out loud!",
-    firstVisitBtn: "Let's go! →"
+    btn: "Let's go! →"
   }
 });
+
+const FL_ONBOARDING_DIM_STYLE = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0, 0, 0, 0.45)",
+  zIndex: 40
+};
+
+const FL_ONBOARDING_SHEET_STYLE = {
+  position: "fixed",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  background: "#ffffff",
+  borderRadius: "20px 20px 0 0",
+  padding: "20px 20px 36px",
+  zIndex: 50
+};
+
+const FL_ONBOARDING_LABEL_STYLE = {
+  color: "#6c2eff",
+  fontSize: "11px",
+  fontWeight: 800,
+  letterSpacing: "0.07em",
+  marginBottom: "8px"
+};
+
+const FL_ONBOARDING_TEXT_STYLE = {
+  color: "#1a1a2e",
+  fontSize: "16px",
+  fontWeight: 700,
+  lineHeight: 1.4,
+  marginBottom: "16px"
+};
+
+const FL_ONBOARDING_BTN_PRIMARY_STYLE = {
+  width: "100%",
+  background: "#6c2eff",
+  color: "#ffffff",
+  borderRadius: "99px",
+  padding: "14px 0",
+  fontSize: "15px",
+  fontWeight: 700,
+  border: "none",
+  cursor: "pointer"
+};
+
+const FL_ONBOARDING_BTN_CLOSE_STYLE = {
+  width: "100%",
+  background: "#f0eeff",
+  color: "#6c2eff",
+  borderRadius: "99px",
+  padding: "14px 0",
+  fontSize: "15px",
+  fontWeight: 700,
+  border: "none",
+  cursor: "pointer"
+};
 
 /** @typedef {'idle' | 'preparing' | 'recording' | 'done'} MicUiPhase */
 
@@ -1144,34 +1203,17 @@ export default function FirstLineFlow() {
   const showFirstVisitGuide = isFirstVisit && inGuidableStep;
   const showHelpChip = onboardingHydrated && onboardingDone && inGuidableStep;
   const showHowToModal = showHelpChip && showHowTo;
-  const showOnboardingDim = showFirstVisitGuide || showHowToModal;
 
   const currentOnboardingGuide =
     flowStep === "listen"
-      ? ONBOARDING_GUIDE.listen
+      ? FL_ONBOARDING_GUIDE.listen
       : flowStep === "understand"
-        ? ONBOARDING_GUIDE.understand
+        ? FL_ONBOARDING_GUIDE.understand
         : flowStep === "repeat"
-          ? ONBOARDING_GUIDE.repeat
+          ? FL_ONBOARDING_GUIDE.repeat
           : null;
 
-  const onboardingDimStyle = {
-    position: "absolute",
-    inset: 0,
-    background: "rgba(0,0,0,0.4)",
-    zIndex: 40,
-    borderRadius: 20
-  };
-  const onboardingSheetStyle = {
-    background: "#fff",
-    borderRadius: "16px 16px 0 0",
-    padding: "16px",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 50
-  };
+  const showFixedOnboarding = (showFirstVisitGuide || showHowToModal) && Boolean(currentOnboardingGuide);
 
   const howToUseButton = showHelpChip ? (
     <button
@@ -1182,7 +1224,7 @@ export default function FirstLineFlow() {
         background: "rgba(255,255,255,0.12)",
         color: "#ffd84d",
         borderRadius: "99px",
-        padding: "2px 10px",
+        padding: "3px 10px",
         fontSize: "11px",
         fontWeight: 700,
         border: "none",
@@ -1303,7 +1345,7 @@ export default function FirstLineFlow() {
           )}
 
           {phase === "flow" && content && (
-            <div className="animate-fade-in-up relative rounded-[20px]">
+            <div className="animate-fade-in-up">
               {flowStep === "result" ? (
                 <>
                   <ProgressDots allComplete />
@@ -1894,75 +1936,48 @@ export default function FirstLineFlow() {
               ) : null}
                 </>
               )}
-              {showOnboardingDim ? <div style={onboardingDimStyle} aria-hidden /> : null}
-              {showFirstVisitGuide && currentOnboardingGuide ? (
-                <div
-                  style={onboardingSheetStyle}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="fl-onboarding-first-title"
-                >
-                  <p id="fl-onboarding-first-title" style={{ color: "#6c2eff", fontSize: "11px", fontWeight: 700 }}>
-                    {currentOnboardingGuide.label}
-                  </p>
-                  <p style={{ color: "#1a1a2e", fontSize: "14px", fontWeight: 700, margin: "6px 0 12px" }}>
-                    {currentOnboardingGuide.text}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleFirstVisitGotIt}
-                    style={{
-                      background: "#6c2eff",
-                      color: "#fff",
-                      borderRadius: "99px",
-                      padding: "10px 0",
-                      width: "100%",
-                      fontWeight: 700,
-                      fontSize: "14px",
-                      border: "none",
-                      cursor: "pointer"
-                    }}
-                  >
-                    {currentOnboardingGuide.firstVisitBtn}
-                  </button>
-                </div>
-              ) : null}
-              {showHowToModal && currentOnboardingGuide ? (
-                <div
-                  style={onboardingSheetStyle}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="fl-onboarding-howto-title"
-                >
-                  <p id="fl-onboarding-howto-title" style={{ color: "#6c2eff", fontSize: "11px", fontWeight: 700 }}>
-                    {currentOnboardingGuide.label}
-                  </p>
-                  <p style={{ color: "#1a1a2e", fontSize: "14px", fontWeight: 700, margin: "6px 0 12px" }}>
-                    {currentOnboardingGuide.text}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowHowTo(false)}
-                    style={{
-                      background: "#f3f0ff",
-                      color: "#6c2eff",
-                      borderRadius: "99px",
-                      padding: "10px 0",
-                      width: "100%",
-                      fontWeight: 700,
-                      fontSize: "14px",
-                      border: "none",
-                      cursor: "pointer"
-                    }}
-                  >
-                    Close
-                  </button>
-                </div>
-              ) : null}
             </div>
           )}
         </div>
       </main>
+      {showFixedOnboarding && currentOnboardingGuide ? (
+        <>
+          <div style={FL_ONBOARDING_DIM_STYLE} aria-hidden />
+          {showFirstVisitGuide ? (
+            <div
+              className="font-jakarta"
+              style={FL_ONBOARDING_SHEET_STYLE}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="fl-onboarding-first-title"
+            >
+              <p id="fl-onboarding-first-title" style={FL_ONBOARDING_LABEL_STYLE}>
+                {currentOnboardingGuide.label}
+              </p>
+              <p style={FL_ONBOARDING_TEXT_STYLE}>{currentOnboardingGuide.text}</p>
+              <button type="button" onClick={handleFirstVisitGotIt} style={FL_ONBOARDING_BTN_PRIMARY_STYLE}>
+                {currentOnboardingGuide.btn}
+              </button>
+            </div>
+          ) : (
+            <div
+              className="font-jakarta"
+              style={FL_ONBOARDING_SHEET_STYLE}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="fl-onboarding-howto-title"
+            >
+              <p id="fl-onboarding-howto-title" style={FL_ONBOARDING_LABEL_STYLE}>
+                {currentOnboardingGuide.label}
+              </p>
+              <p style={FL_ONBOARDING_TEXT_STYLE}>{currentOnboardingGuide.text}</p>
+              <button type="button" onClick={() => setShowHowTo(false)} style={FL_ONBOARDING_BTN_CLOSE_STYLE}>
+                Close
+              </button>
+            </div>
+          )}
+        </>
+      ) : null}
     </>
   );
 }
