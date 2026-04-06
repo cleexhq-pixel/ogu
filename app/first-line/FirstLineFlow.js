@@ -38,6 +38,7 @@ const MIC_PREPARE_MS = 300;
 const KKOBI_ONBOARDING_DONE_KEY = "kkobi_onboarding_done";
 
 /** @typedef {'idle' | 'preparing' | 'recording' | 'done'} MicUiPhase */
+/** @typedef {'listen'|'words'|'repeat'} OnboardingKey */
 
 /** @param {string} ko */
 function splitSentenceWords(ko) {
@@ -441,7 +442,44 @@ export default function FirstLineFlow() {
   const [repeatMicUi, setRepeatMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
   /** @type {[MicUiPhase, import('react').Dispatch<import('react').SetStateAction<MicUiPhase>>]} */
   const [recallMicUi, setRecallMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
-  const [onboardingStep, setOnboardingStep] = useState(0);
+  const dismissedOnboardingRef = useRef(new Set());
+  const [onboarding, setOnboarding] = useState(
+    /** @type {{ open: boolean; key: OnboardingKey | null; source: 'auto' | 'help' }} */ ({
+      open: false,
+      key: null,
+      source: "auto"
+    })
+  );
+
+  const closeOnboarding = useCallback((opts) => {
+    const markDismissed = opts?.markDismissed === true;
+    setOnboarding((prev) => {
+      if (markDismissed && prev.key) dismissedOnboardingRef.current.add(prev.key);
+      return { open: false, key: null, source: prev.source };
+    });
+  }, []);
+
+  const setOnboardingDone = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const openOnboarding = useCallback((/** @type {OnboardingKey} */ key, source) => {
+    if (source === "auto") {
+      if (typeof window === "undefined") return;
+      try {
+        if (window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY)) return;
+      } catch {
+        return;
+      }
+      if (dismissedOnboardingRef.current.has(key)) return;
+    }
+    setOnboarding({ open: true, key, source: source === "help" ? "help" : "auto" });
+  }, []);
 
   const clearSttTimers = useCallback(() => {
     if (sttSilenceTimerRef.current != null) {
@@ -555,18 +593,15 @@ export default function FirstLineFlow() {
   }, [journeyDay, category, journeyActive, resetFlowState]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (phase !== "flow" || flowStep !== "listen") {
-      setOnboardingStep(0);
+    if (phase !== "flow") {
+      closeOnboarding();
       return;
     }
-    try {
-      if (window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY)) return;
-    } catch {
-      return;
-    }
-    setOnboardingStep((prev) => (prev > 0 ? prev : 1));
-  }, [phase, flowStep]);
+    if (flowStep === "listen") openOnboarding("listen", "auto");
+    else if (flowStep === "understand") openOnboarding("words", "auto");
+    else if (flowStep === "repeat") openOnboarding("repeat", "auto");
+    else closeOnboarding();
+  }, [phase, flowStep, openOnboarding, closeOnboarding]);
 
   useEffect(() => {
     if (flowStep !== "repeat") {
@@ -956,6 +991,10 @@ export default function FirstLineFlow() {
 
   const handleRepeatMicPress = useCallback(() => {
     if (!getSpeechRecognition()) return;
+    if (onboarding.open && onboarding.key === "repeat") {
+      setOnboardingDone();
+      closeOnboarding({ markDismissed: true });
+    }
     if (isListening) {
       stopVoiceInput();
       return;
@@ -968,7 +1007,7 @@ export default function FirstLineFlow() {
       setRepeatMicUi("idle");
     }
     scheduleMicPrepare("repeat");
-  }, [isListening, repeatMicUi, repeatDone, stopVoiceInput, scheduleMicPrepare]);
+  }, [onboarding.open, onboarding.key, setOnboardingDone, closeOnboarding, isListening, repeatMicUi, repeatDone, stopVoiceInput, scheduleMicPrepare]);
 
   const handleRecallMicPress = useCallback(() => {
     if (!getSpeechRecognition()) return;
@@ -991,6 +1030,7 @@ export default function FirstLineFlow() {
     if (!content?.ko) return;
     void playTts(content.ko);
     setListenCount((c) => Math.min(c + 1, 3));
+    if (onboarding.open && onboarding.key === "listen") closeOnboarding({ markDismissed: true });
   };
 
   const onListenSlow = () => {
@@ -1002,6 +1042,7 @@ export default function FirstLineFlow() {
   const onWordRow = (word, idx) => {
     setListenedWords((prev) => new Set([...prev, idx]));
     void playWordTts(word, idx);
+    if (onboarding.open && onboarding.key === "words") closeOnboarding({ markDismissed: true });
   };
 
   const goNextFromListen = () => {
