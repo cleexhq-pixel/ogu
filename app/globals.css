@@ -53,64 +53,6 @@
   animation: fl5-mic-prepare-blink 0.6s ease-in-out infinite;
 }
 
-.onboarding-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 100;
-  pointer-events: none;
-}
-
-.onboarding-highlight {
-  position: relative;
-  z-index: 101;
-  border: 2px dashed #ffd84d !important;
-  border-radius: 12px;
-}
-
-.onboarding-tooltip {
-  position: absolute;
-  background: #ffffff;
-  color: #1a1a2e;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 10px 14px;
-  border-radius: 10px;
-  z-index: 102;
-  max-width: 220px;
-  line-height: 1.5;
-  bottom: calc(100% + 12px);
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-.onboarding-tooltip::after {
-  content: "";
-  position: absolute;
-  border: 6px solid transparent;
-  border-top-color: #ffffff;
-  bottom: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.help-button {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffd84d;
-  border-radius: 99px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  z-index: 105;
-  cursor: pointer;
-  border: 1px solid rgba(255, 216, 77, 0.35);
-}
-
 body {
   @apply antialiased;
   background-color: #F9FAFB;

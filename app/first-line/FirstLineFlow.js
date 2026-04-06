@@ -37,6 +37,24 @@ const STT_SILENCE_MS = 1500;
 const MIC_PREPARE_MS = 300;
 const KKOBI_ONBOARDING_DONE_KEY = "kkobi_onboarding_done";
 
+const ONBOARDING_GUIDE = /** @type {const} */ ({
+  listen: {
+    label: "STEP 1 · LISTEN",
+    text: "👆 Tap Listen to hear the sentence — 3 times before moving on",
+    firstVisitBtn: "Got it →"
+  },
+  understand: {
+    label: "STEP 2 · WORDS",
+    text: "👆 Tap each word to hear how it sounds",
+    firstVisitBtn: "Got it →"
+  },
+  repeat: {
+    label: "STEP 3 · REPEAT",
+    text: "🎤 Tap the mic and say the sentence out loud!",
+    firstVisitBtn: "Let's go! →"
+  }
+});
+
 /** @typedef {'idle' | 'preparing' | 'recording' | 'done'} MicUiPhase */
 
 /** @param {string} ko */
@@ -443,10 +461,7 @@ export default function FirstLineFlow() {
   const [recallMicUi, setRecallMicUi] = useState(/** @type {MicUiPhase} */ ("idle"));
   const [onboardingDone, setOnboardingDone] = useState(true);
   const [onboardingHydrated, setOnboardingHydrated] = useState(false);
-  const [dismissListenGuide, setDismissListenGuide] = useState(false);
-  const [dismissWordsGuide, setDismissWordsGuide] = useState(false);
-  const [dismissRepeatGuide, setDismissRepeatGuide] = useState(false);
-  const [helpReplayActive, setHelpReplayActive] = useState(false);
+  const [showHowTo, setShowHowTo] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -527,18 +542,7 @@ export default function FirstLineFlow() {
     setRepeatMicUi("idle");
     setRecallMicUi("idle");
     clearPrepareTimer();
-    if (typeof window !== "undefined") {
-      try {
-        if (!window.localStorage.getItem(KKOBI_ONBOARDING_DONE_KEY)) {
-          setDismissListenGuide(false);
-          setDismissWordsGuide(false);
-          setDismissRepeatGuide(false);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    setHelpReplayActive(false);
+    setShowHowTo(false);
   }, [clearPrepareTimer]);
 
   useEffect(() => {
@@ -591,6 +595,10 @@ export default function FirstLineFlow() {
       clearPrepareTimer();
     }
   }, [flowStep, clearPrepareTimer]);
+
+  useEffect(() => {
+    setShowHowTo(false);
+  }, [flowStep]);
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
@@ -978,24 +986,6 @@ export default function FirstLineFlow() {
       stopVoiceInput();
       return;
     }
-    const inRepeatGuide =
-      onboardingHydrated &&
-      phase === "flow" &&
-      flowStep === "repeat" &&
-      content &&
-      ((!onboardingDone && !dismissRepeatGuide) || (onboardingDone && helpReplayActive));
-    if (inRepeatGuide) {
-      if (typeof window !== "undefined") {
-        try {
-          window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
-        } catch {
-          // ignore
-        }
-      }
-      setOnboardingDone(true);
-      setDismissRepeatGuide(true);
-      setHelpReplayActive(false);
-    }
     if (repeatMicUi === "preparing") return;
     if (repeatDone) {
       setRepeatDone(false);
@@ -1004,20 +994,7 @@ export default function FirstLineFlow() {
       setRepeatMicUi("idle");
     }
     scheduleMicPrepare("repeat");
-  }, [
-    isListening,
-    repeatMicUi,
-    repeatDone,
-    stopVoiceInput,
-    scheduleMicPrepare,
-    onboardingHydrated,
-    phase,
-    flowStep,
-    content,
-    onboardingDone,
-    dismissRepeatGuide,
-    helpReplayActive
-  ]);
+  }, [isListening, repeatMicUi, repeatDone, stopVoiceInput, scheduleMicPrepare]);
 
   const handleRecallMicPress = useCallback(() => {
     if (!getSpeechRecognition()) return;
@@ -1038,15 +1015,6 @@ export default function FirstLineFlow() {
 
   const onListenMain = () => {
     if (!content?.ko) return;
-    const gl =
-      onboardingHydrated &&
-      phase === "flow" &&
-      flowStep === "listen" &&
-      ((!onboardingDone && !dismissListenGuide) || (onboardingDone && helpReplayActive));
-    if (gl) {
-      setDismissListenGuide(true);
-      setHelpReplayActive(false);
-    }
     void playTts(content.ko);
     setListenCount((c) => Math.min(c + 1, 3));
   };
@@ -1058,17 +1026,6 @@ export default function FirstLineFlow() {
   };
 
   const onWordRow = (word, idx) => {
-    const gw =
-      idx === 0 &&
-      onboardingHydrated &&
-      phase === "flow" &&
-      flowStep === "understand" &&
-      vocab.length > 0 &&
-      ((!onboardingDone && !dismissWordsGuide) || (onboardingDone && helpReplayActive));
-    if (gw) {
-      setDismissWordsGuide(true);
-      setHelpReplayActive(false);
-    }
     setListenedWords((prev) => new Set([...prev, idx]));
     void playWordTts(word, idx);
   };
@@ -1156,6 +1113,86 @@ export default function FirstLineFlow() {
     router.replace(tail ? `/first-line?${tail}` : "/first-line");
   };
 
+  const handleFirstVisitGotIt = useCallback(() => {
+    if (flowStep === "listen") {
+      if (vocab.length > 0) setFlowStep("understand");
+      else setFlowStep("repeat");
+      return;
+    }
+    if (flowStep === "understand") {
+      setFlowStep("repeat");
+      return;
+    }
+    if (flowStep === "repeat") {
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
+        } catch {
+          // ignore
+        }
+      }
+      setOnboardingDone(true);
+      setFlowStep("listen");
+    }
+  }, [flowStep, vocab.length]);
+
+  const isFirstVisit = onboardingHydrated && !onboardingDone;
+  const inGuidableStep =
+    phase === "flow" &&
+    Boolean(content) &&
+    (flowStep === "listen" || flowStep === "understand" || flowStep === "repeat");
+  const showFirstVisitGuide = isFirstVisit && inGuidableStep;
+  const showHelpChip = onboardingHydrated && onboardingDone && inGuidableStep;
+  const showHowToModal = showHelpChip && showHowTo;
+  const showOnboardingDim = showFirstVisitGuide || showHowToModal;
+
+  const currentOnboardingGuide =
+    flowStep === "listen"
+      ? ONBOARDING_GUIDE.listen
+      : flowStep === "understand"
+        ? ONBOARDING_GUIDE.understand
+        : flowStep === "repeat"
+          ? ONBOARDING_GUIDE.repeat
+          : null;
+
+  const onboardingDimStyle = {
+    position: "absolute",
+    inset: 0,
+    background: "rgba(0,0,0,0.4)",
+    zIndex: 40,
+    borderRadius: 20
+  };
+  const onboardingSheetStyle = {
+    background: "#fff",
+    borderRadius: "16px 16px 0 0",
+    padding: "16px",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 50
+  };
+
+  const howToUseButton = showHelpChip ? (
+    <button
+      type="button"
+      onClick={() => setShowHowTo(true)}
+      className="font-jakarta shrink-0"
+      style={{
+        background: "rgba(255,255,255,0.12)",
+        color: "#ffd84d",
+        borderRadius: "99px",
+        padding: "2px 10px",
+        fontSize: "11px",
+        fontWeight: 700,
+        border: "none",
+        cursor: "pointer"
+      }}
+    >
+      ? How to use
+    </button>
+  ) : null;
+
   const heroCard = (
     <div
       className="rounded-[32px] px-4 py-5 font-jakarta"
@@ -1184,38 +1221,9 @@ export default function FirstLineFlow() {
     </div>
   );
 
-  const guideListen =
-    onboardingHydrated &&
-    phase === "flow" &&
-    content &&
-    flowStep === "listen" &&
-    ((!onboardingDone && !dismissListenGuide) || (onboardingDone && helpReplayActive));
-
-  const guideWords =
-    onboardingHydrated &&
-    phase === "flow" &&
-    content &&
-    flowStep === "understand" &&
-    vocab.length > 0 &&
-    ((!onboardingDone && !dismissWordsGuide) || (onboardingDone && helpReplayActive));
-
-  const guideRepeat =
-    onboardingHydrated &&
-    phase === "flow" &&
-    content &&
-    flowStep === "repeat" &&
-    ((!onboardingDone && !dismissRepeatGuide) || (onboardingDone && helpReplayActive));
-
-  const showOnboardingDim = guideListen || guideWords || guideRepeat;
-
   return (
     <>
       <Analytics />
-      {onboardingHydrated && onboardingDone && phase === "flow" && (flowStep === "listen" || flowStep === "understand" || flowStep === "repeat") ? (
-        <button type="button" className="help-button font-jakarta" onClick={() => setHelpReplayActive(true)}>
-          ? How to use
-        </button>
-      ) : null}
       {showDay3SignupModal ? (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 font-jakarta"
@@ -1271,8 +1279,7 @@ export default function FirstLineFlow() {
         className="relative min-h-screen px-4 py-8 font-jakarta"
         style={{ backgroundColor: "var(--surface)", color: "var(--on-surface)" }}
       >
-        {showOnboardingDim ? <div className="onboarding-overlay" aria-hidden /> : null}
-        <div className="relative z-[110] mx-auto w-full max-w-[480px]">
+        <div className="relative mx-auto w-full max-w-[480px]">
           {phase === "pick" && (
             <div className="animate-fade-in-up">
               <h1 className="text-center text-xl font-bold leading-snug sm:text-2xl">{tx(L, "fl_vibeHeading")}</h1>
@@ -1296,7 +1303,7 @@ export default function FirstLineFlow() {
           )}
 
           {phase === "flow" && content && (
-            <div className="animate-fade-in-up">
+            <div className="animate-fade-in-up relative rounded-[20px]">
               {flowStep === "result" ? (
                 <>
                   <ProgressDots allComplete />
@@ -1541,9 +1548,14 @@ export default function FirstLineFlow() {
 
               {flowStep === "listen" && (
                 <>
-                  <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
-                    {tx(L, "fl5_over_listen")}
-                  </p>
+                  <div className="relative flex min-h-[28px] items-center justify-center px-1">
+                    <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
+                      {tx(L, "fl5_over_listen")}
+                    </p>
+                    {howToUseButton ? (
+                      <div className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center">{howToUseButton}</div>
+                    ) : null}
+                  </div>
                   <div
                     ref={heroCardWrapRef}
                     className="mt-4"
@@ -1555,12 +1567,9 @@ export default function FirstLineFlow() {
                     type="button"
                     onClick={onListenMain}
                     disabled={ttsLoading}
-                    className={`${step1PrimaryBtn} mt-6 ${guideListen ? "onboarding-highlight" : ""}`}
+                    className={`${step1PrimaryBtn} mt-6`}
                     style={primaryStyle}
                   >
-                    {guideListen ? (
-                      <div className="onboarding-tooltip">👆 Tap to hear the sentence — listen 3 times!</div>
-                    ) : null}
                     <span>{tx(L, "fl5_btn_listen")}</span>
                     <span
                       className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
@@ -1582,9 +1591,14 @@ export default function FirstLineFlow() {
 
               {flowStep === "understand" && (
                 <>
-                  <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
-                    {tx(L, "fl5_over_understand")}
-                  </p>
+                  <div className="relative flex min-h-[28px] items-center justify-center px-1">
+                    <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
+                      {tx(L, "fl5_over_understand")}
+                    </p>
+                    {howToUseButton ? (
+                      <div className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center">{howToUseButton}</div>
+                    ) : null}
+                  </div>
                   {situationText ? (
                     <div className="mt-4 rounded-[28px] px-4 py-4" style={{ backgroundColor: "var(--surface-low)" }}>
                       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
@@ -1602,19 +1616,15 @@ export default function FirstLineFlow() {
                       {vocab.map((row, i) => {
                         const done = listenedWords.has(i);
                         const playing = playingWordIdx === i;
-                        const wordGuide = guideWords && i === 0;
                         return (
                           <li
                             key={`${row.word}-${i}`}
-                            className={`flex items-center justify-between gap-3 rounded-[20px] px-3 py-3 transition ${wordGuide ? "onboarding-highlight" : ""}`}
+                            className="flex items-center justify-between gap-3 rounded-[20px] px-3 py-3 transition"
                             style={{
                               opacity: done ? 0.65 : 1,
                               backgroundColor: playing ? "rgba(42,20,180,0.06)" : "transparent"
                             }}
                           >
-                            {wordGuide ? (
-                              <div className="onboarding-tooltip">👆 Tap each word to hear how it sounds!</div>
-                            ) : null}
                             <button
                               type="button"
                               onClick={() => onWordRow(row.word, i)}
@@ -1651,9 +1661,14 @@ export default function FirstLineFlow() {
 
               {flowStep === "repeat" && (
                 <>
-                  <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
-                    {tx(L, "fl5_over_repeat")}
-                  </p>
+                  <div className="relative flex min-h-[28px] items-center justify-center px-1">
+                    <p className="text-center text-[10px] font-bold uppercase tracking-[0.1em] text-[#2a14b4]">
+                      {tx(L, "fl5_over_repeat")}
+                    </p>
+                    {howToUseButton ? (
+                      <div className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center">{howToUseButton}</div>
+                    ) : null}
+                  </div>
                   <div className="mt-4">{heroCard}</div>
                   <p className="mt-2 text-center text-[12px] text-[var(--on-surface-variant)]">{tx(L, "fl5_repeat_hint")}</p>
                   <button
@@ -1675,7 +1690,7 @@ export default function FirstLineFlow() {
                     type="button"
                     onClick={() => void handleRepeatMicPress()}
                     disabled={!getSpeechRecognition() || repeatMicUi === "preparing"}
-                    className={`${repeatDone && !isListening && repeatMicUi !== "preparing" ? secondaryBtn : primaryBtn} mt-3 flex items-center justify-center gap-2 ${guideRepeat ? "onboarding-highlight" : ""}`}
+                    className={`${repeatDone && !isListening && repeatMicUi !== "preparing" ? secondaryBtn : primaryBtn} mt-3 flex items-center justify-center gap-2`}
                     style={
                       repeatDone && !isListening && repeatMicUi !== "preparing"
                         ? undefined
@@ -1684,9 +1699,6 @@ export default function FirstLineFlow() {
                           : primaryStyle
                     }
                   >
-                    {guideRepeat ? (
-                      <div className="onboarding-tooltip">🎤 Tap the mic and say the sentence out loud!</div>
-                    ) : null}
                     {(isListening || repeatMicUi === "recording") && (
                       <span className="fl5-recording-dot" aria-hidden />
                     )}
@@ -1882,6 +1894,71 @@ export default function FirstLineFlow() {
               ) : null}
                 </>
               )}
+              {showOnboardingDim ? <div style={onboardingDimStyle} aria-hidden /> : null}
+              {showFirstVisitGuide && currentOnboardingGuide ? (
+                <div
+                  style={onboardingSheetStyle}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="fl-onboarding-first-title"
+                >
+                  <p id="fl-onboarding-first-title" style={{ color: "#6c2eff", fontSize: "11px", fontWeight: 700 }}>
+                    {currentOnboardingGuide.label}
+                  </p>
+                  <p style={{ color: "#1a1a2e", fontSize: "14px", fontWeight: 700, margin: "6px 0 12px" }}>
+                    {currentOnboardingGuide.text}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleFirstVisitGotIt}
+                    style={{
+                      background: "#6c2eff",
+                      color: "#fff",
+                      borderRadius: "99px",
+                      padding: "10px 0",
+                      width: "100%",
+                      fontWeight: 700,
+                      fontSize: "14px",
+                      border: "none",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {currentOnboardingGuide.firstVisitBtn}
+                  </button>
+                </div>
+              ) : null}
+              {showHowToModal && currentOnboardingGuide ? (
+                <div
+                  style={onboardingSheetStyle}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="fl-onboarding-howto-title"
+                >
+                  <p id="fl-onboarding-howto-title" style={{ color: "#6c2eff", fontSize: "11px", fontWeight: 700 }}>
+                    {currentOnboardingGuide.label}
+                  </p>
+                  <p style={{ color: "#1a1a2e", fontSize: "14px", fontWeight: 700, margin: "6px 0 12px" }}>
+                    {currentOnboardingGuide.text}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowHowTo(false)}
+                    style={{
+                      background: "#f3f0ff",
+                      color: "#6c2eff",
+                      borderRadius: "99px",
+                      padding: "10px 0",
+                      width: "100%",
+                      fontWeight: 700,
+                      fontSize: "14px",
+                      border: "none",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : null}
             </div>
           )}
         </div>
