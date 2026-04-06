@@ -1485,7 +1485,7 @@ export default function FirstLineFlow() {
                   </p>
                   <div
                     ref={heroCardWrapRef}
-                    className={`mt-4 ${onboardingStep === 2 ? "rounded-[28px] ring-[3px] ring-white/80 ring-offset-2 ring-offset-[var(--surface)]" : ""}`}
+                    className="mt-4"
                   >
                     {heroCard}
                   </div>
@@ -1494,9 +1494,14 @@ export default function FirstLineFlow() {
                     type="button"
                     onClick={onListenMain}
                     disabled={ttsLoading}
-                    className={`${step1PrimaryBtn} mt-6 ${onboardingStep === 1 ? "ring-[3px] ring-white/80 ring-offset-2 ring-offset-[var(--surface)]" : ""}`}
+                    className={`${step1PrimaryBtn} mt-6 ${onboarding.open && onboarding.key === "listen" ? "onboarding-highlight" : ""}`}
                     style={primaryStyle}
                   >
+                    {onboarding.open && onboarding.key === "listen" ? (
+                      <div className="onboarding-tooltip">
+                        👆 Tap to hear the sentence — listen 3 times before moving on!
+                      </div>
+                    ) : null}
                     <span>{tx(L, "fl5_btn_listen")}</span>
                     <span
                       className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
@@ -1508,16 +1513,6 @@ export default function FirstLineFlow() {
                   <button type="button" onClick={onListenSlow} disabled={ttsLoading} className={`${secondaryBtn} mt-3`}>
                     {tx(L, "fl5_btn_slow")}
                   </button>
-                  {onboardingStep === 3 ? (
-                    <div
-                      ref={speakPreviewRef}
-                      className="mt-4 flex justify-center rounded-2xl p-3 ring-[3px] ring-white/80 ring-offset-2 ring-offset-[var(--surface)]"
-                    >
-                      <span className="text-[13px] font-semibold text-[#2a14b4]" aria-hidden>
-                        🎤
-                      </span>
-                    </div>
-                  ) : null}
                   {listenCount >= 3 ? (
                     <button type="button" onClick={goNextFromListen} className={`${nextStepBtn} mt-6`}>
                       {tx(L, "fl5_next_vocab")}
@@ -1825,49 +1820,6 @@ export default function FirstLineFlow() {
           )}
         </div>
       </main>
-      {phase === "flow" && flowStep === "listen" && onboardingStep > 0 ? (
-        <div
-          className="fixed inset-0 z-[100] flex items-end justify-center p-4 pb-8 sm:items-center sm:p-6"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="fl-onboard-title"
-        >
-          <div
-            className="w-full max-w-[340px] rounded-2xl bg-white px-4 py-[14px]"
-            style={{ boxShadow: "0 20px 50px rgba(0,0,0,0.15)" }}
-          >
-            <p id="fl-onboard-title" className="text-center text-[14px] font-semibold leading-snug text-[#1a1c1d]">
-              {onboardingStep === 1
-                ? tx(L, "fl5_onboard_1")
-                : onboardingStep === 2
-                  ? tx(L, "fl5_onboard_2")
-                  : tx(L, "fl5_onboard_3")}
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                if (onboardingStep < 3) {
-                  setOnboardingStep(onboardingStep + 1);
-                  return;
-                }
-                if (typeof window !== "undefined") {
-                  try {
-                    window.localStorage.setItem(KKOBI_ONBOARDING_DONE_KEY, "true");
-                  } catch {
-                    // ignore
-                  }
-                }
-                setOnboardingStep(0);
-              }}
-              className={`${primaryBtn} mx-auto mt-4 max-w-[200px] px-5 py-2 text-[13px]`}
-              style={primaryStyle}
-            >
-              {onboardingStep < 3 ? tx(L, "fl5_onboard_cta") : tx(L, "fl5_onboard_start")}
-            </button>
-          </div>
-        </div>
-      ) : null}
     </>
   );
 }
