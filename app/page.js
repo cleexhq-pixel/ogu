@@ -33,18 +33,6 @@ const LANG_FLAG = /** @type {const} */ ({
   pt: "🇵🇹"
 });
 
-function ArrowCircleIcon() {
-  return (
-    <span
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg leading-none text-white"
-      style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
-      aria-hidden
-    >
-      →
-    </span>
-  );
-}
-
 /** @param {number} day @param {'idol'|'drama'|'trip'} vibe */
 function journeyHomeTitleI18nKey(day, vibe) {
   const v = normalizeVibe(vibe);
@@ -145,7 +133,6 @@ export default function HomePage() {
   const langMenuRef = useRef(null);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [selectedVibe, setSelectedVibe] = useState("idol");
-  const [onboardingVibe, setOnboardingVibe] = useState("idol");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -247,7 +234,6 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof window === "undefined" || !showOnboardingModal) return;
     const v = normalizeVibe(window.localStorage.getItem(OGU_VIBE_KEY));
-    setOnboardingVibe(v);
     setSelectedVibe(v);
   }, [showOnboardingModal]);
 
@@ -360,6 +346,67 @@ export default function HomePage() {
   const activeUsersBannerText =
     activeSessionCount != null ? tx(L, "active_users", { n: activeSessionCount }) : null;
 
+  const onboardingCopy = (() => {
+    switch (L) {
+      case "id":
+        return {
+          headlineA: "Pilih gayamu",
+          accent: "bicara.",
+          subtitle: "Pilih gaya — kami akan memberi kamu kalimat pertama yang sempurna.",
+          overline: "YOUR STYLE",
+          browse: "atau jelajahi dulu",
+          noAccount: "Tidak perlu akun · Gratis dicoba",
+          cards: {
+            idol: { title: "Idola favoritku", sub: "Ungkapkan cintamu pada K-pop" },
+            drama: { title: "Dialog K-drama", sub: "Momen drama yang ikonik" },
+            trip: { title: "Perjalanan ke Korea", sub: "Frasa untuk kunjunganmu" }
+          }
+        };
+      case "fr":
+        return {
+          headlineA: "Choisissez votre style",
+          accent: "parlez.",
+          subtitle: "Choisissez un style — nous vous donnerons la première ligne parfaite.",
+          overline: "YOUR STYLE",
+          browse: "ou parcourir d'abord",
+          noAccount: "Aucun compte requis · Gratuit",
+          cards: {
+            idol: { title: "Mon idole préférée", sub: "Exprimez votre amour du K-pop" },
+            drama: { title: "Réplique K-drama", sub: "Moments dramatiques iconiques" },
+            trip: { title: "Voyage en Corée", sub: "Phrases pour votre visite" }
+          }
+        };
+      case "pt":
+        return {
+          headlineA: "Escolha seu estilo",
+          accent: "fale.",
+          subtitle: "Escolha um estilo — daremos a você a linha perfeita para começar.",
+          overline: "YOUR STYLE",
+          browse: "ou explorar primeiro",
+          noAccount: "Sem conta necessária · Grátis",
+          cards: {
+            idol: { title: "Meu idol favorito", sub: "Expresse seu amor pelo K-pop" },
+            drama: { title: "Fala de K-drama", sub: "Momentos icônicos do drama" },
+            trip: { title: "Viagem à Coreia", sub: "Frases para sua visita" }
+          }
+        };
+      default:
+        return {
+          headlineA: "Pick your vibe",
+          accent: "speak.",
+          subtitle: "Choose a style — we'll give you the perfect first line.",
+          overline: "YOUR STYLE",
+          browse: "or browse first",
+          noAccount: "No account required · Free to try",
+          cards: {
+            idol: { title: "My favorite idol", sub: "Express your K-pop love" },
+            drama: { title: "K-drama line", sub: "Iconic drama moments" },
+            trip: { title: "Korea trip", sub: "Phrases for your visit" }
+          }
+        };
+    }
+  })();
+
   const heroJourneyComplete = journeyCurrent >= JOURNEY_DONE_MARKER;
   const heroDay =
     !heroJourneyComplete && journeyCurrent >= 1 && journeyCurrent <= MAX_JOURNEY_DAY ? journeyCurrent : null;
@@ -425,96 +472,94 @@ export default function HomePage() {
           aria-labelledby="onboarding-modal-title"
         >
           <div
-            className="mx-auto flex w-full max-w-[480px] flex-1 flex-col min-h-0 justify-between px-6 pt-9 pb-8 min-[480px]:mt-[60px] min-[480px]:max-h-[calc(100vh-80px)] min-[480px]:flex-none min-[480px]:overflow-y-auto min-[480px]:rounded-[32px] min-[480px]:bg-[#ffffff] min-[480px]:px-10 min-[480px]:pt-12 min-[480px]:pb-10 min-[480px]:shadow-[0_20px_60px_rgba(0,0,0,0.12)]"
+            className="mx-auto flex w-full max-w-[480px] flex-1 flex-col min-h-0 justify-between overflow-hidden bg-[#ffffff] px-6 pb-10 pt-12 min-[480px]:mt-[60px] min-[480px]:max-h-[calc(100vh-80px)] min-[480px]:flex-none min-[480px]:rounded-[32px] min-[480px]:px-6 min-[480px]:shadow-[0_20px_60px_rgba(0,0,0,0.12)]"
+            style={{ padding: "48px 24px 40px" }}
           >
-          <div className="flex min-h-0 flex-1 flex-col min-[480px]:flex-none">
-            <p className="mb-5 inline-flex max-w-full rounded-[20px] bg-[var(--surface-low)] px-[14px] py-[7px] text-[11px] font-bold text-[var(--on-surface-variant)]">
-              🪄 Speak 한국어 from Day 1
-            </p>
-            <h2
-              id="onboarding-modal-title"
-              className="text-[30px] font-extrabold leading-[1.1] tracking-[-0.8px] text-[var(--on-surface)] min-[480px]:text-[36px]"
-            >
-              <span className="block">Say your first</span>
-              <span className="block">Korean sentence</span>
-              <span className="block">
-                <span className="text-[var(--on-surface)]">in </span>
-                <span className="font-light italic text-[var(--primary)]">30 seconds.</span>
-              </span>
-            </h2>
-            <div className="mb-5 mt-4 space-y-1 text-[15px] leading-[1.65] text-[var(--on-surface-variant)]">
-              <p className="block">Pick your vibe —</p>
-              <p className="block">we&apos;ll find the perfect first line for you.</p>
+            <div className="flex min-h-0 flex-1 flex-col min-[480px]:flex-none">
+              <h1
+                id="onboarding-modal-title"
+                className="text-[34px] font-extrabold leading-[1.15] tracking-[-0.8px] text-[#1a1c1d]"
+                style={{ wordBreak: L === "en" ? "break-word" : "keep-all" }}
+              >
+                {onboardingCopy.headlineA}
+                <br />&{" "}
+                <span style={{ color: "#2a14b4", fontStyle: "italic" }}>{onboardingCopy.accent}</span>
+              </h1>
+              <p className="mt-2 text-[15px] leading-[1.5] text-[#6b6f72]" style={{ marginBottom: 32 }}>
+                {onboardingCopy.subtitle}
+              </p>
+
+              <p
+                className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b6f72]"
+                style={{ marginBottom: 12 }}
+              >
+                {onboardingCopy.overline}
+              </p>
+
+              <div className="flex w-full max-w-full flex-col overflow-hidden">
+                {/** Cards are the CTA */}
+                {/** @type {Array<{cat:'idol'|'drama'|'trip'; icon:string}>} */}
+                {[
+                  { cat: "idol", icon: "👑" },
+                  { cat: "drama", icon: "🎬" },
+                  { cat: "trip", icon: "✈️" }
+                ].map(({ cat, icon }) => {
+                  const title = onboardingCopy.cards[cat].title;
+                  const sub = onboardingCopy.cards[cat].sub;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        setShowOnboardingModal(false);
+                        goFirstLine(cat);
+                      }}
+                      className="group mb-[10px] flex w-full max-w-full items-center gap-[14px] rounded-[20px] border-2 border-transparent bg-[#f9f9fb] px-[18px] py-4 text-left transition-all duration-150 hover:border-[#2a14b4] hover:bg-[#2a14b4] active:scale-[0.99]"
+                    >
+                      <span
+                        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[14px] bg-white text-[22px] leading-none transition-all duration-150 group-hover:bg-[rgba(255,255,255,0.15)]"
+                        aria-hidden
+                      >
+                        {icon}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] font-bold text-[#1a1c1d] group-hover:text-white">
+                          {title}
+                        </span>
+                        <span className="mt-0.5 block text-[12px] text-[#6b6f72] group-hover:text-[rgba(255,255,255,0.7)]">
+                          {sub}
+                        </span>
+                      </span>
+                      <span
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2a14b4] transition-all duration-150 group-hover:bg-[rgba(255,255,255,0.25)]"
+                        aria-hidden
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path
+                            d="M3 7h8M8 4l3 3-3 3"
+                            stroke="white"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <p
-              className="mb-2.5 mt-0 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--on-surface-variant)]"
-              style={{ letterSpacing: "0.12em" }}
-            >
-              CHOOSE YOUR STYLE
-            </p>
-            <div className="flex min-h-0 w-full max-w-full flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden min-[480px]:flex-none min-[480px]:overflow-visible">
-              {[
-                { cat: "idol", title: "My favorite idol", sub: "Express your K-pop love" },
-                { cat: "drama", title: "K-drama line", sub: "Iconic drama moments" },
-                { cat: "trip", title: "Korea trip", sub: "Phrases for your visit" }
-              ].map(({ cat, title, sub }) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== "undefined") {
-                      window.localStorage.setItem(OGU_VIBE_KEY, cat);
-                    }
-                    setOnboardingVibe(cat);
-                    setSelectedVibe(normalizeVibe(cat));
-                  }}
-                  className={`group flex w-full max-w-full shrink-0 items-center gap-3 rounded-[32px] border-2 border-solid px-4 py-3 text-left transition ${
-                    onboardingVibe === cat
-                      ? "border-[#2a14b4] bg-[#edeafd]"
-                      : "border-transparent bg-[var(--surface-low)] hover:border-[rgba(42,20,180,0.2)] hover:bg-[#edeafd]"
-                  }`}
-                >
-                  <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] bg-[var(--surface-lowest)] text-[18px] leading-none"
-                    aria-hidden
-                  >
-                    {cat === "idol" ? "👑" : cat === "drama" ? "🎬" : "✈️"}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-bold text-[var(--on-surface)]">{title}</span>
-                    <span className="mt-0.5 block text-[12px] text-[var(--on-surface-variant)]">{sub}</span>
-                  </span>
-                </button>
-              ))}
+
+            <div className="w-full max-w-full shrink-0 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowOnboardingModal(false)}
+                className="w-full max-w-full text-center text-[13px] text-[#6b6f72] underline underline-offset-2 transition hover:opacity-80"
+              >
+                {onboardingCopy.browse}
+              </button>
+              <p className="mt-[10px] text-center text-[12px] text-[#9ca3af]">{onboardingCopy.noAccount}</p>
             </div>
-          </div>
-          <div className="w-full max-w-full shrink-0 space-y-4 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setShowOnboardingModal(false);
-                goFirstLine(onboardingVibe);
-              }}
-              className="flex min-h-[56px] w-full max-w-full items-center justify-between gap-3 rounded-[24px] px-6 py-[14px] text-[15px] font-bold text-white transition hover:brightness-105 active:scale-[0.99]"
-              style={{
-                background: "linear-gradient(135deg, #2a14b4, #4338ca)",
-                boxShadow: "var(--shadow-active)"
-              }}
-            >
-              <span>Say it now</span>
-              <ArrowCircleIcon />
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowOnboardingModal(false)}
-              className="w-full max-w-full text-center text-[13px] text-[var(--on-surface-variant)] underline underline-offset-2 transition hover:opacity-80"
-            >
-              or browse first
-            </button>
-            <p className="text-center text-[11px] opacity-50 text-[var(--on-surface)]">
-              No account required · Free to try
-            </p>
-          </div>
           </div>
         </div>
       )}
