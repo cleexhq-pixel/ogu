@@ -348,6 +348,131 @@ function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
+/** @returns {'ssr' | 'not-supported' | 'unsupported-browser' | 'supported'} */
+function checkSpeechSupport() {
+  if (typeof window === "undefined") return "ssr";
+  const hasAPI = "SpeechRecognition" in window || "webkitSpeechRecognition" in window;
+  if (!hasAPI) return "not-supported";
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes("samsungbrowser") || ua.includes("firefox") || ua.includes("opr") || ua.includes("brave")) {
+    return "unsupported-browser";
+  }
+  return "supported";
+}
+
+/** @param {{ L: import("@/app/lib/i18n").UILang; pageUrl: string; showTryAnyway: boolean; onTryAnyway: () => void }} props */
+function FlBrowserNotSupportedCard({ L, pageUrl, showTryAnyway, onTryAnyway }) {
+  const android = typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+  const chromeHref =
+    pageUrl && android ? `googlechrome://navigate?url=${encodeURIComponent(pageUrl)}` : "https://www.google.com/chrome/";
+
+  return (
+    <div
+      style={{
+        background: "#fff7ed",
+        border: "1.5px solid rgba(234,179,8,0.3)",
+        borderRadius: "20px",
+        padding: "16px",
+        textAlign: "center"
+      }}
+    >
+      <div style={{ fontSize: "28px", marginBottom: "8px" }} aria-hidden>
+        🌐
+      </div>
+      <div style={{ fontSize: "14px", fontWeight: 700, color: "#92400e", marginBottom: "6px" }}>
+        {tx(L, "fl_browser_not_supported_title")}
+      </div>
+      <div style={{ fontSize: "13px", color: "#b45309", lineHeight: "1.6", marginBottom: "14px" }}>
+        {tx(L, "fl_browser_not_supported_desc")}
+      </div>
+      <a
+        href={chromeHref}
+        style={{
+          display: "block",
+          width: "100%",
+          padding: "12px",
+          background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+          color: "white",
+          borderRadius: "14px",
+          fontSize: "14px",
+          fontWeight: 700,
+          textDecoration: "none",
+          textAlign: "center",
+          marginBottom: "8px"
+        }}
+      >
+        {tx(L, "fl_open_in_chrome")}
+      </a>
+      {showTryAnyway ? (
+        <button
+          type="button"
+          onClick={onTryAnyway}
+          className="font-jakarta"
+          style={{
+            width: "100%",
+            marginBottom: "8px",
+            padding: "8px",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "#b45309",
+            textDecoration: "underline"
+          }}
+        >
+          {tx(L, "fl_stt_try_anyway")}
+        </button>
+      ) : null}
+      <div style={{ fontSize: "11px", color: "#9ca3af" }}>{tx(L, "fl_browser_not_supported_hint")}</div>
+    </div>
+  );
+}
+
+/** @param {{ L: import("@/app/lib/i18n").UILang; onRetry: () => void }} props */
+function FlMicPermissionDeniedCard({ L, onRetry }) {
+  return (
+    <div
+      style={{
+        background: "#fef2f2",
+        border: "1.5px solid rgba(239,68,68,0.2)",
+        borderRadius: "20px",
+        padding: "16px",
+        textAlign: "center",
+        marginTop: "8px"
+      }}
+    >
+      <div style={{ fontSize: "24px", marginBottom: "8px" }} aria-hidden>
+        🎤
+      </div>
+      <div style={{ fontSize: "14px", fontWeight: 700, color: "#991b1b", marginBottom: "6px" }}>
+        {tx(L, "fl_mic_permission_title")}
+      </div>
+      <div style={{ fontSize: "13px", color: "#b91c1c", lineHeight: "1.6", marginBottom: "14px" }}>
+        {tx(L, "fl_mic_permission_desc")}
+      </div>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="font-jakarta"
+        style={{
+          width: "100%",
+          padding: "12px",
+          background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+          color: "white",
+          borderRadius: "14px",
+          fontSize: "14px",
+          fontWeight: 700,
+          border: "none",
+          cursor: "pointer"
+        }}
+      >
+        {tx(L, "fl_stt_try_again")}
+      </button>
+    </div>
+  );
+}
+
 async function requestMicrophoneAccess() {
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
     return { ok: true };
@@ -473,6 +598,7 @@ export default function FirstLineFlow() {
   const uiLang = normalizeLang(searchParams.get("lang") || "en");
   const uiLangRef = useRef(uiLang);
   uiLangRef.current = uiLang;
+
   const L = uiLang;
 
   const [phase, setPhase] = useState(/** @type {Phase} */ ("pick"));
@@ -484,6 +610,17 @@ export default function FirstLineFlow() {
   const [isListening, setIsListening] = useState(false);
   const [isRequestingMic, setIsRequestingMic] = useState(false);
   const [micHint, setMicHint] = useState(null);
+  /** @type {[ 'pending' | 'not-supported' | 'unsupported-browser' | 'supported', import('react').Dispatch<import('react').SetStateAction<'pending' | 'not-supported' | 'unsupported-browser' | 'supported'>> ]} */
+  const [speechSupport, setSpeechSupport] = useState(/** @type {'pending' | 'not-supported' | 'unsupported-browser' | 'supported'} */ ("pending"));
+  const [speechTryAnyway, setSpeechTryAnyway] = useState(false);
+  const [clientPageUrl, setClientPageUrl] = useState("");
+  const [sttPermissionDenied, setSttPermissionDenied] = useState(false);
+  const [sttHintOverride, setSttHintOverride] = useState(/** @type {string | null} */ (null));
+
+  const speechBlockMic =
+    speechSupport !== "pending" &&
+    (speechSupport === "not-supported" || (speechSupport === "unsupported-browser" && !speechTryAnyway));
+
   const [journeyDay, setJourneyDay] = useState(1);
   const [signupModalDismissed, setSignupModalDismissed] = useState(false);
   const [signupBusy, setSignupBusy] = useState(false);
@@ -530,6 +667,13 @@ export default function FirstLineFlow() {
       setOnboardingDone(true);
     }
     setOnboardingHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setClientPageUrl(window.location.href);
+    const level = checkSpeechSupport();
+    if (level !== "ssr") setSpeechSupport(level);
   }, []);
 
   const clearSttTimers = useCallback(() => {
@@ -892,6 +1036,8 @@ export default function FirstLineFlow() {
       setIsRequestingMic(false);
       setIsListening(true);
       setMicHint(null);
+      setSttPermissionDenied(false);
+      setSttHintOverride(null);
       sttTranscriptRef.current = "";
       const p = sttPurposeRef.current;
       if (p === "repeat") setRepeatMicUi("recording");
@@ -905,6 +1051,9 @@ export default function FirstLineFlow() {
     };
 
     recognition.onerror = (event) => {
+      if (typeof window !== "undefined") {
+        console.error("[Speech] error:", event.error);
+      }
       clearSttTimers();
       clearPrepareTimer();
       setIsRequestingMic(false);
@@ -912,10 +1061,27 @@ export default function FirstLineFlow() {
       const p = sttPurposeRef.current;
       if (p === "repeat") setRepeatMicUi("idle");
       if (p === "recall") setRecallMicUi("idle");
-      if (event.error === "not-allowed" || event.error === "denied" || event.error === "service-not-allowed") {
-        setMicHint(tx(uiLangRef.current, "fl_micAllow"));
-      } else if (event.error !== "aborted") {
-        setMicHint(tx(uiLangRef.current, "fl_micFail"));
+      const lang = uiLangRef.current;
+      switch (event.error) {
+        case "not-allowed":
+        case "denied":
+        case "service-not-allowed":
+          setSttPermissionDenied(true);
+          setMicHint(null);
+          break;
+        case "no-speech":
+          setSttHintOverride(tx(lang, "fl_stt_no_speech_hint"));
+          break;
+        case "network":
+          setSttHintOverride(tx(lang, "fl_stt_network_error_hint"));
+          break;
+        case "aborted":
+          break;
+        default:
+          if (event.error !== "aborted") {
+            setSttHintOverride(tx(lang, "fl_stt_generic_error"));
+          }
+          break;
       }
     };
 
@@ -970,6 +1136,8 @@ export default function FirstLineFlow() {
       } catch (_) {}
       setIsListening(false);
       setIsRequestingMic(false);
+      setSttPermissionDenied(false);
+      setSttHintOverride(null);
     }
   }, [flowStep, clearSttTimers]);
 
@@ -982,7 +1150,8 @@ export default function FirstLineFlow() {
         if (navigator.permissions?.query) {
           const result = await navigator.permissions.query({ name: "microphone" });
           if (result.state === "denied") {
-            setMicHint(tx(uiLangRef.current, "fl_micAllow"));
+            setSttPermissionDenied(true);
+            setMicHint(null);
             if (purpose === "repeat") setRepeatMicUi("idle");
             if (purpose === "recall") setRecallMicUi("idle");
             return;
@@ -991,6 +1160,7 @@ export default function FirstLineFlow() {
       } catch (_) {}
 
       setMicHint(null);
+      setSttPermissionDenied(false);
       setUserInput("");
       sttTranscriptRef.current = "";
       sttPurposeRef.current = purpose;
@@ -999,7 +1169,8 @@ export default function FirstLineFlow() {
         const mic = await requestMicrophoneAccess();
         if (!mic.ok && mic.denied) {
           setIsRequestingMic(false);
-          setMicHint(tx(uiLangRef.current, "fl_micAllow"));
+          setSttPermissionDenied(true);
+          setMicHint(null);
           if (purpose === "repeat") setRepeatMicUi("idle");
           if (purpose === "recall") setRecallMicUi("idle");
           return;
@@ -1012,7 +1183,8 @@ export default function FirstLineFlow() {
         console.warn("SpeechRecognition start failed", e);
         clearSttTimers();
         setIsRequestingMic(false);
-        setMicHint(tx(uiLangRef.current, "fl_micAllow"));
+        setSttPermissionDenied(true);
+        setMicHint(null);
         if (purpose === "repeat") setRepeatMicUi("idle");
         if (purpose === "recall") setRecallMicUi("idle");
       }
@@ -1024,6 +1196,7 @@ export default function FirstLineFlow() {
     (/** @type {'repeat'|'recall'} */ purpose) => {
       if (typeof window === "undefined") return;
       clearPrepareTimer();
+      setSttHintOverride(null);
       if (purpose === "repeat") setRepeatMicUi("preparing");
       else setRecallMicUi("preparing");
       prepareTimerRef.current = window.setTimeout(() => {
@@ -1048,6 +1221,7 @@ export default function FirstLineFlow() {
   }, [isListening, clearSttTimers, clearPrepareTimer]);
 
   const handleRepeatMicPress = useCallback(() => {
+    if (speechBlockMic) return;
     if (!getSpeechRecognition()) return;
     if (isListening) {
       stopVoiceInput();
@@ -1061,9 +1235,10 @@ export default function FirstLineFlow() {
       setRepeatMicUi("idle");
     }
     scheduleMicPrepare("repeat");
-  }, [isListening, repeatMicUi, repeatDone, stopVoiceInput, scheduleMicPrepare]);
+  }, [speechBlockMic, isListening, repeatMicUi, repeatDone, stopVoiceInput, scheduleMicPrepare]);
 
   const handleRecallMicPress = useCallback(() => {
+    if (speechBlockMic) return;
     if (!getSpeechRecognition()) return;
     if (isListening) {
       stopVoiceInput();
@@ -1078,7 +1253,15 @@ export default function FirstLineFlow() {
       setRecallMicUi("idle");
     }
     scheduleMicPrepare("recall");
-  }, [isListening, recallMicUi, recallDone, stopVoiceInput, scheduleMicPrepare]);
+  }, [speechBlockMic, isListening, recallMicUi, recallDone, stopVoiceInput, scheduleMicPrepare]);
+
+  const retrySttAfterPermission = useCallback(() => {
+    setSttPermissionDenied(false);
+    setMicHint(null);
+    if (speechBlockMic || !getSpeechRecognition()) return;
+    if (flowStep === "repeat") scheduleMicPrepare("repeat");
+    else if (flowStep === "recall") scheduleMicPrepare("recall");
+  }, [flowStep, speechBlockMic, scheduleMicPrepare]);
 
   const onListenMain = () => {
     if (!content?.ko) return;
@@ -1595,6 +1778,27 @@ export default function FirstLineFlow() {
               ) : (
                 <>
                   <ProgressDots active={flowIndex} />
+                  {(flowStep === "listen" || flowStep === "understand") && speechSupport === "unsupported-browser" ? (
+                    <div
+                      className="font-jakarta"
+                      style={{
+                        background: "#fff7ed",
+                        borderRadius: "12px",
+                        padding: "10px 14px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        marginBottom: "8px"
+                      }}
+                    >
+                      <span style={{ fontSize: "16px" }} aria-hidden>
+                        ⚠️
+                      </span>
+                      <span style={{ fontSize: "12px", color: "#92400e", lineHeight: "1.5" }}>
+                        {tx(L, "fl_chrome_recommended")}
+                      </span>
+                    </div>
+                  ) : null}
 
               {flowStep === "listen" && (
                 <>
@@ -1730,38 +1934,56 @@ export default function FirstLineFlow() {
                     {tx(L, "fl5_btn_listen_again")}
                   </button>
                   <p className="mx-auto mt-4 max-w-[340px] text-center text-[13px] leading-snug text-[#6b6f72]">
-                    {repeatDone
-                      ? tx(L, "fl5_mic_hint_done")
-                      : repeatMicUi === "preparing" || isListening
-                        ? tx(L, "fl5_mic_hint_listening")
-                        : tx(L, "fl5_mic_hint_idle_repeat")}
+                    {sttHintOverride
+                      ? sttHintOverride
+                      : repeatDone
+                        ? tx(L, "fl5_mic_hint_done")
+                        : repeatMicUi === "preparing" || isListening
+                          ? tx(L, "fl5_mic_hint_listening")
+                          : tx(L, "fl5_mic_hint_idle_repeat")}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => void handleRepeatMicPress()}
-                    disabled={!getSpeechRecognition() || repeatMicUi === "preparing"}
-                    className={`${repeatDone && !isListening && repeatMicUi !== "preparing" ? secondaryBtn : primaryBtn} mt-3 flex items-center justify-center gap-2`}
-                    style={
-                      repeatDone && !isListening && repeatMicUi !== "preparing"
-                        ? undefined
-                        : isListening || repeatMicUi === "recording"
-                          ? { background: "#dc2626", boxShadow: "0 8px 24px rgba(220,38,38,0.25)", color: "#fff" }
-                          : primaryStyle
-                    }
-                  >
-                    {(isListening || repeatMicUi === "recording") && (
-                      <span className="fl5-recording-dot" aria-hidden />
-                    )}
-                    <span className={repeatMicUi === "preparing" ? "fl5-mic-prepare-blink" : undefined}>
-                      {isListening || repeatMicUi === "recording"
-                        ? tx(L, "fl5_btn_mic_listening")
-                        : repeatMicUi === "preparing"
-                          ? tx(L, "fl5_btn_mic_prepare")
-                          : repeatDone
-                            ? tx(L, "fl5_btn_retry_speak")
-                            : tx(L, "fl5_btn_follow_speak")}
-                    </span>
-                  </button>
+                  {speechBlockMic ? (
+                    <div className="mt-3">
+                      <FlBrowserNotSupportedCard
+                        L={L}
+                        pageUrl={clientPageUrl}
+                        showTryAnyway={speechSupport === "unsupported-browser"}
+                        onTryAnyway={() => setSpeechTryAnyway(true)}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void handleRepeatMicPress()}
+                        disabled={!getSpeechRecognition() || repeatMicUi === "preparing"}
+                        className={`${repeatDone && !isListening && repeatMicUi !== "preparing" ? secondaryBtn : primaryBtn} mt-3 flex w-full items-center justify-center gap-2`}
+                        style={
+                          repeatDone && !isListening && repeatMicUi !== "preparing"
+                            ? undefined
+                            : isListening || repeatMicUi === "recording"
+                              ? { background: "#dc2626", boxShadow: "0 8px 24px rgba(220,38,38,0.25)", color: "#fff" }
+                              : primaryStyle
+                        }
+                      >
+                        {(isListening || repeatMicUi === "recording") && (
+                          <span className="fl5-recording-dot" aria-hidden />
+                        )}
+                        <span className={repeatMicUi === "preparing" ? "fl5-mic-prepare-blink" : undefined}>
+                          {isListening || repeatMicUi === "recording"
+                            ? tx(L, "fl5_btn_mic_listening")
+                            : repeatMicUi === "preparing"
+                              ? tx(L, "fl5_btn_mic_prepare")
+                              : repeatDone
+                                ? tx(L, "fl5_btn_retry_speak")
+                                : tx(L, "fl5_btn_follow_speak")}
+                        </span>
+                      </button>
+                      {sttPermissionDenied ? (
+                        <FlMicPermissionDeniedCard L={L} onRetry={retrySttAfterPermission} />
+                      ) : null}
+                    </>
+                  )}
                   {micHint ? <p className="mt-2 text-center text-xs text-red-600">{micHint}</p> : null}
                   {repeatDone ? (
                     <button type="button" onClick={() => setFlowStep("recall")} className={`${nextStepBtn} mt-6`}>
@@ -1824,50 +2046,84 @@ export default function FirstLineFlow() {
                   {!recallDone ? (
                     <>
                       <p className="mx-auto mt-6 max-w-[340px] text-center text-[13px] leading-snug text-[#6b6f72]">
-                        {recallMicUi === "preparing" || isListening
-                          ? tx(L, "fl5_mic_hint_listening")
-                          : tx(L, "fl5_mic_hint_idle_recall")}
+                        {sttHintOverride
+                          ? sttHintOverride
+                          : recallMicUi === "preparing" || isListening
+                            ? tx(L, "fl5_mic_hint_listening")
+                            : tx(L, "fl5_mic_hint_idle_recall")}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => void handleRecallMicPress()}
-                        disabled={!getSpeechRecognition() || recallMicUi === "preparing"}
-                        className={`${primaryBtn} mt-3 flex items-center justify-center gap-2`}
-                        style={
-                          isListening || recallMicUi === "recording"
-                            ? { background: "#dc2626", boxShadow: "0 8px 24px rgba(220,38,38,0.25)", color: "#fff" }
-                            : primaryStyle
-                        }
-                      >
-                        {(isListening || recallMicUi === "recording") && (
-                          <span className="fl5-recording-dot" aria-hidden />
-                        )}
-                        <span className={recallMicUi === "preparing" ? "fl5-mic-prepare-blink" : undefined}>
-                          {isListening || recallMicUi === "recording"
-                            ? tx(L, "fl5_btn_mic_listening")
-                            : recallMicUi === "preparing"
-                              ? tx(L, "fl5_btn_mic_prepare")
-                              : tx(L, "fl5_btn_speak_practice")}
-                        </span>
-                      </button>
+                      {speechBlockMic ? (
+                        <div className="mt-3">
+                          <FlBrowserNotSupportedCard
+                            L={L}
+                            pageUrl={clientPageUrl}
+                            showTryAnyway={speechSupport === "unsupported-browser"}
+                            onTryAnyway={() => setSpeechTryAnyway(true)}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void handleRecallMicPress()}
+                            disabled={!getSpeechRecognition() || recallMicUi === "preparing"}
+                            className={`${primaryBtn} mt-3 flex w-full items-center justify-center gap-2`}
+                            style={
+                              isListening || recallMicUi === "recording"
+                                ? { background: "#dc2626", boxShadow: "0 8px 24px rgba(220,38,38,0.25)", color: "#fff" }
+                                : primaryStyle
+                            }
+                          >
+                            {(isListening || recallMicUi === "recording") && (
+                              <span className="fl5-recording-dot" aria-hidden />
+                            )}
+                            <span className={recallMicUi === "preparing" ? "fl5-mic-prepare-blink" : undefined}>
+                              {isListening || recallMicUi === "recording"
+                                ? tx(L, "fl5_btn_mic_listening")
+                                : recallMicUi === "preparing"
+                                  ? tx(L, "fl5_btn_mic_prepare")
+                                  : tx(L, "fl5_btn_speak_practice")}
+                            </span>
+                          </button>
+                          {sttPermissionDenied ? (
+                            <FlMicPermissionDeniedCard L={L} onRetry={retrySttAfterPermission} />
+                          ) : null}
+                        </>
+                      )}
                     </>
                   ) : (
                     <>
                       <p className="mx-auto mt-6 max-w-[340px] text-center text-[13px] leading-snug text-[#6b6f72]">
                         {tx(L, "fl5_mic_hint_done")}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => void handleRecallMicPress()}
-                        disabled={!getSpeechRecognition() || recallMicUi === "preparing"}
-                        className={`${secondaryBtn} mt-3 flex items-center justify-center gap-2`}
-                      >
-                        {recallMicUi === "preparing" ? (
-                          <span className="fl5-mic-prepare-blink">{tx(L, "fl5_btn_mic_prepare")}</span>
-                        ) : (
-                          tx(L, "fl5_btn_retry_speak")
-                        )}
-                      </button>
+                      {speechBlockMic ? (
+                        <div className="mt-3">
+                          <FlBrowserNotSupportedCard
+                            L={L}
+                            pageUrl={clientPageUrl}
+                            showTryAnyway={speechSupport === "unsupported-browser"}
+                            onTryAnyway={() => setSpeechTryAnyway(true)}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void handleRecallMicPress()}
+                            disabled={!getSpeechRecognition() || recallMicUi === "preparing"}
+                            className={`${secondaryBtn} mt-3 flex w-full items-center justify-center gap-2`}
+                          >
+                            {recallMicUi === "preparing" ? (
+                              <span className="fl5-mic-prepare-blink">{tx(L, "fl5_btn_mic_prepare")}</span>
+                            ) : (
+                              tx(L, "fl5_btn_retry_speak")
+                            )}
+                          </button>
+                          {sttPermissionDenied ? (
+                            <FlMicPermissionDeniedCard L={L} onRetry={retrySttAfterPermission} />
+                          ) : null}
+                        </>
+                      )}
                     </>
                   )}
                   {micHint ? <p className="mt-2 text-center text-xs text-red-600">{micHint}</p> : null}

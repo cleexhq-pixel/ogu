@@ -71,7 +71,19 @@ export const FL5_STR = {
     fl_pre_tooltip_1: "Listen to the sentence 3 times before speaking",
     fl_pre_tooltip_2: "Tap each word to hear how it sounds",
     fl_pre_tooltip_3: "Tap 'Tap to speak' and say the sentence out loud!",
-    fl_pre_tooltip_start: "Let's start! →"
+    fl_pre_tooltip_start: "Let's start! →",
+    fl_browser_not_supported_title: "Voice not available in this browser",
+    fl_browser_not_supported_desc: "Please open Kkobi in Chrome for the full speaking experience.",
+    fl_open_in_chrome: "Open in Chrome",
+    fl_browser_not_supported_hint: "Copy the link and paste it in Chrome if the button doesn't work.",
+    fl_mic_permission_title: "Microphone access denied",
+    fl_mic_permission_desc: "Please allow microphone access in your browser settings and try again.",
+    fl_stt_try_again: "Try again",
+    fl_stt_no_speech_hint: "We didn't hear anything. Speak clearly and try again!",
+    fl_stt_network_error_hint: "Network error. Please check your connection and try again.",
+    fl_stt_generic_error: "Voice input had a problem. Please try again.",
+    fl_chrome_recommended: "For best experience, open in Chrome browser.",
+    fl_stt_try_anyway: "Try speaking anyway"
   },
   id: {
     fl5_over_listen: "STEP 1 · DENGAR",
@@ -144,7 +156,19 @@ export const FL5_STR = {
     fl_pre_tooltip_1: "Dengarkan kalimat 3 kali sebelum berbicara",
     fl_pre_tooltip_2: "Ketuk setiap kata untuk mendengar bunyinya",
     fl_pre_tooltip_3: "Ketuk 'Tap to speak' dan ucapkan kalimatnya keras-keras!",
-    fl_pre_tooltip_start: "Let's start! →"
+    fl_pre_tooltip_start: "Let's start! →",
+    fl_browser_not_supported_title: "Suara tidak tersedia di browser ini",
+    fl_browser_not_supported_desc: "Buka Kkobi di Chrome untuk pengalaman berbicara penuh.",
+    fl_open_in_chrome: "Buka di Chrome",
+    fl_browser_not_supported_hint: "Salin tautan dan tempel di Chrome jika tombol tidak berfungsi.",
+    fl_mic_permission_title: "Akses mikrofon ditolak",
+    fl_mic_permission_desc: "Izinkan akses mikrofon di pengaturan browser dan coba lagi.",
+    fl_stt_try_again: "Coba lagi",
+    fl_stt_no_speech_hint: "Kami tidak mendengar apapun. Bicaralah dengan jelas dan coba lagi!",
+    fl_stt_network_error_hint: "Kesalahan jaringan. Periksa koneksi dan coba lagi.",
+    fl_stt_generic_error: "Input suara bermasalah. Silakan coba lagi.",
+    fl_chrome_recommended: "Untuk pengalaman terbaik, buka di browser Chrome.",
+    fl_stt_try_anyway: "Coba bicara saja"
   },
   fr: {
     fl5_over_listen: "STEP 1 · ÉCOUTER",
@@ -217,7 +241,19 @@ export const FL5_STR = {
     fl_pre_tooltip_1: "Écoutez la phrase 3 fois avant de parler",
     fl_pre_tooltip_2: "Appuyez sur chaque mot pour entendre sa prononciation",
     fl_pre_tooltip_3: "Appuyez sur 'Tap to speak' et dites la phrase à voix haute!",
-    fl_pre_tooltip_start: "Let's start! →"
+    fl_pre_tooltip_start: "Let's start! →",
+    fl_browser_not_supported_title: "Voix non disponible dans ce navigateur",
+    fl_browser_not_supported_desc: "Ouvrez Kkobi dans Chrome pour l'expérience vocale complète.",
+    fl_open_in_chrome: "Ouvrir dans Chrome",
+    fl_browser_not_supported_hint: "Copiez le lien et collez-le dans Chrome si le bouton ne fonctionne pas.",
+    fl_mic_permission_title: "Accès au microphone refusé",
+    fl_mic_permission_desc: "Autorisez l'accès au microphone dans les paramètres du navigateur et réessayez.",
+    fl_stt_try_again: "Réessayer",
+    fl_stt_no_speech_hint: "Nous n'avons rien entendu. Parlez clairement et réessayez!",
+    fl_stt_network_error_hint: "Erreur réseau. Vérifiez votre connexion et réessayez.",
+    fl_stt_generic_error: "Problème avec la saisie vocale. Réessaie.",
+    fl_chrome_recommended: "Pour la meilleure expérience, ouvrez dans Chrome.",
+    fl_stt_try_anyway: "Essayer quand même"
   },
   pt: {
     fl5_over_listen: "STEP 1 · OUVIR",
@@ -290,6 +326,18 @@ export const FL5_STR = {
     fl_pre_tooltip_1: "Ouça a frase 3 vezes antes de falar",
     fl_pre_tooltip_2: "Toque em cada palavra para ouvir como soa",
     fl_pre_tooltip_3: "Toque em 'Tap to speak' e diga a frase em voz alta!",
-    fl_pre_tooltip_start: "Let's start! →"
+    fl_pre_tooltip_start: "Let's start! →",
+    fl_browser_not_supported_title: "Voz não disponível neste navegador",
+    fl_browser_not_supported_desc: "Abra o Kkobi no Chrome para a experiência de fala completa.",
+    fl_open_in_chrome: "Abrir no Chrome",
+    fl_browser_not_supported_hint: "Copie o link e cole no Chrome se o botão não funcionar.",
+    fl_mic_permission_title: "Acesso ao microfone negado",
+    fl_mic_permission_desc: "Permita o acesso ao microfone nas configurações do navegador e tente novamente.",
+    fl_stt_try_again: "Tentar novamente",
+    fl_stt_no_speech_hint: "Não ouvimos nada. Fale claramente e tente novamente!",
+    fl_stt_network_error_hint: "Erro de rede. Verifique sua conexão e tente novamente.",
+    fl_stt_generic_error: "Houve um problema na entrada de voz. Tente de novo.",
+    fl_chrome_recommended: "Para a melhor experiência, abra no Chrome.",
+    fl_stt_try_anyway: "Tentar falar assim mesmo"
   }
 };
