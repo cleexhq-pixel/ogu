@@ -172,12 +172,17 @@ export default function HomePage() {
       if (document.visibilityState === "visible") sync();
     };
     const onFocus = () => sync();
+    const onPageShow = (/** @type {PageTransitionEvent} */ e) => {
+      if (e.persisted) sync();
+    };
     window.addEventListener("storage", sync);
     window.addEventListener("focus", onFocus);
+    window.addEventListener("pageshow", onPageShow);
     document.addEventListener("visibilitychange", onVis);
     return () => {
       window.removeEventListener("storage", sync);
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [pathname]);

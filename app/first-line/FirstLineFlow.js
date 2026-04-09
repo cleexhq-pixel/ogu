@@ -803,6 +803,14 @@ export default function FirstLineFlow() {
   const goHome = () => {
     stopAudio();
     setActiveSel(null);
+    if (typeof window !== "undefined" && journeyActive && flowStep === "result") {
+      const next = Math.min(journeyDay + 1, JOURNEY_DONE_MARKER);
+      try {
+        window.localStorage.setItem(OGU_CURRENT_DAY_KEY, String(next));
+      } catch {
+        // ignore
+      }
+    }
     const qs = buildQs();
     const tail = qs.toString();
     router.push(tail ? `/?${tail}` : "/");
