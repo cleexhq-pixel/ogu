@@ -14,14 +14,7 @@ import {
   resolveLangFromUrlAndStorage,
   tx
 } from "@/app/lib/i18n";
-import {
-  getJourneyRow,
-  getJourneyWindowDays,
-  JOURNEY_DONE_MARKER,
-  MAX_JOURNEY_DAY,
-  normalizeVibe,
-  OGU_VIBE_KEY
-} from "@/lib/journey-data";
+import { getJourneyRow, JOURNEY_DONE_MARKER, MAX_JOURNEY_DAY, normalizeVibe, OGU_VIBE_KEY } from "@/lib/journey-data";
 import { useActiveSession } from "@/hooks/useActiveSession";
 
 const HERO_UNDERLINE = "border-b-[3px] pb-0.5";
@@ -98,6 +91,44 @@ function readJourneyCurrentFromStorage() {
 function homeJourneyCardKo(day, vibe) {
   if (day === JOURNEY_DONE_MARKER) return "···";
   return getJourneyRow(day, vibe)?.homeKo ?? "";
+}
+
+/** Sliding window: previous + current + next two days (max 30); journey complete shows days 27–30. */
+function getHomeJourneyStripDays(journeyCurrent) {
+  if (journeyCurrent >= JOURNEY_DONE_MARKER) {
+    return [27, 28, 29, 30];
+  }
+  return [journeyCurrent - 1, journeyCurrent, journeyCurrent + 1, journeyCurrent + 2].filter(
+    (d) => d >= 1 && d <= MAX_JOURNEY_DAY
+  );
+}
+
+function JourneyCheckIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden>
+      <path
+        d="M3 6.5l2.5 2.5 4.5-4.5"
+        stroke="#22c55e"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function JourneyArrowIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+      <path
+        d="M3 7h8M8 4l3 3-3 3"
+        stroke="white"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 const ACTIVE_SESSION_FLAGS = /** @type {const} */ (["🇵🇭", "🇫🇷", "🇧🇷", "🇮🇩", "🇺🇸", "🇰🇷"]);
@@ -662,98 +693,216 @@ export default function HomePage() {
             <p className="text-left text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--on-surface-variant)]">
               {journeyCurrent >= 4 ? tx(L, "speaking_journey") : tx(L, "journey_three_day")}
             </p>
-            <div className="mt-4 rounded-[32px] bg-[var(--surface-low)] px-4 py-2">
-              {getJourneyWindowDays(journeyCurrent).map((d) => {
-                const isPlaceholder = d === JOURNEY_DONE_MARKER;
-                const isDone =
-                  (!isPlaceholder && d < journeyCurrent) ||
-                  (journeyCurrent >= JOURNEY_DONE_MARKER && !isPlaceholder);
-                const isActive =
-                  !isPlaceholder && d === journeyCurrent && journeyCurrent <= MAX_JOURNEY_DAY;
-                const isLocked = !isDone && !isActive;
-                const title = isPlaceholder
-                  ? tx(L, "home_journeyMoreSoon")
-                  : isDone
-                    ? tx(L, "day_done", { n: d })
-                    : translatedJourneyHomeTitle(L, d, selectedVibe);
-                const koLine = homeJourneyCardKo(d, selectedVibe);
+            <div className="mt-4 flex max-w-[480px] flex-col gap-2 font-jakarta">
+              {getHomeJourneyStripDays(journeyCurrent).map((d) => {
+                const phraseTitle = translatedJourneyHomeTitle(L, d, selectedVibe);
+                const phraseKo = homeJourneyCardKo(d, selectedVibe);
+                const journeyComplete = journeyCurrent >= JOURNEY_DONE_MARKER;
+                const isDone = journeyComplete || d < journeyCurrent;
+                const isToday = !journeyComplete && d === journeyCurrent && journeyCurrent <= MAX_JOURNEY_DAY;
+                const isFuture = !isDone && !isToday;
 
-                const row = (
-                  <div className="flex gap-3 py-[14px]">
-                    <div className="flex shrink-0 flex-col items-center justify-start pt-0.5">
-                      {isDone ? (
-                        <span
-                          className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-[#2a14b4]"
-                          style={{
-                            backgroundColor: "var(--surface-lowest)",
-                            boxShadow: "var(--shadow-card)"
-                          }}
-                          aria-hidden
-                        >
-                          ✓
-                        </span>
-                      ) : isActive ? (
-                        <span
-                          className="flex h-10 w-10 items-center justify-center rounded-full text-base font-bold text-white"
-                          style={{
-                            background: "linear-gradient(135deg, #2a14b4, #4338ca)",
-                            boxShadow: "var(--shadow-active)"
-                          }}
-                          aria-hidden
-                        >
-                          {d}
-                        </span>
-                      ) : (
-                        <span
-                          className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-low)] text-sm font-semibold text-[var(--on-surface-variant)]"
-                          aria-hidden
-                        >
-                          {isPlaceholder ? "…" : d}
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p
-                          className={`text-[15px] font-semibold ${
-                            isLocked ? "font-normal text-[var(--on-surface-variant)]" : "text-[var(--on-surface)]"
-                          }`}
-                        >
-                          {title}
-                        </p>
-                        {isActive ? (
-                          <span className="rounded-[20px] bg-[#2a14b4] px-[9px] py-[3px] text-[9px] font-bold uppercase tracking-wide text-white">
-                            {tx(L, "today_badge")}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p
-                        className={`font-korean mt-1 text-[15px] leading-snug ${
-                          isLocked ? "font-normal text-[var(--on-surface-variant)]" : "font-semibold text-[var(--on-surface)]"
-                        }`}
-                      >
-                        {koLine}
-                      </p>
-                    </div>
-                  </div>
-                );
-
-                if (isActive) {
+                if (isToday) {
                   return (
                     <button
                       key={d}
                       type="button"
                       onClick={openActiveJourneyDay}
-                      className="block w-full text-left transition hover:opacity-95"
+                      className="w-full text-left transition hover:brightness-[1.03] active:scale-[0.99]"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "16px",
+                        background: "linear-gradient(135deg, #2a14b4, #4338ca)",
+                        borderRadius: "20px",
+                        boxShadow: "0 8px 24px rgba(42,20,180,0.28)",
+                        cursor: "pointer",
+                        border: "none"
+                      }}
                     >
-                      {row}
+                      <div
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "14px",
+                          fontWeight: 800,
+                          color: "white",
+                          flexShrink: 0
+                        }}
+                        aria-hidden
+                      >
+                        {d}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: "9px",
+                            fontWeight: 700,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            color: "rgba(255,255,255,0.7)",
+                            marginBottom: "3px"
+                          }}
+                        >
+                          {tx(L, "home_journey_today_tap")}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "15px",
+                            fontWeight: 800,
+                            color: "white",
+                            marginBottom: "2px",
+                            wordBreak: "keep-all"
+                          }}
+                        >
+                          {phraseTitle}
+                        </div>
+                        <div
+                          className="font-korean"
+                          style={{
+                            fontSize: "12px",
+                            color: "rgba(255,255,255,0.7)",
+                            wordBreak: "keep-all"
+                          }}
+                        >
+                          {phraseKo}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0
+                        }}
+                        aria-hidden
+                      >
+                        <JourneyArrowIcon />
+                      </div>
                     </button>
                   );
                 }
 
+                if (isDone) {
+                  return (
+                    <div
+                      key={d}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "12px 14px",
+                        background: "#ffffff",
+                        borderRadius: "16px",
+                        opacity: 0.7
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "28px",
+                          height: "28px",
+                          borderRadius: "50%",
+                          background: "#dcfce7",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0
+                        }}
+                        aria-hidden
+                      >
+                        <JourneyCheckIcon />
+                      </div>
+                      <div className="min-w-0">
+                        <div
+                          style={{
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            color: "#6b6f72",
+                            marginBottom: "1px"
+                          }}
+                        >
+                          {tx(L, "day_done", { n: d })}
+                        </div>
+                        <div
+                          className="font-korean"
+                          style={{
+                            fontSize: "11px",
+                            color: "#9ca3af",
+                            wordBreak: "keep-all"
+                          }}
+                        >
+                          {phraseKo}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
-                  <div key={`${d}-${selectedVibe}`} className={isLocked ? "opacity-90" : ""} aria-disabled={isLocked}>
-                    {row}
+                  <div
+                    key={d}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      padding: "10px 14px",
+                      background: "#ffffff",
+                      borderRadius: "14px",
+                      opacity: 0.45,
+                      cursor: "default"
+                    }}
+                    aria-disabled
+                  >
+                    <div
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        background: "#f3f3f5",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        color: "#9ca3af",
+                        flexShrink: 0
+                      }}
+                      aria-hidden
+                    >
+                      {d}
+                    </div>
+                    <div className="min-w-0">
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          color: "#9ca3af",
+                          marginBottom: "1px"
+                        }}
+                      >
+                        {phraseTitle}
+                      </div>
+                      <div
+                        className="font-korean"
+                        style={{
+                          fontSize: "11px",
+                          color: "#c4c4c4",
+                          wordBreak: "keep-all"
+                        }}
+                      >
+                        {phraseKo}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
