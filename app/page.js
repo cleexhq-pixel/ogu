@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { pageview, trackAppOpen, trackStartDailyPhrase } from "@/app/lib/gtag";
@@ -442,6 +443,152 @@ export default function HomePage() {
 
   return (
     <>
+      {/* ── My 90 Seconds Hero ── */}
+      <div style={{
+        background: "linear-gradient(160deg, #0E0E0F 0%, #1a0a1a 100%)",
+        padding: "36px 20px 28px",
+        position: "relative",
+        overflow: "hidden",
+        marginBottom: 0,
+      }}>
+
+        {/* Spotlight 배경 */}
+        <div style={{
+          position: "absolute",
+          width: 260, height: 260,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(158,143,253,0.12) 0%, transparent 70%)",
+          top: -80, right: -60,
+          pointerEvents: "none",
+        }} />
+        <div style={{
+          position: "absolute",
+          width: 180, height: 180,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,138,169,0.08) 0%, transparent 70%)",
+          bottom: -40, left: -40,
+          pointerEvents: "none",
+        }} />
+
+        {/* Eyebrow */}
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          background: "rgba(0,227,253,0.1)",
+          borderRadius: 9999, padding: "4px 12px",
+          marginBottom: 14,
+          position: "relative", zIndex: 1,
+        }}>
+          <div style={{
+            width: 5, height: 5, borderRadius: "50%",
+            background: "#00E3FD",
+          }} />
+          <span style={{
+            fontSize: 9, fontWeight: 600,
+            letterSpacing: "0.12em", textTransform: "uppercase",
+            color: "#00E3FD",
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            New — My 90 Seconds
+          </span>
+        </div>
+
+        {/* 헤드라인 */}
+        <h2 style={{
+          fontFamily: "'Manrope', sans-serif",
+          fontSize: 24, fontWeight: 800,
+          letterSpacing: "-0.02em",
+          color: "#F2F0F4",
+          lineHeight: 1.2,
+          marginBottom: 8,
+          position: "relative", zIndex: 1,
+        }}>
+          팬싸 90초,<br />
+          <span style={{
+            background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}>
+            AI로 미리 연습하세요
+          </span>
+        </h2>
+
+        {/* 서브카피 */}
+        <p style={{
+          fontSize: 13, color: "#9E9BA4",
+          marginBottom: 20, lineHeight: 1.6,
+          position: "relative", zIndex: 1,
+        }}>
+          $500짜리 90초를 망치지 마세요.<br />
+          아이돌 AI와 실전처럼 연습해요.
+        </p>
+
+        {/* 시나리오 미리보기 태그 */}
+        <div style={{
+          display: "flex", gap: 6, flexWrap: "wrap",
+          marginBottom: 20,
+          position: "relative", zIndex: 1,
+        }}>
+          {["💝 칭찬", "🎂 생일", "🎮 게임", "🎤 멘트요청", "💗 고백"].map((tag) => (
+            <span key={tag} style={{
+              padding: "4px 10px", borderRadius: 9999,
+              background: "rgba(255,255,255,0.06)",
+              fontSize: 11, color: "#9E9BA4",
+              fontFamily: "'Inter', sans-serif",
+            }}>
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        {/* CTA 버튼 */}
+        <div style={{
+          display: "flex", gap: 8,
+          position: "relative", zIndex: 1,
+        }}>
+          <Link href="/my-90-seconds" style={{
+            flex: 2,
+            padding: "15px 0",
+            borderRadius: 9999,
+            background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
+            color: "#fff",
+            fontFamily: "'Manrope', sans-serif",
+            fontSize: 13, fontWeight: 700,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            textDecoration: "none",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            textAlign: "center",
+          }}>
+            🎤 90초 연습 시작
+          </Link>
+          <Link href="/my-90-seconds" style={{
+            flex: 1,
+            padding: "15px 0",
+            borderRadius: 9999,
+            background: "transparent",
+            border: "1.5px solid rgba(255,255,255,0.15)",
+            color: "#9E9BA4",
+            fontFamily: "'Manrope', sans-serif",
+            fontSize: 12, fontWeight: 600,
+            textDecoration: "none",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            textAlign: "center",
+          }}>
+            더 알아보기
+          </Link>
+        </div>
+
+        {/* 무료 안내 */}
+        <p style={{
+          fontSize: 11, color: "#5C5A62",
+          textAlign: "center", marginTop: 12,
+          position: "relative", zIndex: 1,
+          fontFamily: "'Inter', sans-serif",
+        }}>
+          무료 · 하루 1회 · 계정 불필요
+        </p>
+      </div>
+      {/* ── /My 90 Seconds Hero ── */}
       <Analytics />
       <OnboardingModal
         open={showOnboardingModal}
