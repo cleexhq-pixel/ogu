@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const DAILY_LIMIT = 3;
 const FREE_DATE_KEY = "kkobi_m90s_free_date";
@@ -187,6 +193,7 @@ export default function HomePage() {
   const [lang, setLang] = useState("en");
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
 
   useEffect(() => {
     setRemaining(getRemainingCount());
@@ -204,6 +211,26 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [lang]);
 
+  useEffect(() => {
+    async function fetchActiveCount() {
+      try {
+        const fiveMinutesAgo = new Date(
+          Date.now() - 5 * 60 * 1000
+        ).toISOString();
+        const { count } = await supabase
+          .from("active_sessions")
+          .select("*", { count: "exact", head: true })
+          .gte("last_seen", fiveMinutesAgo);
+        if (count !== null) setActiveCount(count);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    fetchActiveCount();
+    const interval = setInterval(fetchActiveCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   function handleLangChange(code) {
     setLang(code);
     localStorage.setItem(LANG_KEY, code);
@@ -212,6 +239,13 @@ export default function HomePage() {
 
   const t = COPY[lang] || COPY.en;
   const currentLang = LANGS.find((l) => l.code === lang) || LANGS[0];
+
+  const pulseStyle = `
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  `;
 
   return (
     <div style={{
@@ -224,6 +258,7 @@ export default function HomePage() {
       position: "relative",
       overflow: "hidden",
     }}>
+      <style>{pulseStyle}</style>
 
       {/* Spotlight 배경 */}
       <div style={{
@@ -555,6 +590,34 @@ export default function HomePage() {
             {t.learn_btn}
           </Link>
         </div>
+
+        {/* 실시간 접속자 수 */}
+        {activeCount > 0 && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            marginTop: 24,
+            paddingBottom: 8,
+          }}>
+            <div style={{
+              width: 6, height: 6,
+              borderRadius: "50%",
+              background: "#00E3FD",
+              animation: "pulse 2s infinite",
+            }} />
+            <span style={{
+              fontSize: 12,
+              color: "#5C5A62",
+              fontFamily: "'Inter', sans-serif",
+            }}>
+              {activeCount > 1
+                ? `${activeCount} people preparing right now`
+                : `${activeCount} person preparing right now`}
+            </span>
+          </div>
+        )}
       </div>
 
     </div>
