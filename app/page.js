@@ -26,6 +26,9 @@ const COPY = {
   en: {
     nav_learn: "Korean Learning",
     remaining: (n) => `${n} left today`,
+    active_count: (n) => n === 1
+      ? `${n} person preparing right now`
+      : `${n} people preparing right now`,
     service_tag: "Fansign Video Call Prep",
     hero_title_1: "Those 90 seconds.",
     hero_title_2: "Don't freeze.",
@@ -55,6 +58,7 @@ const COPY = {
   ko: {
     nav_learn: "한국어 학습",
     remaining: (n) => `오늘 ${n}회 남음`,
+    active_count: (n) => `지금 ${n}명이 연습 중이에요`,
     service_tag: "영통 팬싸인회 준비 서비스",
     hero_title_1: "그 90초,",
     hero_title_2: "얼지 마세요.",
@@ -84,6 +88,7 @@ const COPY = {
   id: {
     nav_learn: "Belajar Korea",
     remaining: (n) => `Sisa ${n} hari ini`,
+    active_count: (n) => `${n} orang sedang berlatih sekarang`,
     service_tag: "Persiapan Video Call Fansign",
     hero_title_1: "90 detik itu.",
     hero_title_2: "Jangan beku.",
@@ -113,6 +118,9 @@ const COPY = {
   pt: {
     nav_learn: "Aprender Coreano",
     remaining: (n) => `${n} restantes hoje`,
+    active_count: (n) => n === 1
+      ? `${n} pessoa se preparando agora`
+      : `${n} pessoas se preparando agora`,
     service_tag: "Preparação para Videochamada Fansign",
     hero_title_1: "Esses 90 segundos.",
     hero_title_2: "Não congele.",
@@ -142,6 +150,9 @@ const COPY = {
   fr: {
     nav_learn: "Apprendre le coréen",
     remaining: (n) => `${n} restantes aujourd'hui`,
+    active_count: (n) => n === 1
+      ? `${n} personne se prépare maintenant`
+      : `${n} personnes se préparent maintenant`,
     service_tag: "Préparation Appel Vidéo Fansign",
     hero_title_1: "Ces 90 secondes.",
     hero_title_2: "Ne figez pas.",
@@ -612,9 +623,9 @@ export default function HomePage() {
               color: "#5C5A62",
               fontFamily: "'Inter', sans-serif",
             }}>
-              {activeCount > 1
-                ? `${activeCount} people preparing right now`
-                : `${activeCount} person preparing right now`}
+              {typeof t.active_count === "function"
+                ? t.active_count(activeCount)
+                : `${activeCount} people preparing right now`}
             </span>
           </div>
         )}
