@@ -377,16 +377,36 @@ export default function HomePage() {
 
         {/* 메인 CTA */}
         <Link href="/my-90-seconds" style={{
-          display: "block", padding: "17px 0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 14px 14px 24px",
           borderRadius: 9999,
-          background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
-          color: "#fff",
-          fontFamily: "'Manrope', sans-serif",
-          fontSize: 15, fontWeight: 700,
-          textDecoration: "none", textAlign: "center",
+          background: "#FF8AA9",
+          textDecoration: "none",
           marginBottom: 12,
         }}>
-          {t.cta}
+          <div style={{ width: 32 }} />
+          <span style={{
+            fontFamily: "'Manrope', sans-serif",
+            fontSize: 15, fontWeight: 700,
+            color: "#fff",
+            letterSpacing: "0.01em",
+          }}>
+            {t.cta}
+          </span>
+          <div style={{
+            width: 32, height: 32, borderRadius: "50%",
+            background: "rgba(255,255,255,0.25)",
+            display: "flex", alignItems: "center",
+            justifyContent: "center", flexShrink: 0,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 7h8M7 3l4 4-4 4"
+                stroke="#fff" strokeWidth="1.5"
+                strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
         </Link>
 
         <p style={{
@@ -406,7 +426,7 @@ export default function HomePage() {
           letterSpacing: "0.12em", textTransform: "uppercase",
           color: "#5C5A62", marginBottom: 14,
         }}>
-          {t.section_scenario}
+          Or choose your moment
         </p>
         <div style={{
           display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8,
@@ -506,40 +526,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 하단 CTA */}
+      {/* 하단 섹션 */}
       <div style={{ padding: "0 22px 48px", position: "relative", zIndex: 1 }}>
-        {remaining <= 0 ? (
-          <div style={{
-            background: "#1A191B", borderRadius: 14,
-            padding: "20px 16px", textAlign: "center",
-            marginBottom: 16,
-          }}>
-            <p style={{
-              fontFamily: "'Manrope', sans-serif",
-              fontSize: 14, fontWeight: 700,
-              color: "#F2F0F4", marginBottom: 4,
-            }}>
-              {t.limit_title}
-            </p>
-            <p style={{ fontSize: 12, color: "#9E9BA4" }}>
-              {t.limit_desc}
-            </p>
-          </div>
-        ) : (
-          <Link href="/my-90-seconds" style={{
-            display: "block", padding: "17px 0",
-            borderRadius: 9999,
-            background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
-            color: "#fff",
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: 15, fontWeight: 700,
-            textDecoration: "none", textAlign: "center",
-            marginBottom: 16,
-          }}>
-            {t.cta_bottom}
-          </Link>
-        )}
-
         {/* 기존 꼬비 학습 링크 */}
         <div style={{
           background: "#131314", borderRadius: 14,
