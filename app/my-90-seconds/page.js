@@ -162,11 +162,6 @@ function ScenarioPageInner() {
         display: "flex", alignItems: "center",
         gap: 6, marginBottom: 32,
       }}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M3 8h10M8 3l5 5-5 5"
-            stroke="#FF8AA9" strokeWidth="1.5"
-            strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
         <span style={{
           fontFamily: "'Manrope', sans-serif",
           fontSize: 15, fontWeight: 800,
@@ -229,16 +224,16 @@ function ScenarioPageInner() {
               background: selected === id ? "#221e23" : "#1A191B",
               borderRadius: 14, padding: "14px 12px",
               border: "none", cursor: "pointer",
-              textAlign: "left", position: "relative",
+              textAlign: "center", position: "relative",
               overflow: "hidden", transition: "background 0.15s",
             }}
           >
             {selected === id && (
               <div style={{
-                position: "absolute", left: 0,
-                top: 12, bottom: 12, width: 2,
-                borderRadius: "0 2px 2px 0",
-                background: "#FF8AA9",
+                position: "absolute", inset: 0,
+                borderRadius: 14,
+                border: "1.5px solid rgba(255,138,169,0.6)",
+                pointerEvents: "none",
               }} />
             )}
             <span style={{
