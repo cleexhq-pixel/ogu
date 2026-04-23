@@ -2,7 +2,7 @@ import idolScripts, {
   getRandomLine,
   getIdolQuestion,
   getNervousResponse,
-} from "@/data/idol-scripts";
+} from "../data/idol-scripts";
 
 // 유저 발화를 키워드로 분류
 export function classifyUserInput(text) {
