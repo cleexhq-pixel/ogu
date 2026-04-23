@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTimer } from "../../../src/hooks/useTimer";
 import { useSpeechRecognition } from "../../../src/hooks/useSpeechRecognition";
@@ -14,7 +14,7 @@ const EMERGENCY_CARDS = [
   { id: "E03", text: "너무 좋아서 말이 안 나와요~" },
 ];
 
-export default function CallPage() {
+function CallPageInner() {
   const searchParams = useSearchParams();
   const scenarioId = searchParams.get("scenario") || "compliment";
   const scenario = scenarios.find((s) => s.id === scenarioId) || scenarios[0];
@@ -277,5 +277,25 @@ export default function CallPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function CallPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: "100vh",
+        background: "#0E0E0F",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <p style={{ color: "#5C5A62", fontSize: 13 }}>
+          Loading...
+        </p>
+      </div>
+    }>
+      <CallPageInner />
+    </Suspense>
   );
 }

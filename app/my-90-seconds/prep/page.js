@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import scenarios from "../../../src/data/scenarios";
 import { generateScript } from "../../../src/lib/generateScript";
@@ -21,7 +21,7 @@ const LINE4 = {
   isTemplate: true,
 };
 
-export default function PrepPage() {
+function PrepPageInner() {
   const searchParams = useSearchParams();
   const scenarioId = searchParams.get("scenario") || "compliment";
   const scenario = scenarios.find((s) => s.id === scenarioId) || scenarios[0];
@@ -187,5 +187,25 @@ export default function PrepPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PrepPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: "100vh",
+        background: "#0E0E0F",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <p style={{ color: "#5C5A62", fontSize: 13 }}>
+          Loading...
+        </p>
+      </div>
+    }>
+      <PrepPageInner />
+    </Suspense>
   );
 }

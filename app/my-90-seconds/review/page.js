@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import scenarios from "../../../src/data/scenarios";
 import { generateReview } from "../../../src/lib/generateReview";
 import { saveSimulationLog } from "../../../src/lib/saveSimulationLog";
 
-export default function ReviewPage() {
+function ReviewPageInner() {
   const searchParams = useSearchParams();
   const scenarioId = searchParams.get("scenario") || "compliment";
   const logParam = searchParams.get("log");
@@ -218,5 +218,25 @@ export default function ReviewPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: "100vh",
+        background: "#0E0E0F",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <p style={{ color: "#5C5A62", fontSize: 13 }}>
+          Loading...
+        </p>
+      </div>
+    }>
+      <ReviewPageInner />
+    </Suspense>
   );
 }
