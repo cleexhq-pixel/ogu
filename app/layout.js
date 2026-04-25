@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen">
+      <body className="min-h-screen" style={{ backgroundColor: "#0E0E0F" }}>
         <OAuthCompleteTracker />
         <ActiveSessionProvider>{children}</ActiveSessionProvider>
       </body>

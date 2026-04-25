@@ -2,7 +2,7 @@ import '../../src/styles/my90sec.css';
 
 export default function My90SecLayout({ children }) {
   return (
-    <div className="my90sec-layout">
+    <div className="my90sec-layout" style={{ backgroundColor: "#0E0E0F" }}>
       {children}
     </div>
   );
