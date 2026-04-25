@@ -10,7 +10,7 @@ const PREP_COPY = {
     line_labels: ["LINE 1 · Greeting", "LINE 2 · Main message", "LINE 3 · Keep going", "LINE 4 · Closing"],
     listen: "Listen",
     repeat: "Repeat",
-    next: "Start 90 seconds →",
+    next: "Start 90 seconds",
     hint: "Say all lines to continue",
   },
   ko: {
@@ -20,7 +20,7 @@ const PREP_COPY = {
     line_labels: ["LINE 1 · 인사", "LINE 2 · 핵심 메시지", "LINE 3 · 대화 이어가기", "LINE 4 · 마무리"],
     listen: "듣기",
     repeat: "따라 말하기",
-    next: "90초 시뮬 시작하기 →",
+    next: "90초 시뮬 시작하기",
     hint: "모든 문장을 따라 말해야 다음으로 넘어갈 수 있어요",
   },
   id: {
@@ -30,7 +30,7 @@ const PREP_COPY = {
     line_labels: ["LINE 1 · Salam", "LINE 2 · Pesan utama", "LINE 3 · Lanjutkan", "LINE 4 · Penutup"],
     listen: "Dengarkan",
     repeat: "Ulangi",
-    next: "Mulai 90 detik →",
+    next: "Mulai 90 detik",
     hint: "Ucapkan semua kalimat untuk melanjutkan",
   },
   pt: {
@@ -40,7 +40,7 @@ const PREP_COPY = {
     line_labels: ["LINE 1 · Saudação", "LINE 2 · Mensagem principal", "LINE 3 · Continue", "LINE 4 · Encerramento"],
     listen: "Ouvir",
     repeat: "Repetir",
-    next: "Iniciar 90 segundos →",
+    next: "Iniciar 90 segundos",
     hint: "Diga todas as frases para continuar",
   },
   fr: {
@@ -50,7 +50,7 @@ const PREP_COPY = {
     line_labels: ["LINE 1 · Salutation", "LINE 2 · Message principal", "LINE 3 · Continuez", "LINE 4 · Clôture"],
     listen: "Écouter",
     repeat: "Répéter",
-    next: "Commencer 90 secondes →",
+    next: "Commencer 90 secondes",
     hint: "Dites toutes les phrases pour continuer",
   },
 };
@@ -97,7 +97,7 @@ function PrepPageInner() {
     if (!scenarioId) return;
 
     async function loadScript() {
-      const cacheKey = `kkobi_m90s_saved_${scenarioId}`;
+      const cacheKey = `kkobi_m90s_v2_${scenarioId}`;
 
       try {
         const cached = localStorage.getItem(cacheKey);
