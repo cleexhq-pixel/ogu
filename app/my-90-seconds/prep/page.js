@@ -11,6 +11,7 @@ const PREP_COPY = {
     listen: "Listen",
     repeat: "Repeat",
     next: "Start 90 seconds →",
+    hint: "Say all lines to continue",
   },
   ko: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "준비",
@@ -20,6 +21,7 @@ const PREP_COPY = {
     listen: "듣기",
     repeat: "따라 말하기",
     next: "90초 시뮬 시작하기 →",
+    hint: "모든 문장을 따라 말해야 다음으로 넘어갈 수 있어요",
   },
   id: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "PERSIAPAN",
@@ -29,6 +31,7 @@ const PREP_COPY = {
     listen: "Dengarkan",
     repeat: "Ulangi",
     next: "Mulai 90 detik →",
+    hint: "Ucapkan semua kalimat untuk melanjutkan",
   },
   pt: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "PREP",
@@ -38,6 +41,7 @@ const PREP_COPY = {
     listen: "Ouvir",
     repeat: "Repetir",
     next: "Iniciar 90 segundos →",
+    hint: "Diga todas as frases para continuar",
   },
   fr: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "PREP",
@@ -47,6 +51,7 @@ const PREP_COPY = {
     listen: "Écouter",
     repeat: "Répéter",
     next: "Commencer 90 secondes →",
+    hint: "Dites toutes les phrases pour continuer",
   },
 };
 
@@ -237,7 +242,7 @@ function PrepPageInner() {
         </button>
         {!allDone && (
           <p style={{ textAlign: "center", fontSize: 11, color: "var(--m-text-dim)", marginTop: 10 }}>
-            모든 문장을 따라 말해야 다음으로 넘어갈 수 있어요
+            {t.hint}
           </p>
         )}
       </div>
