@@ -255,11 +255,44 @@ function PrepPageInner() {
       <div style={{ marginTop: 20, position: "relative", zIndex: 1 }}>
         <button
           onClick={handleNext}
-          className="m-btn-primary"
-          style={{ opacity: allDone ? 1 : 0.4, textTransform: "none", letterSpacing: 0 }}
           disabled={!allDone}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "14px 14px 14px 24px",
+            borderRadius: 9999,
+            background: allDone ? "#FF8AA9" : "#2C2C2D",
+            border: "none",
+            cursor: allDone ? "pointer" : "default",
+            transition: "background 0.2s",
+          }}
         >
-          {t.next}
+          <div style={{ width: 32 }} />
+          <span style={{
+            fontFamily: "'Manrope', sans-serif",
+            fontSize: 15, fontWeight: 700,
+            color: allDone ? "#fff" : "#5C5A62",
+            letterSpacing: "0.01em",
+          }}>
+            {t.next}
+          </span>
+          <div style={{
+            width: 32, height: 32, borderRadius: "50%",
+            background: allDone
+              ? "rgba(255,255,255,0.25)"
+              : "rgba(255,255,255,0.06)",
+            display: "flex", alignItems: "center",
+            justifyContent: "center", flexShrink: 0,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 7h8M7 3l4 4-4 4"
+                stroke={allDone ? "#fff" : "#5C5A62"}
+                strokeWidth="1.5"
+                strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
         </button>
         {!allDone && (
           <p style={{ textAlign: "center", fontSize: 11, color: "var(--m-text-dim)", marginTop: 10 }}>
