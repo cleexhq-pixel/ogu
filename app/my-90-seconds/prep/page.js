@@ -91,18 +91,38 @@ function PrepPageInner() {
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_KEY) || "en";
     setLang(savedLang);
+  }, []);
+
+  useEffect(() => {
+    if (!scenarioId) return;
 
     async function loadScript() {
+      const cacheKey = `kkobi_m90s_saved_${scenarioId}`;
+
       try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          setLines(JSON.parse(cached));
+          setLoading(false);
+          return;
+        }
+      } catch (e) {}
+
+      try {
+        setLoading(true);
         const generated = await generateScript(scenario);
-        setLines([
+        const newLines = [
           LINE1,
           { ...generated.line2, isTemplate: false },
           { ...generated.line3, isTemplate: false },
           LINE4,
-        ]);
-      } catch {
-        // fallback
+        ];
+        setLines(newLines);
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(newLines));
+        } catch (e) {}
+      } catch (e) {
+        console.error(e);
         setLines([
           LINE1,
           { korean: "오빠를 정말 좋아해요!", romanization: "Oppareul jeongmal joahaeyo!", translation: "I really like you!", isTemplate: false },
@@ -113,6 +133,7 @@ function PrepPageInner() {
         setLoading(false);
       }
     }
+
     loadScript();
   }, [scenarioId]);
 
@@ -221,7 +242,7 @@ function PrepPageInner() {
               <button
                 onClick={() => handleSpeak(i)}
                 className="m-btn-primary"
-                style={{ flex: 1, padding: "9px 6px", fontSize: 11 }}
+                style={{ flex: 1, padding: "9px 6px", fontSize: 11, textTransform: "none", letterSpacing: 0 }}
               >
                 {isListening && currentLine === i ? "🎤 듣는 중..." : `🎤 ${t.repeat}`}
               </button>
@@ -235,7 +256,7 @@ function PrepPageInner() {
         <button
           onClick={handleNext}
           className="m-btn-primary"
-          style={{ opacity: allDone ? 1 : 0.4 }}
+          style={{ opacity: allDone ? 1 : 0.4, textTransform: "none", letterSpacing: 0 }}
           disabled={!allDone}
         >
           {t.next}
