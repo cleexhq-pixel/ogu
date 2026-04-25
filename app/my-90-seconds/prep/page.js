@@ -16,7 +16,7 @@ const PREP_COPY = {
     listening: "Listening...",
     tap_to_speak: "Tap to speak",
     done: "Done",
-    retry_msg: "Didn't catch that. Try again!",
+    retry_msg: "Didn't catch that. Tap and try again!",
     voice_label: "Idol voice",
     voice_female: "Female",
     voice_male: "Male",
@@ -33,7 +33,7 @@ const PREP_COPY = {
     listening: "듣는 중...",
     tap_to_speak: "탭해서 말하기",
     done: "완료",
-    retry_msg: "인식하지 못했어요. 다시 말해봐요!",
+    retry_msg: "인식하지 못했어요. 다시 탭해서 말해봐요!",
     voice_label: "아이돌 목소리",
     voice_female: "여성",
     voice_male: "남성",
@@ -50,7 +50,7 @@ const PREP_COPY = {
     listening: "Mendengarkan...",
     tap_to_speak: "Ketuk untuk bicara",
     done: "Selesai",
-    retry_msg: "Tidak terdengar. Coba lagi!",
+    retry_msg: "Tidak terdengar. Ketuk dan coba lagi!",
     voice_label: "Suara idol",
     voice_female: "Perempuan",
     voice_male: "Laki-laki",
@@ -67,7 +67,7 @@ const PREP_COPY = {
     listening: "Ouvindo...",
     tap_to_speak: "Toque para falar",
     done: "Concluído",
-    retry_msg: "Não ouvi. Tente novamente!",
+    retry_msg: "Não ouvi. Toque e tente novamente!",
     voice_label: "Voz do idol",
     voice_female: "Feminino",
     voice_male: "Masculino",
@@ -84,7 +84,7 @@ const PREP_COPY = {
     listening: "En écoute...",
     tap_to_speak: "Appuyez pour parler",
     done: "Terminé",
-    retry_msg: "Pas entendu. Réessayez!",
+    retry_msg: "Pas entendu. Appuyez et réessayez!",
     voice_label: "Voix de l'idol",
     voice_female: "Féminin",
     voice_male: "Masculin",
@@ -124,7 +124,7 @@ function PrepPageInner() {
   const [lang, setLang] = useState("en");
   const [voiceGender, setVoiceGender] = useState("FEMALE");
   const [retryIndex, setRetryIndex] = useState(null);
-  const { transcript, isListening, error, startListening, reset } = useSpeechRecognition();
+  const { transcript, isListening, error, startListening, stopListening, reset } = useSpeechRecognition();
 
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_KEY) || "en";
@@ -231,7 +231,8 @@ function PrepPageInner() {
   }
 
   useEffect(() => {
-    if (transcript && currentLine !== null) {
+    // 핵심 원칙: 1글자 이상 인식되면 무조건 완료 (시도 자체가 중요)
+    if (transcript && transcript.trim().length >= 1 && currentLine !== null) {
       const newCompleted = [...completed];
       newCompleted[currentLine] = true;
       setCompleted(newCompleted);
@@ -246,6 +247,18 @@ function PrepPageInner() {
       reset();
     }
   }, [error]);
+
+  // 5초 안에 아무것도 인식되지 않으면 자동 종료 + 재시도 안내
+  useEffect(() => {
+    if (!isListening) return;
+    const timer = setTimeout(() => {
+      if (isListening) {
+        stopListening();
+        setRetryIndex(currentLine);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isListening, currentLine, stopListening]);
 
   function handleNext() {
     window.location.href = `/my-90-seconds/call?scenario=${scenarioId}`;
