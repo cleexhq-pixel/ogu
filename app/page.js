@@ -465,36 +465,6 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* 시나리오 카드 */}
-      <div style={{ padding: "0 22px", position: "relative", zIndex: 1, marginBottom: 40 }}>
-        <p style={{
-          fontSize: 10, fontWeight: 600,
-          letterSpacing: "0.12em", textTransform: "uppercase",
-          color: "#5C5A62", marginBottom: 14,
-        }}>
-          Or choose your moment
-        </p>
-        <div style={{
-          display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8,
-        }}>
-          {SCENARIOS.map((s, i) => (
-            <Link key={s.id} href={`/my-90-seconds?scenario=${s.id}`} style={{
-              background: "#1A191B", borderRadius: 14,
-              padding: "14px 10px", textDecoration: "none",
-              display: "block", textAlign: "center",
-            }}>
-              <div style={{ fontSize: 20, marginBottom: 6 }}>{s.emoji}</div>
-              <div style={{
-                fontFamily: "'Manrope', sans-serif",
-                fontSize: 11, fontWeight: 700, color: "#F2F0F4",
-              }}>
-                {t.scenarios[i]}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
       {/* 팬 스토리 섹션 */}
       <div style={{ padding: "0 22px", position: "relative", zIndex: 1, marginBottom: 40 }}>
         {/* 섹션 헤더 */}
