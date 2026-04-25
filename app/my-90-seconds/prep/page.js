@@ -97,7 +97,7 @@ function PrepPageInner() {
     if (!scenarioId) return;
 
     async function loadScript() {
-      const cacheKey = `kkobi_m90s_v2_${scenarioId}`;
+      const cacheKey = `kkobi_m90s_v3_${scenarioId}`;
 
       try {
         const cached = localStorage.getItem(cacheKey);
@@ -123,12 +123,34 @@ function PrepPageInner() {
         } catch (e) {}
       } catch (e) {
         console.error(e);
-        setLines([
-          LINE1,
-          { korean: "오빠를 정말 좋아해요!", romanization: "Oppareul jeongmal joahaeyo!", translation: "I really like you!", isTemplate: false },
-          { korean: "앞으로도 응원할게요!", romanization: "Apeuroedo eungwonhalgeyo!", translation: "I'll keep cheering for you!", isTemplate: false },
-          LINE4,
-        ]);
+        const fallbacks = {
+          compliment: [
+            { korean: "오빠 노래가 진짜 좋아요!", romanization: "Oppa noraega jinjja johayo!", translation: "I really love your music!", isTemplate: false },
+            { korean: "항상 응원하고 있어요!", romanization: "Hangsang eungwonhago isseoyo!", translation: "I'm always cheering for you!", isTemplate: false },
+          ],
+          birthday: [
+            { korean: "오빠 생일 진심으로 축하해요!", romanization: "Oppa saengil jinsimeuro chukahaeyo!", translation: "Happy birthday from the bottom of my heart!", isTemplate: false },
+            { korean: "항상 건강하고 행복하세요!", romanization: "Hangsang geonganghago haengbokhaseyo!", translation: "Always stay healthy and happy!", isTemplate: false },
+          ],
+          game: [
+            { korean: "오빠랑 게임 해보고 싶었어요!", romanization: "Opparang geim haebogo sipeoisseoyo!", translation: "I've always wanted to play a game with you!", isTemplate: false },
+            { korean: "당연하지 게임 알아요?", romanization: "Dangyeonhaji geim arayo?", translation: "Do you know the 'of course' game?", isTemplate: false },
+          ],
+          request: [
+            { korean: "오빠한테 부탁이 있어요!", romanization: "Oppahante butagi isseoyo!", translation: "I have a request for you!", isTemplate: false },
+            { korean: "제 이름 한 번 불러줄 수 있어요?", romanization: "Je ireum han beon bulleojul su isseoyo?", translation: "Can you call my name once?", isTemplate: false },
+          ],
+          question: [
+            { korean: "요즘 제일 좋아하는 노래가 뭐예요?", romanization: "Yojeum jeil joahaneun noraega mwoyeyo?", translation: "What's your favorite song lately?", isTemplate: false },
+            { korean: "오빠 대답이 진짜 궁금해요!", romanization: "Oppa daedabi jinjja gunggeumhaeyo!", translation: "I'm so curious about your answer!", isTemplate: false },
+          ],
+          confession: [
+            { korean: "오빠를 오래 좋아했어요!", romanization: "Oppareul orae johahaesseoyo!", translation: "I've liked you for a long time!", isTemplate: false },
+            { korean: "드디어 만나서 너무 행복해요!", romanization: "Deudieo mannaseo neomu haengbokhaeyo!", translation: "I'm so happy to finally meet you!", isTemplate: false },
+          ],
+        };
+        const fb = fallbacks[scenarioId] || fallbacks.compliment;
+        setLines([LINE1, fb[0], fb[1], LINE4]);
       } finally {
         setLoading(false);
       }
