@@ -274,43 +274,6 @@ function PrepPageInner() {
       {/* Spotlight */}
       <div className="m-spotlight" style={{ top: -60, left: -60 }} />
 
-      {/* 성별 선택 */}
-      <div style={{
-        display: "flex", alignItems: "center",
-        gap: 8, marginBottom: 20,
-        position: "relative", zIndex: 1,
-      }}>
-        <span style={{
-          fontSize: 11, color: "#5C5A62",
-        }}>
-          {t.voice_label}:
-        </span>
-        {["FEMALE", "MALE"].map((g) => (
-          <button
-            key={g}
-            onClick={() => {
-              setVoiceGender(g);
-              localStorage.setItem(VOICE_KEY, g);
-            }}
-            style={{
-              padding: "4px 12px",
-              borderRadius: 9999,
-              border: "none",
-              background: voiceGender === g
-                ? "#FF8AA9"
-                : "#1A191B",
-              color: voiceGender === g ? "#fff" : "#5C5A62",
-              fontSize: 11, fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.15s",
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            {g === "FEMALE" ? t.voice_female : t.voice_male}
-          </button>
-        ))}
-      </div>
-
       {/* Progress bar */}
       <div style={{ display: "flex", gap: 5, marginBottom: 24, position: "relative", zIndex: 1 }}>
         {[0, 1, 2, 3].map((i) => (

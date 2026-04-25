@@ -24,8 +24,8 @@ const COPY = {
       "Compliment", "Birthday", "Game",
       "Request", "Ask", "Confession"
     ],
-    voice_label: "Idol voice",
-    voice_desc: "Choose how your idol sounds",
+    voice_label: "Idol's voice",
+    voice_desc: "Your idol will speak during the 90-second simulation",
     voice_female: "Female",
     voice_male: "Male",
   },
@@ -44,7 +44,7 @@ const COPY = {
       "멘트 요청", "질문하기", "사랑 고백"
     ],
     voice_label: "아이돌 목소리",
-    voice_desc: "아이돌 목소리를 선택하세요",
+    voice_desc: "90초 시뮬레이션에서 아이돌이 이 목소리로 말해요",
     voice_female: "여성",
     voice_male: "남성",
   },
@@ -63,7 +63,7 @@ const COPY = {
       "Permintaan", "Tanya", "Pengakuan"
     ],
     voice_label: "Suara idol",
-    voice_desc: "Pilih suara idolmu",
+    voice_desc: "Idolmu akan berbicara dengan suara ini saat simulasi",
     voice_female: "Perempuan",
     voice_male: "Laki-laki",
   },
@@ -82,7 +82,7 @@ const COPY = {
       "Pedido", "Pergunta", "Confissão"
     ],
     voice_label: "Voz do idol",
-    voice_desc: "Escolha a voz do seu idol",
+    voice_desc: "Seu idol vai falar durante a simulação de 90 segundos",
     voice_female: "Feminino",
     voice_male: "Masculino",
   },
@@ -101,7 +101,7 @@ const COPY = {
       "Demande", "Question", "Confession"
     ],
     voice_label: "Voix de l'idol",
-    voice_desc: "Choisissez la voix de votre idol",
+    voice_desc: "Votre idol parlera pendant la simulation de 90 secondes",
     voice_female: "Féminin",
     voice_male: "Masculin",
   },
@@ -275,26 +275,43 @@ function ScenarioPageInner() {
         margin: "16px 0",
       }} />
 
-      {/* 목소리 선택 */}
+      {/* 목소리 선택 B안 */}
       <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
+        background: "#1A191B",
+        borderRadius: 14,
+        padding: "14px 16px",
         marginBottom: 16,
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: 12,
       }}>
-        <div>
-          <p style={{
-            fontSize: 12, fontWeight: 600,
-            color: "#F2F0F4", margin: "0 0 2px",
-            fontFamily: "'Manrope', sans-serif",
+        <div style={{ flex: 1 }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            marginBottom: 4,
           }}>
-            {t.voice_label}
-          </p>
-          <p style={{ fontSize: 10, color: "#5C5A62", margin: 0 }}>
+            <span style={{ fontSize: 14 }}>🎧</span>
+            <p style={{
+              fontFamily: "'Manrope', sans-serif",
+              fontSize: 12, fontWeight: 700,
+              color: "#F2F0F4", margin: 0,
+            }}>
+              {t.voice_label}
+            </p>
+          </div>
+          <p style={{
+            fontSize: 10, color: "#5C5A62",
+            margin: 0, lineHeight: 1.5,
+          }}>
             {t.voice_desc}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4, flexShrink: 0,
+        }}>
           {["FEMALE", "MALE"].map((g) => (
             <button
               key={g}
@@ -308,12 +325,13 @@ function ScenarioPageInner() {
                 padding: "6px 14px",
                 borderRadius: 9999,
                 border: "none",
-                background: voiceGender === g ? "#FF8AA9" : "#1A191B",
+                background: voiceGender === g ? "#FF8AA9" : "#2C2C2D",
                 color: voiceGender === g ? "#fff" : "#5C5A62",
-                fontSize: 12, fontWeight: 600,
+                fontSize: 11, fontWeight: 600,
                 cursor: "pointer",
                 fontFamily: "'Inter', sans-serif",
                 transition: "all 0.15s",
+                textAlign: "center",
               }}
             >
               {g === "FEMALE" ? t.voice_female : t.voice_male}
