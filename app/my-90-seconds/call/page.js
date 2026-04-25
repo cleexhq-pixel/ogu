@@ -272,7 +272,7 @@ function CallPageInner() {
                 : "linear-gradient(135deg, #FF8AA9, #FF719B)",
             }}
           >
-            {isListening ? "🎤 듣는 중..." : "🎤 SPEAK NOW"}
+            {isListening ? "🎤 듣는 중..." : "🎤 Speak now"}
           </button>
         )}
       </div>

@@ -10,7 +10,7 @@ const PREP_COPY = {
     line_labels: ["LINE 1 · Greeting", "LINE 2 · Main message", "LINE 3 · Keep going", "LINE 4 · Closing"],
     listen: "Listen",
     repeat: "Repeat",
-    next: "Start 90 Seconds →",
+    next: "Start 90 seconds →",
   },
   ko: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "준비",
@@ -28,7 +28,7 @@ const PREP_COPY = {
     line_labels: ["LINE 1 · Salam", "LINE 2 · Pesan utama", "LINE 3 · Lanjutkan", "LINE 4 · Penutup"],
     listen: "Dengarkan",
     repeat: "Ulangi",
-    next: "Mulai 90 Detik →",
+    next: "Mulai 90 detik →",
   },
   pt: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "PREP",
@@ -37,7 +37,7 @@ const PREP_COPY = {
     line_labels: ["LINE 1 · Saudação", "LINE 2 · Mensagem principal", "LINE 3 · Continue", "LINE 4 · Encerramento"],
     listen: "Ouvir",
     repeat: "Repetir",
-    next: "Iniciar 90 Segundos →",
+    next: "Iniciar 90 segundos →",
   },
   fr: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "PREP",
@@ -46,7 +46,7 @@ const PREP_COPY = {
     line_labels: ["LINE 1 · Salutation", "LINE 2 · Message principal", "LINE 3 · Continuez", "LINE 4 · Clôture"],
     listen: "Écouter",
     repeat: "Répéter",
-    next: "Commencer 90 Secondes →",
+    next: "Commencer 90 secondes →",
   },
 };
 
