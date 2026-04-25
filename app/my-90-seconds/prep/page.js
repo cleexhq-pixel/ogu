@@ -15,6 +15,8 @@ const PREP_COPY = {
     hint: "Say all lines to continue",
     listening: "Listening...",
     tap_to_speak: "Tap to speak",
+    done: "Done",
+    retry_msg: "Didn't catch that. Try again!",
     voice_label: "Idol voice",
     voice_female: "Female",
     voice_male: "Male",
@@ -30,6 +32,8 @@ const PREP_COPY = {
     hint: "모든 문장을 따라 말해야 다음으로 넘어갈 수 있어요",
     listening: "듣는 중...",
     tap_to_speak: "탭해서 말하기",
+    done: "완료",
+    retry_msg: "인식하지 못했어요. 다시 말해봐요!",
     voice_label: "아이돌 목소리",
     voice_female: "여성",
     voice_male: "남성",
@@ -45,6 +49,8 @@ const PREP_COPY = {
     hint: "Ucapkan semua kalimat untuk melanjutkan",
     listening: "Mendengarkan...",
     tap_to_speak: "Ketuk untuk bicara",
+    done: "Selesai",
+    retry_msg: "Tidak terdengar. Coba lagi!",
     voice_label: "Suara idol",
     voice_female: "Perempuan",
     voice_male: "Laki-laki",
@@ -60,6 +66,8 @@ const PREP_COPY = {
     hint: "Diga todas as frases para continuar",
     listening: "Ouvindo...",
     tap_to_speak: "Toque para falar",
+    done: "Concluído",
+    retry_msg: "Não ouvi. Tente novamente!",
     voice_label: "Voz do idol",
     voice_female: "Feminino",
     voice_male: "Masculino",
@@ -75,6 +83,8 @@ const PREP_COPY = {
     hint: "Dites toutes les phrases pour continuer",
     listening: "En écoute...",
     tap_to_speak: "Appuyez pour parler",
+    done: "Terminé",
+    retry_msg: "Pas entendu. Réessayez!",
     voice_label: "Voix de l'idol",
     voice_female: "Féminin",
     voice_male: "Masculin",
@@ -113,7 +123,8 @@ function PrepPageInner() {
   const [completed, setCompleted] = useState([false, false, false, false]);
   const [lang, setLang] = useState("en");
   const [voiceGender, setVoiceGender] = useState("FEMALE");
-  const { transcript, isListening, startListening, reset } = useSpeechRecognition();
+  const [retryIndex, setRetryIndex] = useState(null);
+  const { transcript, isListening, error, startListening, reset } = useSpeechRecognition();
 
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_KEY) || "en";
@@ -224,9 +235,17 @@ function PrepPageInner() {
       const newCompleted = [...completed];
       newCompleted[currentLine] = true;
       setCompleted(newCompleted);
+      setRetryIndex(null);
       reset();
     }
   }, [transcript]);
+
+  useEffect(() => {
+    if (error && currentLine !== null) {
+      setRetryIndex(currentLine);
+      reset();
+    }
+  }, [error]);
 
   function handleNext() {
     window.location.href = `/my-90-seconds/call?scenario=${scenarioId}`;
@@ -318,14 +337,18 @@ function PrepPageInner() {
 
       {/* Lines */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, position: "relative", zIndex: 1 }}>
-        {lines && lines.map((line, i) => (
+        {lines && lines.map((line, i) => {
+          const isListeningThis = isListening && currentLine === i;
+          const isDoneThis = completed[i];
+          const isRetryThis = retryIndex === i;
+          return (
           <div
             key={i}
             className={`m-card ${currentLine === i ? "m-card-active" : ""}`}
             style={{ opacity: i > 0 && !completed[i - 1] ? 0.4 : 1, transition: "opacity 0.3s" }}
           >
             <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: completed[i] ? "var(--m-secondary)" : "var(--m-text-dim)", marginBottom: 8 }}>
-              {completed[i] ? "✓ 완료" : t.line_labels[i]}
+              {completed[i] ? `✓ ${t.done}` : t.line_labels[i]}
             </div>
             <p style={{ fontFamily: "var(--m-font-display)", fontSize: 15, fontWeight: 700, color: "var(--m-text-primary)", marginBottom: 3 }}>
               {line.korean}
@@ -345,15 +368,79 @@ function PrepPageInner() {
                 🔊 {t.listen}
               </button>
               <button
-                onClick={() => handleSpeak(i)}
-                className="m-btn-primary"
-                style={{ flex: 1, padding: "9px 6px", fontSize: 11, textTransform: "none", letterSpacing: 0 }}
+                onClick={() => {
+                  if (!isDoneThis) {
+                    setRetryIndex(null);
+                    startListening();
+                    setCurrentLine(i);
+                  }
+                }}
+                disabled={isDoneThis}
+                style={{
+                  flex: 1, padding: "10px 6px",
+                  borderRadius: 9999, border: "none",
+                  cursor: isDoneThis ? "default" : "pointer",
+                  background: isDoneThis
+                    ? "#2C2C2D"
+                    : isListeningThis
+                    ? "#E24B4A"
+                    : "#FF8AA9",
+                  color: isDoneThis ? "#3A3A3A" : "#fff",
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: 12, fontWeight: 700,
+                  display: "flex", alignItems: "center",
+                  justifyContent: "center", gap: 6,
+                  transition: "background 0.2s",
+                }}
               >
-                {isListening && currentLine === i ? `🎤 ${t.listening}` : `🎤 ${t.tap_to_speak}`}
+                {isListeningThis ? (
+                  <>
+                    <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
+                      {[8, 14, 10, 6].map((h, j) => (
+                        <div key={j} style={{
+                          width: 3, height: h,
+                          background: "#fff",
+                          borderRadius: 2,
+                          opacity: 0.7 + j * 0.1,
+                        }} />
+                      ))}
+                    </div>
+                    {t.listening}
+                  </>
+                ) : (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M6 1v10M3 4a3 3 0 006 0"
+                        stroke={isDoneThis ? "#3A3A3A" : "#fff"}
+                        strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                    {t.tap_to_speak}
+                  </>
+                )}
               </button>
             </div>
+            {retryIndex === i && (
+              <div style={{
+                marginTop: 8,
+                background: "rgba(226,75,74,0.12)",
+                borderRadius: 8, padding: "7px 12px",
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <div style={{
+                  width: 5, height: 5, borderRadius: "50%",
+                  background: "#E24B4A", flexShrink: 0,
+                }} />
+                <p style={{
+                  fontSize: 11, color: "#E24B4A",
+                  margin: 0, fontWeight: 500,
+                }}>
+                  {t.retry_msg}
+                </p>
+              </div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* CTA */}

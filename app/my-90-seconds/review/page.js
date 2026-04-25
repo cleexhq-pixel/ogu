@@ -10,6 +10,7 @@ const LANG_KEY = "ogu_lang";
 
 const REVIEW_COPY = {
   en: {
+    done_badge: "Done",
     title: "You did it!",
     sub: "Here's how your 90 seconds went.",
     lines_label: "Lines delivered",
@@ -28,6 +29,7 @@ const REVIEW_COPY = {
     ],
   },
   ko: {
+    done_badge: "완료",
     title: "해냈어요!",
     sub: "이번 90초, 이렇게 지나갔어요.",
     lines_label: "전달한 라인",
@@ -46,6 +48,7 @@ const REVIEW_COPY = {
     ],
   },
   id: {
+    done_badge: "Selesai",
     title: "Kamu berhasil!",
     sub: "Begini jalannya 90 detikmu.",
     lines_label: "Kalimat tersampaikan",
@@ -64,6 +67,7 @@ const REVIEW_COPY = {
     ],
   },
   pt: {
+    done_badge: "Concluído",
     title: "Você conseguiu!",
     sub: "Veja como foram seus 90 segundos.",
     lines_label: "Frases entregues",
@@ -82,6 +86,7 @@ const REVIEW_COPY = {
     ],
   },
   fr: {
+    done_badge: "Terminé",
     title: "Vous l'avez fait!",
     sub: "Voici comment vos 90 secondes se sont passées.",
     lines_label: "Répliques livrées",
@@ -213,7 +218,7 @@ function ReviewPageInner() {
         <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--m-secondary)" }} />
         <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
           textTransform: "uppercase", color: "var(--m-secondary)" }}>
-          완료
+          {tr.done_badge}
         </span>
       </div>
 

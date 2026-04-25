@@ -7,6 +7,7 @@ const DAILY_LIMIT = 3;
 const FREE_DATE_KEY = "kkobi_m90s_free_date";
 const FREE_COUNT_KEY = "kkobi_m90s_free_count";
 const LANG_KEY = "ogu_lang";
+const VOICE_KEY = "kkobi_voice_gender";
 
 const COPY = {
   en: {
@@ -23,6 +24,10 @@ const COPY = {
       "Compliment", "Birthday", "Game",
       "Request", "Ask", "Confession"
     ],
+    voice_label: "Idol voice",
+    voice_desc: "Choose how your idol sounds",
+    voice_female: "Female",
+    voice_male: "Male",
   },
   ko: {
     eyebrow: "영통 팬싸인회 준비 서비스",
@@ -38,6 +43,10 @@ const COPY = {
       "칭찬하기", "생일 축하", "게임하기",
       "멘트 요청", "질문하기", "사랑 고백"
     ],
+    voice_label: "아이돌 목소리",
+    voice_desc: "아이돌 목소리를 선택하세요",
+    voice_female: "여성",
+    voice_male: "남성",
   },
   id: {
     eyebrow: "Persiapan Video Call Fansign",
@@ -53,6 +62,10 @@ const COPY = {
       "Pujian", "Ulang Tahun", "Game",
       "Permintaan", "Tanya", "Pengakuan"
     ],
+    voice_label: "Suara idol",
+    voice_desc: "Pilih suara idolmu",
+    voice_female: "Perempuan",
+    voice_male: "Laki-laki",
   },
   pt: {
     eyebrow: "Preparação para Fansign",
@@ -68,6 +81,10 @@ const COPY = {
       "Elogio", "Aniversário", "Jogo",
       "Pedido", "Pergunta", "Confissão"
     ],
+    voice_label: "Voz do idol",
+    voice_desc: "Escolha a voz do seu idol",
+    voice_female: "Feminino",
+    voice_male: "Masculino",
   },
   fr: {
     eyebrow: "Préparation Appel Vidéo Fansign",
@@ -83,6 +100,10 @@ const COPY = {
       "Compliment", "Anniversaire", "Jeu",
       "Demande", "Question", "Confession"
     ],
+    voice_label: "Voix de l'idol",
+    voice_desc: "Choisissez la voix de votre idol",
+    voice_female: "Féminin",
+    voice_male: "Masculin",
   },
 };
 
@@ -117,11 +138,14 @@ function ScenarioPageInner() {
   const [selected, setSelected] = useState(preSelected || null);
   const [lang, setLang] = useState("en");
   const [remaining, setRemaining] = useState(DAILY_LIMIT);
+  const [voiceGender, setVoiceGender] = useState("FEMALE");
 
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_KEY) || "en";
     setLang(savedLang);
     setRemaining(getRemainingCount());
+    const savedGender = localStorage.getItem(VOICE_KEY) || "FEMALE";
+    setVoiceGender(savedGender);
   }, []);
 
   const t = COPY[lang] || COPY.en;
@@ -174,15 +198,6 @@ function ScenarioPageInner() {
           }}>90</span>Seconds
         </span>
       </div>
-
-      {/* 서비스 태그 */}
-      <p style={{
-        fontSize: 9, fontWeight: 600,
-        letterSpacing: "0.1em", textTransform: "uppercase",
-        color: "#5C5A62", marginBottom: 10,
-      }}>
-        {t.eyebrow}
-      </p>
 
       {/* 메인 카피 */}
       <h1 style={{
@@ -251,6 +266,60 @@ function ScenarioPageInner() {
             </p>
           </button>
         ))}
+      </div>
+
+      {/* 구분선 */}
+      <div style={{
+        height: 1,
+        background: "rgba(255,255,255,0.06)",
+        margin: "16px 0",
+      }} />
+
+      {/* 목소리 선택 */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 16,
+      }}>
+        <div>
+          <p style={{
+            fontSize: 12, fontWeight: 600,
+            color: "#F2F0F4", margin: "0 0 2px",
+            fontFamily: "'Manrope', sans-serif",
+          }}>
+            {t.voice_label}
+          </p>
+          <p style={{ fontSize: 10, color: "#5C5A62", margin: 0 }}>
+            {t.voice_desc}
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {["FEMALE", "MALE"].map((g) => (
+            <button
+              key={g}
+              onClick={() => {
+                setVoiceGender(g);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem(VOICE_KEY, g);
+                }
+              }}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 9999,
+                border: "none",
+                background: voiceGender === g ? "#FF8AA9" : "#1A191B",
+                color: voiceGender === g ? "#fff" : "#5C5A62",
+                fontSize: 12, fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "'Inter', sans-serif",
+                transition: "all 0.15s",
+              }}
+            >
+              {g === "FEMALE" ? t.voice_female : t.voice_male}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* CTA 영역 */}

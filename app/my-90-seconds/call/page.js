@@ -15,6 +15,10 @@ const CALL_COPY = {
   en: {
     hint: "Silence for 3 seconds shows a hint",
     speak_now: "Speak now",
+    tap_to_speak: "Tap to speak",
+    listening: "Listening...",
+    hint_bubble: "Say something! It's okay to make mistakes~",
+    start_sim: "Start simulation",
     time_label: "TIME REMAINING",
     idol_label: "IDOL",
     you_label: "YOU",
@@ -22,6 +26,10 @@ const CALL_COPY = {
   ko: {
     hint: "침묵하면 힌트가 나타나요",
     speak_now: "지금 말하기",
+    tap_to_speak: "탭해서 말하기",
+    listening: "듣는 중...",
+    hint_bubble: "뭔가 말해봐요! 틀려도 괜찮아요~",
+    start_sim: "시뮬레이션 시작",
     time_label: "남은 시간",
     idol_label: "아이돌",
     you_label: "나",
@@ -29,6 +37,10 @@ const CALL_COPY = {
   id: {
     hint: "Diam 3 detik menampilkan petunjuk",
     speak_now: "Bicara sekarang",
+    tap_to_speak: "Ketuk untuk bicara",
+    listening: "Mendengarkan...",
+    hint_bubble: "Katakan sesuatu! Tidak apa-apa salah~",
+    start_sim: "Mulai simulasi",
     time_label: "WAKTU TERSISA",
     idol_label: "IDOL",
     you_label: "KAMU",
@@ -36,6 +48,10 @@ const CALL_COPY = {
   pt: {
     hint: "Silêncio por 3 segundos mostra uma dica",
     speak_now: "Fale agora",
+    tap_to_speak: "Toque para falar",
+    listening: "Ouvindo...",
+    hint_bubble: "Diga algo! Tudo bem errar~",
+    start_sim: "Iniciar simulação",
     time_label: "TEMPO RESTANTE",
     idol_label: "IDOL",
     you_label: "VOCÊ",
@@ -43,6 +59,10 @@ const CALL_COPY = {
   fr: {
     hint: "3 secondes de silence affiche un indice",
     speak_now: "Parlez maintenant",
+    tap_to_speak: "Appuyez pour parler",
+    listening: "En écoute...",
+    hint_bubble: "Dites quelque chose! C'est ok de faire des erreurs~",
+    start_sim: "Commencer la simulation",
     time_label: "TEMPS RESTANT",
     idol_label: "IDOL",
     you_label: "VOUS",
@@ -295,15 +315,19 @@ function CallPageInner() {
                 borderBottomRightRadius: msg.role === "fan" ? 4 : 16,
                 opacity: msg.isEmergency ? 0.7 : 1,
               }}>
-                {msg.text}
-                {msg.translation && (
+                <p style={{
+                  fontSize: 15, fontWeight: 600,
+                  color: "#F2F0F4", margin: "0 0 4px",
+                  lineHeight: 1.4,
+                }}>
+                  {msg.korean || msg.text}
+                </p>
+                {(msg.translation || msg.english) && (
                   <p style={{
-                    fontSize: 11,
-                    color: "#5C5A62",
-                    marginTop: 4,
-                    lineHeight: 1.4,
+                    fontSize: 11, color: "#5C5A62",
+                    margin: 0, lineHeight: 1.4,
                   }}>
-                    {msg.translation}
+                    {msg.translation || msg.english}
                   </p>
                 )}
               </div>
@@ -326,7 +350,7 @@ function CallPageInner() {
             padding: "10px 14px", fontSize: 12, color: "var(--m-tertiary)",
             alignSelf: "center", textAlign: "center",
           }}>
-            💡 뭔가 말해봐요! 틀려도 괜찮아요~
+            💡 {tc.hint_bubble}
           </div>
         )}
       </div>
@@ -349,27 +373,58 @@ function CallPageInner() {
 
       {/* 마이크 버튼 */}
       <div style={{
-        padding: "0 22px",
         position: "sticky",
-        bottom: 16,
+        bottom: 0,
+        left: 0, right: 0,
+        padding: "12px 22px 24px",
+        background: "linear-gradient(to top, #0E0E0F 70%, transparent)",
         zIndex: 10,
-        paddingBottom: 28,
       }}>
         {!hasStarted ? (
           <button onClick={handleStart} className="m-btn-primary">
-            🎬 시뮬레이션 시작
+            🎬 {tc.start_sim}
           </button>
         ) : (
           <button
             onClick={startListening}
-            className="m-btn-primary"
             style={{
-              background: isListening
-                ? "linear-gradient(135deg, #00E3FD, #9E8FFD)"
-                : "linear-gradient(135deg, #FF8AA9, #FF719B)",
+              width: "100%",
+              padding: "16px",
+              borderRadius: 9999,
+              border: "none",
+              background: isListening ? "#E24B4A" : "#FF8AA9",
+              color: "#fff",
+              fontFamily: "'Manrope', sans-serif",
+              fontSize: 15, fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              transition: "background 0.2s",
             }}
           >
-            {isListening ? "🎤 듣는 중..." : `🎤 ${tc.speak_now}`}
+            {isListening ? (
+              <>
+                <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
+                  {[8, 14, 10, 6].map((h, j) => (
+                    <div key={j} style={{
+                      width: 3, height: h,
+                      background: "#fff", borderRadius: 2,
+                    }} />
+                  ))}
+                </div>
+                {tc.listening}
+              </>
+            ) : (
+              <>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1v14M4 6a4 4 0 008 0"
+                    stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                {tc.tap_to_speak}
+              </>
+            )}
           </button>
         )}
       </div>
