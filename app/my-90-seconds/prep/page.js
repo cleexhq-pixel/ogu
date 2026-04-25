@@ -1,5 +1,55 @@
 "use client";
 
+const LANG_KEY = "ogu_lang";
+
+const PREP_COPY = {
+  en: {
+    eyebrow: (scenario) => scenario?.toUpperCase() || "PREP",
+    title_1: "4 lines to",
+    title_2: "get you ready",
+    line_labels: ["LINE 1 · Greeting", "LINE 2 · Main message", "LINE 3 · Keep going", "LINE 4 · Closing"],
+    listen: "Listen",
+    repeat: "Repeat",
+    next: "Start 90 Seconds →",
+  },
+  ko: {
+    eyebrow: (scenario) => scenario?.toUpperCase() || "준비",
+    title_1: "4문장을",
+    title_2: "배워볼게요",
+    line_labels: ["LINE 1 · 인사", "LINE 2 · 핵심 메시지", "LINE 3 · 대화 이어가기", "LINE 4 · 마무리"],
+    listen: "듣기",
+    repeat: "따라 말하기",
+    next: "90초 시뮬 시작하기 →",
+  },
+  id: {
+    eyebrow: (scenario) => scenario?.toUpperCase() || "PERSIAPAN",
+    title_1: "4 kalimat untuk",
+    title_2: "kamu siapkan",
+    line_labels: ["LINE 1 · Salam", "LINE 2 · Pesan utama", "LINE 3 · Lanjutkan", "LINE 4 · Penutup"],
+    listen: "Dengarkan",
+    repeat: "Ulangi",
+    next: "Mulai 90 Detik →",
+  },
+  pt: {
+    eyebrow: (scenario) => scenario?.toUpperCase() || "PREP",
+    title_1: "4 frases para",
+    title_2: "se preparar",
+    line_labels: ["LINE 1 · Saudação", "LINE 2 · Mensagem principal", "LINE 3 · Continue", "LINE 4 · Encerramento"],
+    listen: "Ouvir",
+    repeat: "Repetir",
+    next: "Iniciar 90 Segundos →",
+  },
+  fr: {
+    eyebrow: (scenario) => scenario?.toUpperCase() || "PREP",
+    title_1: "4 phrases pour",
+    title_2: "vous préparer",
+    line_labels: ["LINE 1 · Salutation", "LINE 2 · Message principal", "LINE 3 · Continuez", "LINE 4 · Clôture"],
+    listen: "Écouter",
+    repeat: "Répéter",
+    next: "Commencer 90 Secondes →",
+  },
+};
+
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import scenarios from "../../../src/data/scenarios";
@@ -30,9 +80,13 @@ function PrepPageInner() {
   const [loading, setLoading] = useState(true);
   const [currentLine, setCurrentLine] = useState(0);
   const [completed, setCompleted] = useState([false, false, false, false]);
+  const [lang, setLang] = useState("en");
   const { transcript, isListening, startListening, reset } = useSpeechRecognition();
 
   useEffect(() => {
+    const savedLang = localStorage.getItem(LANG_KEY) || "en";
+    setLang(savedLang);
+
     async function loadScript() {
       try {
         const generated = await generateScript(scenario);
@@ -86,6 +140,7 @@ function PrepPageInner() {
 
   const allDone = completed.every(Boolean);
   const labels = ["인사", "핵심 메시지", "대화 이어가기", "마무리"];
+  const t = PREP_COPY[lang] || PREP_COPY.en;
 
   if (loading) {
     return (
@@ -122,11 +177,11 @@ function PrepPageInner() {
       {/* Header */}
       <div style={{ position: "relative", zIndex: 1, marginBottom: 24 }}>
         <div className="m-eyebrow" style={{ marginBottom: 8 }}>
-          {scenario.emoji} {scenario.titleEn}
+          {scenario.emoji} {t.eyebrow(scenarioId)}
         </div>
         <h1 className="m-display">
-          4문장을<br />
-          <span className="m-gradient-text">배워볼게요</span>
+          {t.title_1}<br />
+          <span className="m-gradient-text">{t.title_2}</span>
         </h1>
       </div>
 
@@ -139,7 +194,7 @@ function PrepPageInner() {
             style={{ opacity: i > 0 && !completed[i - 1] ? 0.4 : 1, transition: "opacity 0.3s" }}
           >
             <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: completed[i] ? "var(--m-secondary)" : "var(--m-text-dim)", marginBottom: 8 }}>
-              {completed[i] ? "✓ 완료" : `Line ${i + 1} · ${labels[i]}`}
+              {completed[i] ? "✓ 완료" : t.line_labels[i]}
             </div>
             <p style={{ fontFamily: "var(--m-font-display)", fontSize: 15, fontWeight: 700, color: "var(--m-text-primary)", marginBottom: 3 }}>
               {line.korean}
@@ -156,14 +211,14 @@ function PrepPageInner() {
                 className="m-btn-secondary"
                 style={{ flex: 1, padding: "9px 6px", fontSize: 11 }}
               >
-                🔊 듣기
+                🔊 {t.listen}
               </button>
               <button
                 onClick={() => handleSpeak(i)}
                 className="m-btn-primary"
                 style={{ flex: 1, padding: "9px 6px", fontSize: 11 }}
               >
-                {isListening && currentLine === i ? "🎤 듣는 중..." : "🎤 따라 말하기"}
+                {isListening && currentLine === i ? "🎤 듣는 중..." : `🎤 ${t.repeat}`}
               </button>
             </div>
           </div>
@@ -178,7 +233,7 @@ function PrepPageInner() {
           style={{ opacity: allDone ? 1 : 0.4 }}
           disabled={!allDone}
         >
-          90초 시뮬 시작하기 →
+          {t.next}
         </button>
         {!allDone && (
           <p style={{ textAlign: "center", fontSize: 11, color: "var(--m-text-dim)", marginTop: 10 }}>
