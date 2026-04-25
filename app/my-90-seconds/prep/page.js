@@ -1,6 +1,7 @@
 "use client";
 
 const LANG_KEY = "ogu_lang";
+const VOICE_KEY = "kkobi_voice_gender";
 
 const PREP_COPY = {
   en: {
@@ -12,6 +13,11 @@ const PREP_COPY = {
     repeat: "Repeat",
     next: "Start 90 seconds",
     hint: "Say all lines to continue",
+    listening: "Listening...",
+    tap_to_speak: "Tap to speak",
+    voice_label: "Idol voice",
+    voice_female: "Female",
+    voice_male: "Male",
   },
   ko: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "준비",
@@ -22,6 +28,11 @@ const PREP_COPY = {
     repeat: "따라 말하기",
     next: "90초 시뮬 시작하기",
     hint: "모든 문장을 따라 말해야 다음으로 넘어갈 수 있어요",
+    listening: "듣는 중...",
+    tap_to_speak: "탭해서 말하기",
+    voice_label: "아이돌 목소리",
+    voice_female: "여성",
+    voice_male: "남성",
   },
   id: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "PERSIAPAN",
@@ -32,6 +43,11 @@ const PREP_COPY = {
     repeat: "Ulangi",
     next: "Mulai 90 detik",
     hint: "Ucapkan semua kalimat untuk melanjutkan",
+    listening: "Mendengarkan...",
+    tap_to_speak: "Ketuk untuk bicara",
+    voice_label: "Suara idol",
+    voice_female: "Perempuan",
+    voice_male: "Laki-laki",
   },
   pt: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "PREP",
@@ -42,6 +58,11 @@ const PREP_COPY = {
     repeat: "Repetir",
     next: "Iniciar 90 segundos",
     hint: "Diga todas as frases para continuar",
+    listening: "Ouvindo...",
+    tap_to_speak: "Toque para falar",
+    voice_label: "Voz do idol",
+    voice_female: "Feminino",
+    voice_male: "Masculino",
   },
   fr: {
     eyebrow: (scenario) => scenario?.toUpperCase() || "PREP",
@@ -52,6 +73,11 @@ const PREP_COPY = {
     repeat: "Répéter",
     next: "Commencer 90 secondes",
     hint: "Dites toutes les phrases pour continuer",
+    listening: "En écoute...",
+    tap_to_speak: "Appuyez pour parler",
+    voice_label: "Voix de l'idol",
+    voice_female: "Féminin",
+    voice_male: "Masculin",
   },
 };
 
@@ -86,11 +112,14 @@ function PrepPageInner() {
   const [currentLine, setCurrentLine] = useState(0);
   const [completed, setCompleted] = useState([false, false, false, false]);
   const [lang, setLang] = useState("en");
+  const [voiceGender, setVoiceGender] = useState("FEMALE");
   const { transcript, isListening, startListening, reset } = useSpeechRecognition();
 
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_KEY) || "en";
     setLang(savedLang);
+    const savedGender = localStorage.getItem(VOICE_KEY) || "FEMALE";
+    setVoiceGender(savedGender);
   }, []);
 
   useEffect(() => {
@@ -159,12 +188,29 @@ function PrepPageInner() {
     loadScript();
   }, [scenarioId]);
 
-  function playTTS(text) {
+  async function playTTS(text) {
     if (typeof window === "undefined") return;
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = "ko-KR";
-    utter.rate = 0.85;
-    window.speechSynthesis.speak(utter);
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          lang: "ko-KR",
+          speakingRate: 0.85,
+          gender: voiceGender,
+        }),
+      });
+      const data = await res.json();
+      if (data.audioContent) {
+        const audio = new Audio(
+          `data:audio/mp3;base64,${data.audioContent}`
+        );
+        audio.play();
+      }
+    } catch (e) {
+      console.error("TTS error:", e);
+    }
   }
 
   function handleSpeak(index) {
@@ -208,6 +254,43 @@ function PrepPageInner() {
 
       {/* Spotlight */}
       <div className="m-spotlight" style={{ top: -60, left: -60 }} />
+
+      {/* 성별 선택 */}
+      <div style={{
+        display: "flex", alignItems: "center",
+        gap: 8, marginBottom: 20,
+        position: "relative", zIndex: 1,
+      }}>
+        <span style={{
+          fontSize: 11, color: "#5C5A62",
+        }}>
+          {t.voice_label}:
+        </span>
+        {["FEMALE", "MALE"].map((g) => (
+          <button
+            key={g}
+            onClick={() => {
+              setVoiceGender(g);
+              localStorage.setItem(VOICE_KEY, g);
+            }}
+            style={{
+              padding: "4px 12px",
+              borderRadius: 9999,
+              border: "none",
+              background: voiceGender === g
+                ? "#FF8AA9"
+                : "#1A191B",
+              color: voiceGender === g ? "#fff" : "#5C5A62",
+              fontSize: 11, fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.15s",
+              fontFamily: "'Inter', sans-serif",
+            }}
+          >
+            {g === "FEMALE" ? t.voice_female : t.voice_male}
+          </button>
+        ))}
+      </div>
 
       {/* Progress bar */}
       <div style={{ display: "flex", gap: 5, marginBottom: 24, position: "relative", zIndex: 1 }}>
@@ -266,7 +349,7 @@ function PrepPageInner() {
                 className="m-btn-primary"
                 style={{ flex: 1, padding: "9px 6px", fontSize: 11, textTransform: "none", letterSpacing: 0 }}
               >
-                {isListening && currentLine === i ? "🎤 듣는 중..." : `🎤 ${t.repeat}`}
+                {isListening && currentLine === i ? `🎤 ${t.listening}` : `🎤 ${t.tap_to_speak}`}
               </button>
             </div>
           </div>

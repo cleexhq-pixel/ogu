@@ -6,6 +6,101 @@ import scenarios from "../../../src/data/scenarios";
 import { generateReview } from "../../../src/lib/generateReview";
 import { saveSimulationLog } from "../../../src/lib/saveSimulationLog";
 
+const LANG_KEY = "ogu_lang";
+
+const REVIEW_COPY = {
+  en: {
+    title: "You did it!",
+    sub: "Here's how your 90 seconds went.",
+    lines_label: "Lines delivered",
+    time_label: "Time used",
+    rate_label: "Delivery rate",
+    moments_label: "Starred moments",
+    tip_label: "Try this next time",
+    best_label: "Best moment of this session?",
+    retry: "Try again",
+    share: "Share",
+    home: "Go home",
+    moments: [
+      "When the idol understood me",
+      "When Korean came naturally",
+      "When I answered a question",
+    ],
+  },
+  ko: {
+    title: "해냈어요!",
+    sub: "이번 90초, 이렇게 지나갔어요.",
+    lines_label: "전달한 라인",
+    time_label: "사용한 시간",
+    rate_label: "전달률",
+    moments_label: "좋았던 순간",
+    tip_label: "더 자연스럽게",
+    best_label: "이 연습에서 가장 좋았던 순간은?",
+    retry: "다시 연습하기",
+    share: "공유하기",
+    home: "홈으로 가기",
+    moments: [
+      "아이돌이 내 말을 알아들었을 때",
+      "한국어가 자연스럽게 나왔을 때",
+      "역질문에 대답했을 때",
+    ],
+  },
+  id: {
+    title: "Kamu berhasil!",
+    sub: "Begini jalannya 90 detikmu.",
+    lines_label: "Kalimat tersampaikan",
+    time_label: "Waktu digunakan",
+    rate_label: "Tingkat penyampaian",
+    moments_label: "Momen berbintang",
+    tip_label: "Coba ini berikutnya",
+    best_label: "Momen terbaik sesi ini?",
+    retry: "Coba lagi",
+    share: "Bagikan",
+    home: "Ke beranda",
+    moments: [
+      "Saat idol mengerti ucapanku",
+      "Saat bahasa Korea keluar alami",
+      "Saat aku menjawab pertanyaan balik",
+    ],
+  },
+  pt: {
+    title: "Você conseguiu!",
+    sub: "Veja como foram seus 90 segundos.",
+    lines_label: "Frases entregues",
+    time_label: "Tempo usado",
+    rate_label: "Taxa de entrega",
+    moments_label: "Momentos marcados",
+    tip_label: "Tente isso da próxima vez",
+    best_label: "Melhor momento desta sessão?",
+    retry: "Tentar novamente",
+    share: "Compartilhar",
+    home: "Ir para início",
+    moments: [
+      "Quando o idol me entendeu",
+      "Quando o coreano saiu naturalmente",
+      "Quando respondi uma pergunta",
+    ],
+  },
+  fr: {
+    title: "Vous l'avez fait!",
+    sub: "Voici comment vos 90 secondes se sont passées.",
+    lines_label: "Répliques livrées",
+    time_label: "Temps utilisé",
+    rate_label: "Taux de livraison",
+    moments_label: "Moments en vedette",
+    tip_label: "Essayez ceci la prochaine fois",
+    best_label: "Meilleur moment de cette session?",
+    retry: "Réessayer",
+    share: "Partager",
+    home: "Aller à l'accueil",
+    moments: [
+      "Quand l'idol m'a compris",
+      "Quand le coréen est sorti naturellement",
+      "Quand j'ai répondu à une question",
+    ],
+  },
+};
+
 function ReviewPageInner() {
   const searchParams = useSearchParams();
   const scenarioId = searchParams.get("scenario") || "compliment";
@@ -17,6 +112,12 @@ function ReviewPageInner() {
   const [review, setReview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bestMoment, setBestMoment] = useState(null);
+  const [lang, setLang] = useState("en");
+
+  useEffect(() => {
+    const savedLang = localStorage.getItem(LANG_KEY) || "en";
+    setLang(savedLang);
+  }, []);
 
   useEffect(() => {
     if (!logParam) return;
@@ -82,6 +183,7 @@ function ReviewPageInner() {
   // 점수 계산
   const score = log ? Math.round((log.linesDelivered / 4) * 100) : 0;
   const timeUsed = 90;
+  const tr = REVIEW_COPY[lang] || REVIEW_COPY.en;
 
   if (loading) {
     return (
@@ -121,27 +223,24 @@ function ReviewPageInner() {
         letterSpacing: "-0.02em", color: "var(--m-text-primary)",
         lineHeight: 1.2, marginBottom: 6,
       }}>
-        90초를<br />
         <span style={{
           background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
         }}>
-          잘 해냈어요!
+          {tr.title}
         </span>
       </h1>
-      {review?.encouragement && (
-        <p style={{ fontSize: 13, color: "var(--m-text-secondary)", marginBottom: 24 }}>
-          {review.encouragement}
-        </p>
-      )}
+      <p style={{ fontSize: 13, color: "var(--m-text-secondary)", marginBottom: 24 }}>
+        {review?.encouragement || tr.sub}
+      </p>
 
       {/* 통계 카드 */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
         {[
-          { num: `${log?.linesDelivered || 0}/4`, label: "전달한 라인" },
-          { num: `${timeUsed}s`, label: "사용한 시간" },
-          { num: `${score}%`, label: "전달률" },
-          { num: `${log?.starredTurns?.length || 0}개`, label: "⭐ 좋았던 순간" },
+          { num: `${log?.linesDelivered || 0}/4`, label: tr.lines_label },
+          { num: `${timeUsed}s`, label: tr.time_label },
+          { num: `${score}%`, label: tr.rate_label },
+          { num: `${log?.starredTurns?.length || 0}`, label: `⭐ ${tr.moments_label}` },
         ].map((stat, i) => (
           <div key={i} className="m-card" style={{ padding: "14px 12px" }}>
             <div style={{
@@ -162,7 +261,7 @@ function ReviewPageInner() {
         <div className="m-card m-card-featured" style={{ marginBottom: 12 }}>
           <p style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.1em",
             textTransform: "uppercase", color: "var(--m-secondary)", marginBottom: 8 }}>
-            💡 더 자연스럽게
+            💡 {tr.tip_label}
           </p>
           <p style={{ fontSize: 13, color: "var(--m-text-primary)", fontWeight: 600, marginBottom: 10 }}>
             {review.tip}
@@ -190,10 +289,10 @@ function ReviewPageInner() {
       <div className="m-card" style={{ marginBottom: 20 }}>
         <p style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.1em",
           textTransform: "uppercase", color: "var(--m-text-dim)", marginBottom: 8 }}>
-          이 연습에서 가장 좋았던 순간은?
+          {tr.best_label}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {["아이돌이 내 말을 알아들었을 때", "한국어가 자연스럽게 나왔을 때", "역질문에 대답했을 때"].map((m, i) => (
+          {tr.moments.map((m, i) => (
             <button key={i} onClick={() => setBestMoment(i)} style={{
               padding: "8px 12px", borderRadius: 10, textAlign: "left",
               background: bestMoment === i ? "rgba(255,138,169,0.15)" : "var(--m-surface-low)",
@@ -211,12 +310,29 @@ function ReviewPageInner() {
       {/* CTA 버튼 */}
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={handleRetry} className="m-btn-primary" style={{ flex: 1 }}>
-          다시 연습하기
+          {tr.retry}
         </button>
         <button onClick={handleShare} className="m-btn-secondary" style={{ flex: 1 }}>
-          공유하기
+          {tr.share}
         </button>
       </div>
+      <button
+        onClick={() => { window.location.href = "/"; }}
+        style={{
+          width: "100%",
+          padding: "14px",
+          borderRadius: 9999,
+          border: "1px solid rgba(255,255,255,0.1)",
+          background: "transparent",
+          color: "#9E9BA4",
+          fontFamily: "'Manrope', sans-serif",
+          fontSize: 14, fontWeight: 600,
+          cursor: "pointer",
+          marginTop: 8,
+        }}
+      >
+        {tr.home}
+      </button>
     </div>
   );
 }

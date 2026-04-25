@@ -56,7 +56,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "TTS failed" }, { status: 400 });
     }
 
-    const { text, lang, speakingRate: rawRate } = body || {};
+    const { text, lang, speakingRate: rawRate, gender } = body || {};
     if (!text || typeof text !== "string" || !text.trim()) {
       return NextResponse.json({ error: "TTS failed" }, { status: 400 });
     }
@@ -75,8 +75,8 @@ export async function POST(request) {
       input: { text: sanitized },
       voice: {
         languageCode,
-        name: "ko-KR-Neural2-A",
-        ssmlGender: "FEMALE"
+        name: gender === "MALE" ? "ko-KR-Neural2-C" : "ko-KR-Neural2-A",
+        ssmlGender: gender === "MALE" ? "MALE" : "FEMALE"
       },
       audioConfig: {
         audioEncoding: "MP3",

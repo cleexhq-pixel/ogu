@@ -8,6 +8,47 @@ import { classifyUserInput, selectIdolResponse } from "../../../src/lib/selectId
 import idolScripts, { getRandomLine } from "../../../src/data/idol-scripts";
 import scenarios from "../../../src/data/scenarios";
 
+const LANG_KEY = "ogu_lang";
+const VOICE_KEY = "kkobi_voice_gender";
+
+const CALL_COPY = {
+  en: {
+    hint: "Silence for 3 seconds shows a hint",
+    speak_now: "Speak now",
+    time_label: "TIME REMAINING",
+    idol_label: "IDOL",
+    you_label: "YOU",
+  },
+  ko: {
+    hint: "침묵하면 힌트가 나타나요",
+    speak_now: "지금 말하기",
+    time_label: "남은 시간",
+    idol_label: "아이돌",
+    you_label: "나",
+  },
+  id: {
+    hint: "Diam 3 detik menampilkan petunjuk",
+    speak_now: "Bicara sekarang",
+    time_label: "WAKTU TERSISA",
+    idol_label: "IDOL",
+    you_label: "KAMU",
+  },
+  pt: {
+    hint: "Silêncio por 3 segundos mostra uma dica",
+    speak_now: "Fale agora",
+    time_label: "TEMPO RESTANTE",
+    idol_label: "IDOL",
+    you_label: "VOCÊ",
+  },
+  fr: {
+    hint: "3 secondes de silence affiche un indice",
+    speak_now: "Parlez maintenant",
+    time_label: "TEMPS RESTANT",
+    idol_label: "IDOL",
+    you_label: "VOUS",
+  },
+};
+
 const EMERGENCY_CARDS = [
   { id: "E01", text: "아 잠깐만요~ 다시 말할게요." },
   { id: "E02", text: "다른 얘기 할게요!" },
@@ -28,22 +69,56 @@ function CallPageInner() {
   const [showHint, setShowHint] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [starredTurns, setStarredTurns] = useState([]);
+  const [lang, setLang] = useState("en");
+  const [voiceGender, setVoiceGender] = useState("FEMALE");
   const chatRef = useRef(null);
 
   // 첫 아이돌 인사
   useEffect(() => {
+    const savedLang = localStorage.getItem(LANG_KEY) || "en";
+    setLang(savedLang);
+    const savedGender = localStorage.getItem(VOICE_KEY) || "FEMALE";
+    setVoiceGender(savedGender);
+
     const greeting = getRandomLine("greeting");
     const firstQ = getRandomLine("first_question");
     setMessages([
       { role: "idol", text: greeting.text, id: greeting.id, turn: 0 },
       { role: "idol", text: firstQ.text, id: firstQ.id, turn: 0 },
     ]);
+    playIdolTTS(greeting.text);
+    setTimeout(() => playIdolTTS(firstQ.text), 1800);
   }, []);
 
   // 타이머 시작
   function handleStart() {
     setHasStarted(true);
     start();
+  }
+
+  async function playIdolTTS(text) {
+    if (typeof window === "undefined") return;
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          lang: "ko-KR",
+          speakingRate: 0.9,
+          gender: voiceGender,
+        }),
+      });
+      const data = await res.json();
+      if (data.audioContent) {
+        const audio = new Audio(
+          `data:audio/mp3;base64,${data.audioContent}`
+        );
+        audio.play();
+      }
+    } catch (e) {
+      console.error("TTS error:", e);
+    }
   }
 
   // 침묵 감지 (3초)
@@ -117,6 +192,7 @@ function CallPageInner() {
           starred: false,
         };
         setMessages((prev) => [...prev, idolMsg]);
+        playIdolTTS(idolMsg.text);
 
         // 역질문 힌트 표시
         if (response.type === "question" && response.line.hintKo) {
@@ -135,7 +211,10 @@ function CallPageInner() {
     setMessages((prev) => [...prev, msg]);
     setTurnCount((n) => n + 1);
     const response = { role: "idol", text: getRandomLine("reaction_nervous").text, turn: turnCount + 1 };
-    setTimeout(() => setMessages((prev) => [...prev, response]), 800);
+    setTimeout(() => {
+      setMessages((prev) => [...prev, response]);
+      playIdolTTS(response.text);
+    }, 800);
   }
 
   // ⭐ 별점
@@ -152,6 +231,8 @@ function CallPageInner() {
     }
   }, [messages]);
 
+  const tc = CALL_COPY[lang] || CALL_COPY.en;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
 
@@ -165,7 +246,7 @@ function CallPageInner() {
           background: "radial-gradient(circle, rgba(0,227,253,0.08) 0%, transparent 70%)" }} />
         <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
           textTransform: "uppercase", color: "var(--m-text-dim)", marginBottom: 6 }}>
-          Time Remaining
+          {tc.time_label}
         </div>
         <div style={{
           fontFamily: "var(--m-font-display)", fontSize: 52, fontWeight: 800,
@@ -179,7 +260,7 @@ function CallPageInner() {
           {formatted}
         </div>
         <div style={{ fontSize: 11, color: "var(--m-text-dim)" }}>
-          {isWarning ? "⚡ 마무리할 시간이에요!" : "침묵하면 힌트가 나타나요"}
+          {isWarning ? "⚡ 마무리할 시간이에요!" : tc.hint}
         </div>
       </div>
 
@@ -198,7 +279,7 @@ function CallPageInner() {
               <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.1em",
                 textTransform: "uppercase", color: "var(--m-secondary)",
                 marginBottom: 4, opacity: 0.8 }}>
-                Idol AI
+                {tc.idol_label}
               </div>
             )}
             <div style={{ display: "flex", alignItems: "flex-end", gap: 6,
@@ -215,6 +296,16 @@ function CallPageInner() {
                 opacity: msg.isEmergency ? 0.7 : 1,
               }}>
                 {msg.text}
+                {msg.translation && (
+                  <p style={{
+                    fontSize: 11,
+                    color: "#5C5A62",
+                    marginTop: 4,
+                    lineHeight: 1.4,
+                  }}>
+                    {msg.translation}
+                  </p>
+                )}
               </div>
               {/* ⭐ 별점 버튼 */}
               {msg.role === "idol" && msg.id && (
@@ -257,7 +348,13 @@ function CallPageInner() {
       </div>
 
       {/* 마이크 버튼 */}
-      <div style={{ padding: "0 22px 28px" }}>
+      <div style={{
+        padding: "0 22px",
+        position: "sticky",
+        bottom: 16,
+        zIndex: 10,
+        paddingBottom: 28,
+      }}>
         {!hasStarted ? (
           <button onClick={handleStart} className="m-btn-primary">
             🎬 시뮬레이션 시작
@@ -272,7 +369,7 @@ function CallPageInner() {
                 : "linear-gradient(135deg, #FF8AA9, #FF719B)",
             }}
           >
-            {isListening ? "🎤 듣는 중..." : "🎤 Speak now"}
+            {isListening ? "🎤 듣는 중..." : `🎤 ${tc.speak_now}`}
           </button>
         )}
       </div>
