@@ -275,43 +275,40 @@ function ScenarioPageInner() {
         margin: "16px 0",
       }} />
 
-      {/* 목소리 선택 B안 */}
+      {/* 목소리 선택 */}
       <div style={{
         background: "#1A191B",
         borderRadius: 14,
         padding: "14px 16px",
         marginBottom: 16,
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "space-between",
-        gap: 12,
       }}>
-        <div style={{ flex: 1 }}>
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6,
-            marginBottom: 4,
-          }}>
-            <span style={{ fontSize: 14 }}>🎧</span>
-            <p style={{
-              fontFamily: "'Manrope', sans-serif",
-              fontSize: 12, fontWeight: 700,
-              color: "#F2F0F4", margin: 0,
-            }}>
-              {t.voice_label}
-            </p>
-          </div>
-          <p style={{
-            fontSize: 10, color: "#5C5A62",
-            margin: 0, lineHeight: 1.5,
-          }}>
-            {t.voice_desc}
-          </p>
-        </div>
+        {/* 헤더 */}
         <div style={{
           display: "flex",
-          flexDirection: "column",
-          gap: 4, flexShrink: 0,
+          alignItems: "center",
+          gap: 6,
+          marginBottom: 6,
         }}>
+          <span style={{ fontSize: 14 }}>🎧</span>
+          <p style={{
+            fontFamily: "'Manrope', sans-serif",
+            fontSize: 12, fontWeight: 700,
+            color: "#F2F0F4", margin: 0,
+          }}>
+            {t.voice_label}
+          </p>
+        </div>
+
+        {/* 설명 */}
+        <p style={{
+          fontSize: 10, color: "#5C5A62",
+          margin: "0 0 12px", lineHeight: 1.5,
+        }}>
+          {t.voice_desc}
+        </p>
+
+        {/* 가로 배치 버튼 */}
+        <div style={{ display: "flex", gap: 8 }}>
           {["FEMALE", "MALE"].map((g) => (
             <button
               key={g}
@@ -322,16 +319,21 @@ function ScenarioPageInner() {
                 }
               }}
               style={{
-                padding: "6px 14px",
-                borderRadius: 9999,
+                flex: 1,
+                padding: "10px",
+                borderRadius: 10,
                 border: "none",
-                background: voiceGender === g ? "#FF8AA9" : "#2C2C2D",
-                color: voiceGender === g ? "#fff" : "#5C5A62",
-                fontSize: 11, fontWeight: 600,
+                background: voiceGender === g
+                  ? "#FF8AA9"
+                  : "#2C2C2D",
+                color: voiceGender === g
+                  ? "#fff"
+                  : "#5C5A62",
+                fontSize: 12,
+                fontWeight: voiceGender === g ? 700 : 600,
                 cursor: "pointer",
                 fontFamily: "'Inter', sans-serif",
                 transition: "all 0.15s",
-                textAlign: "center",
               }}
             >
               {g === "FEMALE" ? t.voice_female : t.voice_male}
