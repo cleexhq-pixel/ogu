@@ -447,7 +447,7 @@ function PrepPageInner() {
         {lines && lines.map((line, i) => {
           const isDoneThis = completed[i];
           const isListeningThis = isListening && currentLine === i;
-          const isProcessingThis = isProcessing && currentLine === i;
+          const isProcessingThis = isProcessing && currentLine === i && !isListening;
           const isPlayingThis = isPlaying && playingLine === i;
           const heardThis = heard[i];
           return (
@@ -561,6 +561,12 @@ function PrepPageInner() {
                   if (isListening && currentLine === i) {
                     // 두 번째 탭: 녹음 종료 → Processing 시작
                     setIsProcessing(true);
+                    console.log("[PROCESSING]", {
+                      isProcessing: true,
+                      currentLine,
+                      i,
+                      isListening,
+                    });
                     stopListening();
                     return;
                   }
@@ -584,10 +590,10 @@ function PrepPageInner() {
                     ? "default" : "pointer",
                   background: isDoneThis
                     ? "#2C2C2D"
-                    : isListeningThis
-                    ? "#E24B4A"
                     : isProcessingThis
                     ? "#2C2C2D"
+                    : isListeningThis
+                    ? "#E24B4A"
                     : heardThis
                     ? "#FF8AA9"
                     : "#2C2C2D",
@@ -603,12 +609,7 @@ function PrepPageInner() {
                   transition: "all 0.2s",
                 }}
               >
-                {isListeningThis ? (
-                  <>
-                    <IconWave color="#fff" />
-                    {t.listening}
-                  </>
-                ) : isProcessingThis ? (
+                {isProcessingThis ? (
                   <>
                     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                       <circle cx="6.5" cy="6.5" r="5.5"
@@ -616,6 +617,11 @@ function PrepPageInner() {
                         strokeDasharray="3 2"/>
                     </svg>
                     {t.processing}
+                  </>
+                ) : isListeningThis ? (
+                  <>
+                    <IconWave color="#fff" />
+                    {t.listening}
                   </>
                 ) : (
                   <>
