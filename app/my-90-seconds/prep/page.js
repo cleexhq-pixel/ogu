@@ -262,17 +262,24 @@ function PrepPageInner() {
 
   useEffect(() => {
     if (
-      listenPhaseRef.current === "listening" &&
+      (listenPhaseRef.current === "listening" ||
+       listenPhaseRef.current === "waiting") &&
       !isListening &&
       hasResult &&
       transcript.trim().length > 0 &&
       currentLine !== null &&
       !completed[currentLine]
     ) {
+      console.log("[COMPLETE]", {
+        phase: listenPhaseRef.current,
+        isListening,
+        hasResult,
+        transcript,
+        currentLine,
+      });
       listenPhaseRef.current = "idle";
       setRetryIndex(null);
 
-      // 완료 처리: completed 배열 업데이트
       const newCompleted = [...completed];
       newCompleted[currentLine] = true;
       setCompleted(newCompleted);
@@ -289,27 +296,29 @@ function PrepPageInner() {
   useEffect(() => {
     if (
       listenPhaseRef.current === "listening" &&
-      !isListening &&
-      !hasResult &&
-      currentLine !== null
+      !isListening
     ) {
-      setRetryIndex(currentLine);
-      reset();
-      listenPhaseRef.current = "idle";
+      const timer = setTimeout(() => {
+        if (
+          listenPhaseRef.current === "listening" &&
+          !hasResult &&
+          currentLine !== null
+        ) {
+          console.log("[RETRY]", {
+            phase: listenPhaseRef.current,
+            isListening,
+            hasResult,
+            transcript,
+            currentLine,
+          });
+          setRetryIndex(currentLine);
+          reset();
+          listenPhaseRef.current = "idle";
+        }
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [isListening, hasResult, currentLine, reset]);
-
-  // 5초 안에 아무것도 인식되지 않으면 자동 종료 + 재시도 안내
-  useEffect(() => {
-    if (!isListening) return;
-    const timer = setTimeout(() => {
-      if (isListening) {
-        stopListening();
-        setRetryIndex(currentLine);
-      }
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [isListening, currentLine, stopListening]);
+  }, [isListening, hasResult, currentLine, reset, transcript]);
 
   function handleNext() {
     window.location.href = `/my-90-seconds/call?scenario=${scenarioId}`;
