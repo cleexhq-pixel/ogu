@@ -129,7 +129,10 @@ function PrepPageInner() {
   const [lang, setLang] = useState("en");
   const [voiceGender, setVoiceGender] = useState("FEMALE");
   const [retryIndex, setRetryIndex] = useState(null);
-  const hasStartedRef = useRef(false);
+  const listenPhaseRef = useRef("idle");
+  // "idle"      = 초기/완료 상태
+  // "waiting"   = 탭했지만 아직 isListening=true 안 됨
+  // "listening" = isListening이 실제로 true가 된 상태
   const audioRef = useRef(null);
   const { transcript, isListening, hasResult, startListening, stopListening, reset } = useSpeechRecognition();
 
@@ -259,14 +262,14 @@ function PrepPageInner() {
 
   useEffect(() => {
     if (
-      hasStartedRef.current &&
+      listenPhaseRef.current === "listening" &&
       !isListening &&
       hasResult &&
       transcript.trim().length > 0 &&
       currentLine !== null &&
       !completed[currentLine]
     ) {
-      hasStartedRef.current = false;
+      listenPhaseRef.current = "idle";
       setRetryIndex(null);
 
       // 완료 처리: completed 배열 업데이트
@@ -274,20 +277,27 @@ function PrepPageInner() {
       newCompleted[currentLine] = true;
       setCompleted(newCompleted);
     }
-  }, [isListening, hasResult, transcript, currentLine]);
+  }, [isListening, hasResult, transcript, currentLine, completed]);
+
+  // waiting → listening 전환: isListening이 실제 true가 된 시점에 phase 갱신
+  useEffect(() => {
+    if (isListening && listenPhaseRef.current === "waiting") {
+      listenPhaseRef.current = "listening";
+    }
+  }, [isListening]);
 
   useEffect(() => {
     if (
-      hasStartedRef.current &&
+      listenPhaseRef.current === "listening" &&
       !isListening &&
       !hasResult &&
       currentLine !== null
     ) {
       setRetryIndex(currentLine);
       reset();
-      hasStartedRef.current = false;
+      listenPhaseRef.current = "idle";
     }
-  }, [isListening, hasResult, currentLine]);
+  }, [isListening, hasResult, currentLine, reset]);
 
   // 5초 안에 아무것도 인식되지 않으면 자동 종료 + 재시도 안내
   useEffect(() => {
@@ -392,7 +402,7 @@ function PrepPageInner() {
                   reset();
                   setRetryIndex(null);
                   setCurrentLine(i);
-                  hasStartedRef.current = true;
+                  listenPhaseRef.current = "waiting";
                   startListening();
                 }}
                 disabled={isDoneThis}
