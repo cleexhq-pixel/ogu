@@ -363,16 +363,6 @@ function PrepPageInner() {
     }
   }, [isListening]);
 
-  // isListening이 false로 떨어지는 순간 Processing 상태 진입
-  useEffect(() => {
-    if (
-      listenPhaseRef.current === "listening" &&
-      !isListening
-    ) {
-      setIsProcessing(true);
-    }
-  }, [isListening]);
-
   useEffect(() => {
     if (
       listenPhaseRef.current === "listening" &&
@@ -567,6 +557,15 @@ function PrepPageInner() {
               <button
                 onClick={() => {
                   if (completed[i] || isProcessing) return;
+
+                  if (isListening && currentLine === i) {
+                    // 두 번째 탭: 녹음 종료 → Processing 시작
+                    setIsProcessing(true);
+                    stopListening();
+                    return;
+                  }
+
+                  // 첫 번째 탭: 녹음 시작
                   stopListening();
                   reset();
                   listenPhaseRef.current = "waiting";
