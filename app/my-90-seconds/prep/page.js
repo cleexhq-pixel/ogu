@@ -15,6 +15,7 @@ const PREP_COPY = {
     next: "Start 90 seconds",
     hint: "Say all lines to continue",
     listening: "Listening...",
+    processing: "Processing...",
     tap_to_speak: "Say it",
     done: "Done",
     retry_msg: "Didn't catch that. Tap and try again!",
@@ -33,6 +34,7 @@ const PREP_COPY = {
     next: "90초 시뮬 시작하기",
     hint: "모든 문장을 따라 말해야 다음으로 넘어갈 수 있어요",
     listening: "듣는 중...",
+    processing: "인식 중...",
     tap_to_speak: "말하기",
     done: "완료",
     retry_msg: "인식하지 못했어요. 다시 탭해서 말해봐요!",
@@ -51,6 +53,7 @@ const PREP_COPY = {
     next: "Mulai 90 detik",
     hint: "Ucapkan semua kalimat untuk melanjutkan",
     listening: "Mendengar...",
+    processing: "Memproses...",
     tap_to_speak: "Ucapkan",
     done: "Selesai",
     retry_msg: "Tidak terdengar. Ketuk dan coba lagi!",
@@ -69,6 +72,7 @@ const PREP_COPY = {
     next: "Iniciar 90 segundos",
     hint: "Diga todas as frases para continuar",
     listening: "Ouvindo...",
+    processing: "Processando...",
     tap_to_speak: "Falar",
     done: "Concluído",
     retry_msg: "Não ouvi. Toque e tente novamente!",
@@ -87,6 +91,7 @@ const PREP_COPY = {
     next: "Commencer 90 secondes",
     hint: "Dites toutes les phrases pour continuer",
     listening: "En écoute...",
+    processing: "Traitement...",
     tap_to_speak: "Parler",
     done: "Terminé",
     retry_msg: "Pas entendu. Appuyez et réessayez!",
@@ -173,6 +178,8 @@ function PrepPageInner() {
   const [retryIndex, setRetryIndex] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playingLine, setPlayingLine] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [heard, setHeard] = useState([false, false, false, false]);
   const listenPhaseRef = useRef("idle");
   // "idle"      = 초기/완료 상태
   // "waiting"   = 탭했지만 아직 isListening=true 안 됨
@@ -287,6 +294,11 @@ function PrepPageInner() {
         audio.onended = () => {
           setIsPlaying(false);
           setPlayingLine(null);
+          setHeard((prev) => {
+            const next = [...prev];
+            next[lineIndex] = true;
+            return next;
+          });
         };
         audio.onerror = () => {
           setIsPlaying(false);
@@ -335,6 +347,7 @@ function PrepPageInner() {
         currentLine,
       });
       listenPhaseRef.current = "idle";
+      setIsProcessing(false);
       setRetryIndex(null);
 
       const newCompleted = [...completed];
@@ -347,6 +360,16 @@ function PrepPageInner() {
   useEffect(() => {
     if (isListening && listenPhaseRef.current === "waiting") {
       listenPhaseRef.current = "listening";
+    }
+  }, [isListening]);
+
+  // isListening이 false로 떨어지는 순간 Processing 상태 진입
+  useEffect(() => {
+    if (
+      listenPhaseRef.current === "listening" &&
+      !isListening
+    ) {
+      setIsProcessing(true);
     }
   }, [isListening]);
 
@@ -371,6 +394,7 @@ function PrepPageInner() {
           setRetryIndex(currentLine);
           reset();
           listenPhaseRef.current = "idle";
+          setIsProcessing(false);
         }
       }, 500);
       return () => clearTimeout(timer);
@@ -431,42 +455,97 @@ function PrepPageInner() {
       {/* Lines */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, position: "relative", zIndex: 1 }}>
         {lines && lines.map((line, i) => {
-          const isListeningThis = isListening && currentLine === i;
           const isDoneThis = completed[i];
-          const isRetryThis = retryIndex === i;
+          const isListeningThis = isListening && currentLine === i;
+          const isProcessingThis = isProcessing && currentLine === i;
           const isPlayingThis = isPlaying && playingLine === i;
+          const heardThis = heard[i];
           return (
           <div
             key={i}
-            className={`m-card ${currentLine === i ? "m-card-active" : ""}`}
-            style={{ opacity: i > 0 && !completed[i - 1] ? 0.4 : 1, transition: "opacity 0.3s" }}
+            style={{
+              background: "#1A191B",
+              borderRadius: 14,
+              padding: "16px",
+              position: "relative",
+              opacity: isDoneThis ? 0.7 : 1,
+              transition: "opacity 0.3s",
+            }}
           >
-            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: completed[i] ? "var(--m-secondary)" : "var(--m-text-dim)", marginBottom: 8 }}>
-              {completed[i] ? `✓ ${t.done}` : t.line_labels[i]}
-            </div>
-            <p style={{ fontFamily: "var(--m-font-display)", fontSize: 15, fontWeight: 700, color: "var(--m-text-primary)", marginBottom: 3 }}>
+            {/* 완료 체크 뱃지 — 우상단 */}
+            {isDoneThis && (
+              <div style={{
+                position: "absolute",
+                top: 12, right: 12,
+                width: 22, height: 22,
+                borderRadius: "50%",
+                background: "#00E3FD",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6l3 3 5-5"
+                    stroke="#0E0E0F"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"/>
+                </svg>
+              </div>
+            )}
+
+            {/* 라인 레이블 */}
+            <p style={{
+              fontSize: 10, fontWeight: 600,
+              color: "#5C5A62", margin: "0 0 10px",
+              letterSpacing: "0.05em",
+            }}>
+              {t.line_labels[i]}
+            </p>
+
+            {/* 한국어 텍스트 */}
+            <p style={{
+              fontSize: 15, fontWeight: 700,
+              color: "#F2F0F4", margin: "0 0 3px",
+            }}>
               {line.korean}
             </p>
-            <p style={{ fontSize: 11, color: "var(--m-secondary)", opacity: 0.8, marginBottom: 3 }}>
+            <p style={{
+              fontSize: 11, color: "#00E3FD",
+              margin: "0 0 2px",
+            }}>
               {line.romanization}
             </p>
-            <p style={{ fontSize: 11, color: "var(--m-text-dim)", marginBottom: 12 }}>
+            <p style={{
+              fontSize: 11, color: "#5C5A62",
+              margin: "0 0 14px",
+            }}>
               {line.translation}
             </p>
+
+            {/* 버튼 영역 */}
             <div style={{ display: "flex", gap: 8 }}>
+
+              {/* Hear it 버튼 */}
               <button
                 onClick={() => playTTS(line.korean, i)}
                 style={{
-                  flex: 1, padding: "10px 6px",
+                  flex: 1, padding: "10px",
                   borderRadius: 9999,
-                  cursor: "pointer",
+                  cursor: isDoneThis ? "default" : "pointer",
                   background: isPlayingThis
                     ? "#2C2C2D"
                     : "transparent",
                   border: isPlayingThis
                     ? "none"
-                    : "1px solid rgba(255,255,255,0.12)",
-                  color: "#9E9BA4",
+                    : heardThis || isDoneThis
+                    ? "1px solid rgba(255,255,255,0.08)"
+                    : "1.5px solid #FF8AA9",
+                  color: isPlayingThis
+                    ? "#00E3FD"
+                    : heardThis || isDoneThis
+                    ? "#5C5A62"
+                    : "#FF8AA9",
                   fontFamily: "'Inter', sans-serif",
                   fontSize: 12, fontWeight: 600,
                   display: "flex", alignItems: "center",
@@ -475,63 +554,101 @@ function PrepPageInner() {
                 }}
               >
                 <IconSpeaker
-                  color={isPlayingThis ? "#00E3FD" : "#9E9BA4"}
+                  color={
+                    isPlayingThis ? "#00E3FD"
+                    : heardThis || isDoneThis ? "#5C5A62"
+                    : "#FF8AA9"
+                  }
                 />
                 {isPlayingThis ? t.playing : t.listen}
               </button>
+
+              {/* Say it 버튼 */}
               <button
                 onClick={() => {
-                  if (isDoneThis) return;
+                  if (completed[i] || isProcessing) return;
                   stopListening();
                   reset();
                   listenPhaseRef.current = "waiting";
                   setCurrentLine(i);
                   setRetryIndex(null);
+                  setIsProcessing(false);
                   setTimeout(() => {
                     startListening();
                   }, 300);
                 }}
                 disabled={isDoneThis}
                 style={{
-                  flex: 1, padding: "10px 6px",
+                  flex: 1, padding: "10px",
                   borderRadius: 9999, border: "none",
-                  cursor: isDoneThis ? "default" : "pointer",
+                  cursor: isDoneThis || isProcessingThis
+                    ? "default" : "pointer",
                   background: isDoneThis
                     ? "#2C2C2D"
                     : isListeningThis
                     ? "#E24B4A"
-                    : "#FF8AA9",
-                  color: isDoneThis ? "#3A3A3A" : "#fff",
+                    : isProcessingThis
+                    ? "#2C2C2D"
+                    : heardThis
+                    ? "#FF8AA9"
+                    : "#2C2C2D",
+                  color: isDoneThis || isProcessingThis
+                    ? "#3A3A3A"
+                    : isListeningThis || heardThis
+                    ? "#fff"
+                    : "#5C5A62",
                   fontFamily: "'Inter', sans-serif",
                   fontSize: 12, fontWeight: 700,
                   display: "flex", alignItems: "center",
                   justifyContent: "center", gap: 6,
-                  transition: "background 0.2s",
+                  transition: "all 0.2s",
                 }}
               >
                 {isListeningThis ? (
                   <>
-                    <IconWave color={isDoneThis ? "#3A3A3A" : "#fff"} />
+                    <IconWave color="#fff" />
                     {t.listening}
+                  </>
+                ) : isProcessingThis ? (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <circle cx="6.5" cy="6.5" r="5.5"
+                        stroke="#9E9BA4" strokeWidth="1.3"
+                        strokeDasharray="3 2"/>
+                    </svg>
+                    {t.processing}
                   </>
                 ) : (
                   <>
-                    <IconMic color={isDoneThis ? "#3A3A3A" : "#fff"} />
+                    <IconMic
+                      color={
+                        isDoneThis ? "#3A3A3A"
+                        : heardThis ? "#fff"
+                        : "#5C5A62"
+                      }
+                    />
                     {t.tap_to_speak}
                   </>
                 )}
               </button>
             </div>
+
+            {/* Retry 메시지 */}
             {retryIndex === i && !completed[i] && (
               <div style={{
                 marginTop: 8,
                 background: "rgba(226,75,74,0.12)",
-                borderRadius: 8, padding: "7px 12px",
-                display: "flex", alignItems: "center", gap: 8,
+                borderRadius: 8,
+                padding: "7px 12px",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
               }}>
                 <div style={{
-                  width: 5, height: 5, borderRadius: "50%",
-                  background: "#E24B4A", flexShrink: 0,
+                  width: 5, height: 5,
+                  borderRadius: "50%",
+                  background: "#E24B4A",
+                  flexShrink: 0,
                 }} />
                 <p style={{
                   fontSize: 11, color: "#E24B4A",
