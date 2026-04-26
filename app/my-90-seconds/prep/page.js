@@ -96,7 +96,7 @@ const PREP_COPY = {
   },
 };
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import scenarios from "../../../src/data/scenarios";
 import { generateScript } from "../../../src/lib/generateScript";
@@ -129,8 +129,9 @@ function PrepPageInner() {
   const [lang, setLang] = useState("en");
   const [voiceGender, setVoiceGender] = useState("FEMALE");
   const [retryIndex, setRetryIndex] = useState(null);
-  const [autoCompleteTimer, setAutoCompleteTimer] = useState(null);
-  const { transcript, isListening, error, startListening, stopListening, reset } = useSpeechRecognition();
+  const hasStartedRef = useRef(false);
+  const audioRef = useRef(null);
+  const { transcript, isListening, hasResult, startListening, stopListening, reset } = useSpeechRecognition();
 
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_KEY) || "en";
@@ -207,6 +208,15 @@ function PrepPageInner() {
 
   async function playTTS(text) {
     if (typeof window === "undefined") return;
+
+    // 이전 재생 중지
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    window.speechSynthesis?.cancel();
+
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
@@ -223,6 +233,7 @@ function PrepPageInner() {
         const audio = new Audio(
           `data:audio/mp3;base64,${data.audioContent}`
         );
+        audioRef.current = audio;
         audio.play();
       }
     } catch (e) {
@@ -247,23 +258,36 @@ function PrepPageInner() {
   }
 
   useEffect(() => {
-    if (!transcript || transcript.trim().length < 2) return;
-    if (completed[currentLine]) return;
+    if (
+      hasStartedRef.current &&
+      !isListening &&
+      hasResult &&
+      transcript.trim().length > 0 &&
+      currentLine !== null &&
+      !completed[currentLine]
+    ) {
+      hasStartedRef.current = false;
+      setRetryIndex(null);
 
-    // 음성 인식 성공 시 타이머 취소 후 즉시 완료
-    if (autoCompleteTimer) {
-      clearTimeout(autoCompleteTimer);
-      setAutoCompleteTimer(null);
+      // 완료 처리: completed 배열 업데이트
+      const newCompleted = [...completed];
+      newCompleted[currentLine] = true;
+      setCompleted(newCompleted);
     }
-    completeCurrentLine(currentLine);
-  }, [transcript]);
+  }, [isListening, hasResult, transcript, currentLine]);
 
   useEffect(() => {
-    if (error && currentLine !== null) {
+    if (
+      hasStartedRef.current &&
+      !isListening &&
+      !hasResult &&
+      currentLine !== null
+    ) {
       setRetryIndex(currentLine);
       reset();
+      hasStartedRef.current = false;
     }
-  }, [error]);
+  }, [isListening, hasResult, currentLine]);
 
   // 5초 안에 아무것도 인식되지 않으면 자동 종료 + 재시도 안내
   useEffect(() => {
@@ -276,15 +300,6 @@ function PrepPageInner() {
     }, 5000);
     return () => clearTimeout(timer);
   }, [isListening, currentLine, stopListening]);
-
-  // 언마운트 시 자동 완료 타이머 정리
-  useEffect(() => {
-    return () => {
-      if (autoCompleteTimer) {
-        clearTimeout(autoCompleteTimer);
-      }
-    };
-  }, [autoCompleteTimer]);
 
   function handleNext() {
     window.location.href = `/my-90-seconds/call?scenario=${scenarioId}`;
@@ -373,24 +388,12 @@ function PrepPageInner() {
                 onClick={() => {
                   if (completed[i]) return;
 
-                  // 이전 타이머 취소
-                  if (autoCompleteTimer) {
-                    clearTimeout(autoCompleteTimer);
-                    setAutoCompleteTimer(null);
-                  }
-
                   // transcript 초기화 후 음성 인식 시작
                   reset();
                   setRetryIndex(null);
                   setCurrentLine(i);
+                  hasStartedRef.current = true;
                   startListening();
-
-                  // 3초 후 자동 완료 (iOS 인식률 우회)
-                  const timer = setTimeout(() => {
-                    completeCurrentLine(i);
-                    setAutoCompleteTimer(null);
-                  }, 3000);
-                  setAutoCompleteTimer(timer);
                 }}
                 disabled={isDoneThis}
                 style={{
@@ -446,7 +449,7 @@ function PrepPageInner() {
                 {t.listening_hint}
               </p>
             )}
-            {retryIndex === i && (
+            {retryIndex === i && !completed[i] && (
               <div style={{
                 marginTop: 8,
                 background: "rgba(226,75,74,0.12)",
