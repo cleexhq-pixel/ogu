@@ -6,119 +6,132 @@ export function useSpeechRecognition() {
   const [isListening, setIsListening] = useState(false);
   const [hasResult, setHasResult] = useState(false);
 
-  const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const streamRef = useRef(null);
   const safetyTimerRef = useRef(null);
-  const hasResultRef = useRef(false);
-
-  const isIOS = typeof navigator !== "undefined"
-    && /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   const reset = useCallback(() => {
     setTranscript("");
     setHasResult(false);
-    hasResultRef.current = false;
   }, []);
 
   const stopListening = useCallback(() => {
-    setIsListening(false);
     if (safetyTimerRef.current) {
       clearTimeout(safetyTimerRef.current);
       safetyTimerRef.current = null;
     }
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
+      mediaRecorderRef.current.stop();
     }
   }, []);
 
-  const startListening = useCallback(() => {
-    if (typeof window === "undefined") return;
-
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      console.warn("Speech Recognition not supported");
-      return;
-    }
-
-    // 시작 전 반드시 초기화
+  const startListening = useCallback(async () => {
     setTranscript("");
     setHasResult(false);
-    hasResultRef.current = false;
-
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch (e) {}
-    }
-
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-
-    recognition.lang = "ko-KR";
-    recognition.continuous = false;
-    recognition.maxAlternatives = 1;
-    // iOS에서는 interimResults 끄는 것이 더 안정적
-    recognition.interimResults = !isIOS;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-
-      // 10초 안전 타임아웃
-      safetyTimerRef.current = setTimeout(() => {
-        if (!hasResultRef.current) {
-          console.warn("10초 타임아웃: 결과 없음");
-          stopListening();
-        }
-      }, 10000);
-    };
-
-    recognition.onresult = (event) => {
-      // 타임아웃 취소
-      if (safetyTimerRef.current) {
-        clearTimeout(safetyTimerRef.current);
-        safetyTimerRef.current = null;
-      }
-
-      const result = event.results[event.results.length - 1];
-      const text = result[0].transcript.trim();
-
-      if (text.length > 0) {
-        hasResultRef.current = true;
-        setHasResult(true);
-        setTranscript(text);
-      }
-
-      // isFinal + 텍스트 있을 때만 완료
-      if (result.isFinal && text.length > 0) {
-        setIsListening(false);
-      }
-    };
-
-    recognition.onend = () => {
-      if (safetyTimerRef.current) {
-        clearTimeout(safetyTimerRef.current);
-        safetyTimerRef.current = null;
-      }
-      setIsListening(false);
-    };
-
-    recognition.onerror = (event) => {
-      if (safetyTimerRef.current) {
-        clearTimeout(safetyTimerRef.current);
-        safetyTimerRef.current = null;
-      }
-      console.warn("Speech recognition error:", event.error);
-      setIsListening(false);
-    };
+    audioChunksRef.current = [];
 
     try {
-      recognition.start();
-    } catch (e) {
-      console.error("Recognition start error:", e);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1,
+          sampleRate: 16000,
+        },
+      });
+      streamRef.current = stream;
+
+      const mimeType = getSupportedMimeType();
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType,
+        audioBitsPerSecond: 64000,
+      });
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+
+        const audioBlob = new Blob(
+          audioChunksRef.current,
+          { type: mimeType }
+        );
+
+        if (audioBlob.size < 3000) {
+          setIsListening(false);
+          setHasResult(false);
+          return;
+        }
+
+        try {
+          const formData = new FormData();
+          const extension = mimeType.includes("mp4")
+            ? "mp4"
+            : mimeType.includes("webm")
+            ? "webm"
+            : "ogg";
+          formData.append(
+            "audio",
+            audioBlob,
+            `recording.${extension}`
+          );
+
+          const response = await fetch("/api/transcribe", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) throw new Error("Transcription failed");
+
+          const data = await response.json();
+
+          if (data.text && data.text.trim().length > 0) {
+            setTranscript(data.text.trim());
+            setHasResult(true);
+          } else {
+            setHasResult(false);
+          }
+        } catch (err) {
+          console.error("Whisper API error:", err);
+          setHasResult(false);
+        }
+
+        setIsListening(false);
+      };
+
+      mediaRecorder.onerror = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setIsListening(false);
+        setHasResult(false);
+      };
+
+      mediaRecorder.start();
+      setIsListening(true);
+
+      safetyTimerRef.current = setTimeout(() => {
+        if (
+          mediaRecorderRef.current &&
+          mediaRecorderRef.current.state === "recording"
+        ) {
+          mediaRecorderRef.current.stop();
+        }
+      }, 10000);
+
+    } catch (err) {
+      console.error("Microphone access error:", err);
       setIsListening(false);
+      setHasResult(false);
     }
-  }, [isIOS, stopListening]);
+  }, []);
 
   return {
     transcript,
@@ -128,4 +141,23 @@ export function useSpeechRecognition() {
     stopListening,
     reset,
   };
+}
+
+function getSupportedMimeType() {
+  const types = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+    "audio/ogg",
+  ];
+  for (const type of types) {
+    if (
+      typeof MediaRecorder !== "undefined" &&
+      MediaRecorder.isTypeSupported(type)
+    ) {
+      return type;
+    }
+  }
+  return "audio/webm";
 }
