@@ -447,7 +447,7 @@ function PrepPageInner() {
         {lines && lines.map((line, i) => {
           const isDoneThis = completed[i];
           const isListeningThis = isListening && currentLine === i;
-          const isProcessingThis = isProcessing && currentLine === i && !isListening;
+          const isProcessingThis = isProcessing && currentLine === i;
           const isPlayingThis = isPlaying && playingLine === i;
           const heardThis = heard[i];
           return (
