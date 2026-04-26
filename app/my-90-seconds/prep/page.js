@@ -9,12 +9,13 @@ const PREP_COPY = {
     title_1: "4 lines to",
     title_2: "get you ready",
     line_labels: ["LINE 1 · Greeting", "LINE 2 · Main message", "LINE 3 · Keep going", "LINE 4 · Closing"],
-    listen: "Listen",
+    listen: "Hear it",
+    playing: "Playing...",
     repeat: "Repeat",
     next: "Start 90 seconds",
     hint: "Say all lines to continue",
     listening: "Listening...",
-    tap_to_speak: "Tap to speak",
+    tap_to_speak: "Say it",
     done: "Done",
     retry_msg: "Didn't catch that. Tap and try again!",
     voice_label: "Idol voice",
@@ -26,12 +27,13 @@ const PREP_COPY = {
     title_1: "4문장을",
     title_2: "배워볼게요",
     line_labels: ["LINE 1 · 인사", "LINE 2 · 핵심 메시지", "LINE 3 · 대화 이어가기", "LINE 4 · 마무리"],
-    listen: "듣기",
+    listen: "들어보기",
+    playing: "재생 중...",
     repeat: "따라 말하기",
     next: "90초 시뮬 시작하기",
     hint: "모든 문장을 따라 말해야 다음으로 넘어갈 수 있어요",
     listening: "듣는 중...",
-    tap_to_speak: "탭해서 말하기",
+    tap_to_speak: "말하기",
     done: "완료",
     retry_msg: "인식하지 못했어요. 다시 탭해서 말해봐요!",
     voice_label: "아이돌 목소리",
@@ -43,12 +45,13 @@ const PREP_COPY = {
     title_1: "4 kalimat untuk",
     title_2: "kamu siapkan",
     line_labels: ["LINE 1 · Salam", "LINE 2 · Pesan utama", "LINE 3 · Lanjutkan", "LINE 4 · Penutup"],
-    listen: "Dengarkan",
+    listen: "Dengar",
+    playing: "Memutar...",
     repeat: "Ulangi",
     next: "Mulai 90 detik",
     hint: "Ucapkan semua kalimat untuk melanjutkan",
-    listening: "Mendengarkan...",
-    tap_to_speak: "Ketuk untuk bicara",
+    listening: "Mendengar...",
+    tap_to_speak: "Ucapkan",
     done: "Selesai",
     retry_msg: "Tidak terdengar. Ketuk dan coba lagi!",
     voice_label: "Suara idol",
@@ -61,11 +64,12 @@ const PREP_COPY = {
     title_2: "se preparar",
     line_labels: ["LINE 1 · Saudação", "LINE 2 · Mensagem principal", "LINE 3 · Continue", "LINE 4 · Encerramento"],
     listen: "Ouvir",
+    playing: "Reproduzindo...",
     repeat: "Repetir",
     next: "Iniciar 90 segundos",
     hint: "Diga todas as frases para continuar",
     listening: "Ouvindo...",
-    tap_to_speak: "Toque para falar",
+    tap_to_speak: "Falar",
     done: "Concluído",
     retry_msg: "Não ouvi. Toque e tente novamente!",
     voice_label: "Voz do idol",
@@ -78,11 +82,12 @@ const PREP_COPY = {
     title_2: "vous préparer",
     line_labels: ["LINE 1 · Salutation", "LINE 2 · Message principal", "LINE 3 · Continuez", "LINE 4 · Clôture"],
     listen: "Écouter",
+    playing: "En lecture...",
     repeat: "Répéter",
     next: "Commencer 90 secondes",
     hint: "Dites toutes les phrases pour continuer",
     listening: "En écoute...",
-    tap_to_speak: "Appuyez pour parler",
+    tap_to_speak: "Parler",
     done: "Terminé",
     retry_msg: "Pas entendu. Appuyez et réessayez!",
     voice_label: "Voix de l'idol",
@@ -112,6 +117,48 @@ const LINE4 = {
   isTemplate: true,
 };
 
+const IconSpeaker = ({ color = "#9E9BA4" }) => (
+  <svg width="14" height="14" viewBox="0 0 14 14"
+    fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 5h2.5L8 2v10L4.5 9H2V5z"
+      stroke={color} strokeWidth="1.3"
+      strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10 4.5c1 .8 1 4.2 0 5"
+      stroke={color} strokeWidth="1.3"
+      strokeLinecap="round"/>
+  </svg>
+);
+
+const IconMic = ({ color = "#fff" }) => (
+  <svg width="14" height="14" viewBox="0 0 14 14"
+    fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="1" width="4" height="7" rx="2"
+      stroke={color} strokeWidth="1.3"/>
+    <path d="M2.5 7.5A4.5 4.5 0 0 0 11.5 7.5"
+      stroke={color} strokeWidth="1.3"
+      strokeLinecap="round"/>
+    <line x1="7" y1="12" x2="7" y2="10"
+      stroke={color} strokeWidth="1.3"
+      strokeLinecap="round"/>
+  </svg>
+);
+
+const IconWave = ({ color = "#fff" }) => (
+  <svg width="16" height="14" viewBox="0 0 16 14"
+    fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="4" width="2" height="6"
+      rx="1" fill={color} opacity="0.6"/>
+    <rect x="3.5" y="2" width="2" height="10"
+      rx="1" fill={color}/>
+    <rect x="7" y="4" width="2" height="6"
+      rx="1" fill={color} opacity="0.8"/>
+    <rect x="10.5" y="1" width="2" height="12"
+      rx="1" fill={color}/>
+    <rect x="14" y="4" width="2" height="6"
+      rx="1" fill={color} opacity="0.6"/>
+  </svg>
+);
+
 function PrepPageInner() {
   const searchParams = useSearchParams();
   const scenarioId = searchParams.get("scenario") || "compliment";
@@ -124,6 +171,8 @@ function PrepPageInner() {
   const [lang, setLang] = useState("en");
   const [voiceGender, setVoiceGender] = useState("FEMALE");
   const [retryIndex, setRetryIndex] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playingLine, setPlayingLine] = useState(null);
   const listenPhaseRef = useRef("idle");
   // "idle"      = 초기/완료 상태
   // "waiting"   = 탭했지만 아직 isListening=true 안 됨
@@ -204,7 +253,7 @@ function PrepPageInner() {
     loadScript();
   }, [scenarioId]);
 
-  async function playTTS(text) {
+  async function playTTS(text, lineIndex) {
     if (typeof window === "undefined") return;
 
     // 이전 재생 중지
@@ -214,6 +263,9 @@ function PrepPageInner() {
       audioRef.current = null;
     }
     window.speechSynthesis?.cancel();
+
+    setIsPlaying(true);
+    setPlayingLine(lineIndex);
 
     try {
       const res = await fetch("/api/tts", {
@@ -232,10 +284,20 @@ function PrepPageInner() {
           `data:audio/mp3;base64,${data.audioContent}`
         );
         audioRef.current = audio;
+        audio.onended = () => {
+          setIsPlaying(false);
+          setPlayingLine(null);
+        };
+        audio.onerror = () => {
+          setIsPlaying(false);
+          setPlayingLine(null);
+        };
         audio.play();
       }
     } catch (e) {
       console.error("TTS error:", e);
+      setIsPlaying(false);
+      setPlayingLine(null);
     }
   }
 
@@ -372,6 +434,7 @@ function PrepPageInner() {
           const isListeningThis = isListening && currentLine === i;
           const isDoneThis = completed[i];
           const isRetryThis = retryIndex === i;
+          const isPlayingThis = isPlaying && playingLine === i;
           return (
           <div
             key={i}
@@ -392,23 +455,38 @@ function PrepPageInner() {
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={() => playTTS(line.korean)}
-                className="m-btn-secondary"
-                style={{ flex: 1, padding: "9px 6px", fontSize: 11 }}
+                onClick={() => playTTS(line.korean, i)}
+                style={{
+                  flex: 1, padding: "10px 6px",
+                  borderRadius: 9999,
+                  cursor: "pointer",
+                  background: isPlayingThis
+                    ? "#2C2C2D"
+                    : "transparent",
+                  border: isPlayingThis
+                    ? "none"
+                    : "1px solid rgba(255,255,255,0.12)",
+                  color: "#9E9BA4",
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: 12, fontWeight: 600,
+                  display: "flex", alignItems: "center",
+                  justifyContent: "center", gap: 6,
+                  transition: "all 0.2s",
+                }}
               >
-                🔊 {t.listen}
+                <IconSpeaker
+                  color={isPlayingThis ? "#00E3FD" : "#9E9BA4"}
+                />
+                {isPlayingThis ? t.playing : t.listen}
               </button>
               <button
                 onClick={() => {
-                  if (completed[i]) return;
-
+                  if (isDoneThis) return;
                   stopListening();
                   reset();
                   listenPhaseRef.current = "waiting";
                   setCurrentLine(i);
                   setRetryIndex(null);
-
-                  // iOS WebKit에서 이전 recognition 정리 시간 확보
                   setTimeout(() => {
                     startListening();
                   }, 300);
@@ -433,25 +511,12 @@ function PrepPageInner() {
               >
                 {isListeningThis ? (
                   <>
-                    <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
-                      {[8, 14, 10, 6].map((h, j) => (
-                        <div key={j} style={{
-                          width: 3, height: h,
-                          background: "#fff",
-                          borderRadius: 2,
-                          opacity: 0.7 + j * 0.1,
-                        }} />
-                      ))}
-                    </div>
+                    <IconWave color={isDoneThis ? "#3A3A3A" : "#fff"} />
                     {t.listening}
                   </>
                 ) : (
                   <>
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M6 1v10M3 4a3 3 0 006 0"
-                        stroke={isDoneThis ? "#3A3A3A" : "#fff"}
-                        strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
+                    <IconMic color={isDoneThis ? "#3A3A3A" : "#fff"} />
                     {t.tap_to_speak}
                   </>
                 )}
