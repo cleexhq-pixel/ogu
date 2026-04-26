@@ -17,7 +17,6 @@ const PREP_COPY = {
     tap_to_speak: "Tap to speak",
     done: "Done",
     retry_msg: "Didn't catch that. Tap and try again!",
-    listening_hint: "Speak now · Auto-complete in 3s",
     voice_label: "Idol voice",
     voice_female: "Female",
     voice_male: "Male",
@@ -35,7 +34,6 @@ const PREP_COPY = {
     tap_to_speak: "탭해서 말하기",
     done: "완료",
     retry_msg: "인식하지 못했어요. 다시 탭해서 말해봐요!",
-    listening_hint: "지금 말하세요 · 3초 후 자동 완료",
     voice_label: "아이돌 목소리",
     voice_female: "여성",
     voice_male: "남성",
@@ -53,7 +51,6 @@ const PREP_COPY = {
     tap_to_speak: "Ketuk untuk bicara",
     done: "Selesai",
     retry_msg: "Tidak terdengar. Ketuk dan coba lagi!",
-    listening_hint: "Bicara sekarang · Selesai otomatis 3 detik",
     voice_label: "Suara idol",
     voice_female: "Perempuan",
     voice_male: "Laki-laki",
@@ -71,7 +68,6 @@ const PREP_COPY = {
     tap_to_speak: "Toque para falar",
     done: "Concluído",
     retry_msg: "Não ouvi. Toque e tente novamente!",
-    listening_hint: "Fale agora · Conclusão automática em 3s",
     voice_label: "Voz do idol",
     voice_female: "Feminino",
     voice_male: "Masculino",
@@ -89,7 +85,6 @@ const PREP_COPY = {
     tap_to_speak: "Appuyez pour parler",
     done: "Terminé",
     retry_msg: "Pas entendu. Appuyez et réessayez!",
-    listening_hint: "Parlez maintenant · Fin automatique en 3s",
     voice_label: "Voix de l'idol",
     voice_female: "Féminin",
     voice_male: "Masculin",
@@ -407,12 +402,16 @@ function PrepPageInner() {
                 onClick={() => {
                   if (completed[i]) return;
 
-                  // transcript 초기화 후 음성 인식 시작
+                  stopListening();
                   reset();
-                  setRetryIndex(null);
-                  setCurrentLine(i);
                   listenPhaseRef.current = "waiting";
-                  startListening();
+                  setCurrentLine(i);
+                  setRetryIndex(null);
+
+                  // iOS WebKit에서 이전 recognition 정리 시간 확보
+                  setTimeout(() => {
+                    startListening();
+                  }, 300);
                 }}
                 disabled={isDoneThis}
                 style={{
@@ -458,16 +457,6 @@ function PrepPageInner() {
                 )}
               </button>
             </div>
-            {isListeningThis && (
-              <p style={{
-                fontSize: 10,
-                color: "#5C5A62",
-                textAlign: "center",
-                margin: "6px 0 0",
-              }}>
-                {t.listening_hint}
-              </p>
-            )}
             {retryIndex === i && !completed[i] && (
               <div style={{
                 marginTop: 8,
