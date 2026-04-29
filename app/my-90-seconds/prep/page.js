@@ -184,6 +184,7 @@ function PrepPageInner() {
   // "idle"      = 초기/완료 상태
   // "waiting"   = 탭했지만 아직 isListening=true 안 됨
   // "listening" = isListening이 실제로 true가 된 상태
+  const isProcessingRef = useRef(false);
   const audioRef = useRef(null);
   const { transcript, isListening, hasResult, startListening, stopListening, reset } = useSpeechRecognition();
 
@@ -335,6 +336,7 @@ function PrepPageInner() {
     ) {
       listenPhaseRef.current = "idle";
       setRetryIndex(null);
+      isProcessingRef.current = false;
       setIsProcessing(false);
 
       const newCompleted = [...completed];
@@ -385,6 +387,7 @@ function PrepPageInner() {
           setRetryIndex(currentLine);
           reset();
           listenPhaseRef.current = "idle";
+          isProcessingRef.current = false;
           setIsProcessing(false);
         }
       }, 500);
@@ -448,7 +451,7 @@ function PrepPageInner() {
         {lines && lines.map((line, i) => {
           const isDoneThis = completed[i];
           const isListeningThis = isListening && currentLine === i;
-          const isProcessingThis = isProcessing && currentLine === i;
+          const isProcessingThis = isProcessingRef.current && currentLine === i;
           const isPlayingThis = isPlaying && playingLine === i;
           const heardThis = heard[i];
           if (currentLine === i) {
@@ -571,33 +574,25 @@ function PrepPageInner() {
                 onClick={() => {
                   if (completed[i] || isProcessing) return;
 
-                  // 현재 라인 즉시 설정 (최우선)
-                  setCurrentLine(i);
-
                   if (isListening && currentLine === i) {
-                    // 두 번째 탭: 녹음 종료 → Processing
+                    // 두 번째 탭: 현재 라인 녹음 중지 → Processing
+                    isProcessingRef.current = true;
                     setIsProcessing(true);
-                    console.log("[TAP 2: STOP]", {
-                      beforeIsListening: isListening,
-                      beforeIsProcessing: isProcessing,
-                      currentLine,
-                      i,
-                    });
                     stopListening();
-
-                    setTimeout(() => {
-                      console.log("[AFTER 100ms]", {
-                        note: "should see isProcessing=true here",
-                      });
-                    }, 100);
                     return;
                   }
 
-                  // 첫 번째 탭: 녹음 시작
+                  if (isListening && currentLine !== i) {
+                    // 다른 라인 녹음 중 → 먼저 중지
+                    stopListening();
+                    reset();
+                  }
+
+                  // 첫 번째 탭: 이 라인 녹음 시작
+                  setCurrentLine(i);
                   setRetryIndex(null);
+                  isProcessingRef.current = false;
                   setIsProcessing(false);
-                  stopListening();
-                  reset();
                   listenPhaseRef.current = "waiting";
 
                   setTimeout(() => {
