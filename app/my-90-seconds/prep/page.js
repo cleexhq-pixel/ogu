@@ -450,6 +450,18 @@ function PrepPageInner() {
           const isProcessingThis = isProcessing && currentLine === i;
           const isPlayingThis = isPlaying && playingLine === i;
           const heardThis = heard[i];
+          if (currentLine === i) {
+            console.log("[STATE]", {
+              line: i,
+              isListening,
+              isProcessing,
+              currentLine,
+              isListeningThis,
+              isProcessingThis,
+              heardThis,
+              isDoneThis,
+            });
+          }
           return (
           <div
             key={i}
@@ -561,13 +573,19 @@ function PrepPageInner() {
                   if (isListening && currentLine === i) {
                     // 두 번째 탭: 녹음 종료 → Processing 시작
                     setIsProcessing(true);
-                    console.log("[PROCESSING]", {
-                      isProcessing: true,
+                    console.log("[TAP 2: STOP]", {
+                      beforeIsListening: isListening,
+                      beforeIsProcessing: isProcessing,
                       currentLine,
                       i,
-                      isListening,
                     });
                     stopListening();
+
+                    setTimeout(() => {
+                      console.log("[AFTER 100ms]", {
+                        note: "should see isProcessing=true here",
+                      });
+                    }, 100);
                     return;
                   }
 
@@ -609,6 +627,21 @@ function PrepPageInner() {
                   transition: "all 0.2s",
                 }}
               >
+                {(() => {
+                  if (currentLine === i) {
+                    console.log("[BUTTON RENDER]", {
+                      line: i,
+                      isProcessingThis,
+                      isListeningThis,
+                      branch: isProcessingThis
+                        ? "PROCESSING"
+                        : isListeningThis
+                        ? "LISTENING"
+                        : "DEFAULT",
+                    });
+                  }
+                  return null;
+                })()}
                 {isProcessingThis ? (
                   <>
                     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
