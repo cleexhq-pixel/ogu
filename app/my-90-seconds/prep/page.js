@@ -589,13 +589,14 @@ function PrepPageInner() {
                     return;
                   }
 
-                  // 첫 번째 탭: 녹음 시작
-                  stopListening();
-                  reset();
-                  listenPhaseRef.current = "waiting";
+                  // 첫 번째 탭: 즉시 currentLine 설정
                   setCurrentLine(i);
                   setRetryIndex(null);
                   setIsProcessing(false);
+                  stopListening();
+                  reset();
+                  listenPhaseRef.current = "waiting";
+
                   setTimeout(() => {
                     startListening();
                   }, 300);
@@ -606,9 +607,9 @@ function PrepPageInner() {
                   borderRadius: 9999, border: "none",
                   cursor: isDoneThis || isProcessingThis
                     ? "default" : "pointer",
-                  background: isDoneThis
+                  background: isProcessingThis
                     ? "#2C2C2D"
-                    : isProcessingThis
+                    : isDoneThis
                     ? "#2C2C2D"
                     : isListeningThis
                     ? "#E24B4A"
