@@ -353,6 +353,11 @@ function PrepPageInner() {
       const newCompleted = [...completed];
       newCompleted[currentLine] = true;
       setCompleted(newCompleted);
+
+      const nextLine = currentLine + 1;
+      if (nextLine < 4) {
+        setCurrentLine(nextLine);
+      }
     }
   }, [isListening, hasResult, transcript, currentLine, completed]);
 
@@ -570,8 +575,11 @@ function PrepPageInner() {
                 onClick={() => {
                   if (completed[i] || isProcessing) return;
 
+                  // 현재 라인 즉시 설정 (최우선)
+                  setCurrentLine(i);
+
                   if (isListening && currentLine === i) {
-                    // 두 번째 탭: 녹음 종료 → Processing 시작
+                    // 두 번째 탭: 녹음 종료 → Processing
                     setIsProcessing(true);
                     console.log("[TAP 2: STOP]", {
                       beforeIsListening: isListening,
@@ -589,8 +597,7 @@ function PrepPageInner() {
                     return;
                   }
 
-                  // 첫 번째 탭: 즉시 currentLine 설정
-                  setCurrentLine(i);
+                  // 첫 번째 탭: 녹음 시작
                   setRetryIndex(null);
                   setIsProcessing(false);
                   stopListening();
