@@ -313,12 +313,6 @@ function PrepPageInner() {
     }
   }
 
-  function handleSpeak(index) {
-    reset();
-    startListening();
-    setCurrentLine(index);
-  }
-
   function completeCurrentLine(index) {
     const newCompleted = [...completed];
     newCompleted[index] = true;
@@ -339,6 +333,20 @@ function PrepPageInner() {
       currentLine !== null &&
       !completed[currentLine]
     ) {
+      listenPhaseRef.current = "idle";
+      setRetryIndex(null);
+      setIsProcessing(false);
+
+      const newCompleted = [...completed];
+      newCompleted[currentLine] = true;
+      setCompleted(newCompleted);
+
+      // 다음 라인으로 이동만 (startListening 없음)
+      const nextLine = currentLine + 1;
+      if (nextLine < 4) {
+        setCurrentLine(nextLine);
+      }
+
       console.log("[COMPLETE]", {
         phase: listenPhaseRef.current,
         isListening,
@@ -346,18 +354,6 @@ function PrepPageInner() {
         transcript,
         currentLine,
       });
-      listenPhaseRef.current = "idle";
-      setIsProcessing(false);
-      setRetryIndex(null);
-
-      const newCompleted = [...completed];
-      newCompleted[currentLine] = true;
-      setCompleted(newCompleted);
-
-      const nextLine = currentLine + 1;
-      if (nextLine < 4) {
-        setCurrentLine(nextLine);
-      }
     }
   }, [isListening, hasResult, transcript, currentLine, completed]);
 
