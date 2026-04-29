@@ -26,6 +26,9 @@ export function useSpeechRecognition() {
       mediaRecorderRef.current.state === "recording"
     ) {
       mediaRecorderRef.current.stop();
+      // 즉시 isListening=false로 설정
+      // (Whisper API 응답을 기다리지 않고)
+      setIsListening(false);
     }
   }, []);
 
