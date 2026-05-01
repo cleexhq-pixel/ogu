@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function CallPage() {
+function CallPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -140,5 +140,31 @@ export default function CallPage() {
         ← Back to scenarios
       </button>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: '#0E0E0F',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#fff',
+      fontFamily: 'Manrope, sans-serif',
+      fontSize: '14px',
+      opacity: 0.5,
+    }}>
+      Loading...
+    </div>
+  );
+}
+
+export default function CallPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CallPageContent />
+    </Suspense>
   );
 }
