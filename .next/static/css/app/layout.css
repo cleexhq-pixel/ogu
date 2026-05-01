@@ -630,6 +630,9 @@ video {
 .ai-message-card--violation .\!translation {
     color: #64748b !important;
   }
+.visible {
+  visibility: visible;
+}
 .fixed {
   position: fixed;
 }
@@ -958,6 +961,9 @@ video {
 .scale-\[0\.94\] {
   --tw-scale-x: 0.94;
   --tw-scale-y: 0.94;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+.transform {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 @keyframes chat-ai-fade {
@@ -1937,6 +1943,10 @@ video {
   --tw-ring-opacity: 1;
   --tw-ring-color: rgb(254 202 202 / var(--tw-ring-opacity, 1));
 }
+.blur {
+  --tw-blur: blur(8px);
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
 .drop-shadow-sm {
   --tw-drop-shadow: drop-shadow(0 1px 1px rgb(0 0 0 / 0.05));
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
@@ -1979,6 +1989,9 @@ video {
 }
 .ease-out {
   transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+.ease-in-out {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 .\[-webkit-overflow-scrolling\:touch\] {
   -webkit-overflow-scrolling: touch;
@@ -2091,6 +2104,62 @@ html,
 body {
   background-color: #0E0E0F;
   overscroll-behavior: none;
+}
+
+/* My 90 Seconds — Phase B photocard call UI */
+@keyframes liveDot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(-20px);
+    opacity: 0.8;
+  }
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scaleY(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes recording {
+  0%,
+  100% {
+    box-shadow: 0 0 0 8px rgba(255, 80, 80, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(255, 80, 80, 0.2);
+  }
 }
 
 .placeholder\:text-\[\#94A3B8\]::-moz-placeholder {

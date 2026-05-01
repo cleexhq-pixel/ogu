@@ -21,6 +21,16 @@
       "static/chunks/main-app.js",
       "static/css/app/my-90-seconds/layout.css",
       "static/chunks/app/my-90-seconds/layout.js"
+    ],
+    "/my-90-seconds/prep/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/my-90-seconds/prep/page.js"
+    ],
+    "/my-90-seconds/call/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/my-90-seconds/call/page.js"
     ]
   }
 }
