@@ -396,6 +396,30 @@ function PrepPageInner() {
   }, [isListening, hasResult, currentLine, reset, transcript]);
 
   function handleNext() {
+    if (!lines?.length) return;
+
+    const copy = PREP_COPY[lang] || PREP_COPY.en;
+    const payloadLines = lines.map((line, i) => {
+      const rawLabel = copy.line_labels?.[i];
+      const label =
+        typeof rawLabel === "string" && rawLabel.includes(" · ")
+          ? rawLabel.split(" · ")[1]?.trim()
+          : undefined;
+
+      return {
+        korean: line.korean,
+        romanization: line.romanization,
+        translation: line.translation,
+        ...(label ? { label } : {}),
+      };
+    });
+
+    localStorage.setItem(
+      "kkobi_m90s_saved",
+      JSON.stringify({ lines: payloadLines })
+    );
+    localStorage.setItem("kkobi_m90s_last_scenario", scenarioId);
+
     window.location.href = `/my-90-seconds/call?scenario=${scenarioId}`;
   }
 
@@ -749,6 +773,39 @@ function PrepPageInner() {
           </p>
         )}
       </div>
+
+      {process.env.NODE_ENV === "development" && (
+        <button
+          type="button"
+          onClick={() => {
+            stopListening();
+            reset();
+            listenPhaseRef.current = "idle";
+            setRetryIndex(null);
+            isProcessingRef.current = false;
+            setIsProcessing(false);
+            setCompleted([true, true, true, true]);
+          }}
+          style={{
+            position: "fixed",
+            bottom: "24px",
+            right: "24px",
+            background: "#FFD84D",
+            color: "#000",
+            border: "none",
+            borderRadius: "9999px",
+            padding: "10px 18px",
+            fontSize: "12px",
+            fontWeight: "800",
+            fontFamily: "Manrope, sans-serif",
+            cursor: "pointer",
+            zIndex: 9999,
+            letterSpacing: "0.08em",
+          }}
+        >
+          ⚡ DEV SKIP
+        </button>
+      )}
     </div>
   );
 }
