@@ -1,6 +1,11 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 const gradientByPhase = {
@@ -16,6 +21,25 @@ const gradientByPhase = {
   ending: '#050505',
 };
 
+const PARTICLE_COLORS = [
+  'rgba(255,138,169,0.6)',
+  'rgba(0,227,253,0.5)',
+  'rgba(255,216,77,0.4)',
+  'rgba(158,143,253,0.5)',
+  'rgba(255,255,255,0.3)',
+];
+
+function buildParticles() {
+  return Array.from({ length: 18 }, (_, i) => ({
+    top: `${Math.random() * 80 + 10}%`,
+    left: `${Math.random() * 90 + 5}%`,
+    size: Math.random() * 4 + 1,
+    color: PARTICLE_COLORS[i % 5],
+    delay: `${Math.random() * 5}s`,
+    duration: `${Math.random() * 4 + 6}s`,
+  }));
+}
+
 function CallPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -24,6 +48,8 @@ function CallPageContent() {
   const [voiceGender, setVoiceGender] = useState(null);
   const [savedScript, setSavedScript] = useState(null);
   const [isReady, setIsReady] = useState(false);
+
+  const [particles, setParticles] = useState([]);
 
   const [phase, setPhase] = useState('intro');
   const [timeRemaining, setTimeRemaining] = useState(90);
@@ -36,6 +62,10 @@ function CallPageContent() {
   const [micState, setMicState] = useState('idle');
   const [showEmergencyCards, setShowEmergencyCards] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
+
+  useEffect(() => {
+    setParticles(buildParticles());
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -100,6 +130,47 @@ function CallPageContent() {
     }
   }, [micState]);
 
+  const micBoxStyle = (() => {
+    if (micState === 'listening-idol') {
+      return {
+        background: '#E24B4A',
+        border: 'none',
+        color: '#fff',
+        boxShadow: 'none',
+      };
+    }
+    if (micState === 'recording') {
+      return {
+        background: '#E24B4A',
+        border: 'none',
+        color: '#fff',
+        boxShadow: 'none',
+      };
+    }
+    if (micState === 'processing') {
+      return {
+        background: '#2C2C2D',
+        border: 'none',
+        color: '#9E9BA4',
+        boxShadow: 'none',
+      };
+    }
+    if (micState === 'active') {
+      return {
+        background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+        border: 'none',
+        color: '#fff',
+        boxShadow: '0 12px 40px rgba(255,138,169,0.35)',
+      };
+    }
+    return {
+      background: 'transparent',
+      border: '1.5px solid #FF8AA9',
+      color: '#FF8AA9',
+      boxShadow: 'none',
+    };
+  })();
+
   if (!isReady) {
     return (
       <div
@@ -145,7 +216,7 @@ function CallPageContent() {
             top: 0,
             left: 0,
             right: 0,
-            height: '564px',
+            height: '620px',
             background: gradientByPhase[phase] || gradientByPhase.A,
             transition: 'background 1.5s ease-in-out',
             overflow: 'hidden',
@@ -162,43 +233,7 @@ function CallPageContent() {
             }}
           />
 
-          {[
-            {
-              top: '30%',
-              left: '20%',
-              size: 4,
-              color: 'rgba(255,138,169,0.6)',
-              delay: '0s',
-            },
-            {
-              top: '50%',
-              left: '80%',
-              size: 3,
-              color: 'rgba(0,227,253,0.6)',
-              delay: '1s',
-            },
-            {
-              top: '20%',
-              left: '60%',
-              size: 5,
-              color: 'rgba(255,216,77,0.5)',
-              delay: '2s',
-            },
-            {
-              top: '70%',
-              left: '30%',
-              size: 2,
-              color: 'rgba(158,143,253,0.6)',
-              delay: '3s',
-            },
-            {
-              top: '40%',
-              left: '70%',
-              size: 4,
-              color: 'rgba(255,138,169,0.5)',
-              delay: '4s',
-            },
-          ].map((p, i) => (
+          {particles.map((p, i) => (
             <div
               key={i}
               style={{
@@ -209,7 +244,7 @@ function CallPageContent() {
                 height: `${p.size}px`,
                 borderRadius: '50%',
                 background: p.color,
-                animation: `float 8s ease-in-out ${p.delay} infinite`,
+                animation: `float ${p.duration} ease-in-out ${p.delay} infinite`,
               }}
             />
           ))}
@@ -255,9 +290,78 @@ function CallPageContent() {
               pointerEvents: 'none',
             }}
           />
+
+          {currentSubtitle.visible && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '40px',
+                left: '24px',
+                right: '24px',
+                zIndex: 8,
+                textAlign: 'center',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'Manrope, sans-serif',
+                  fontSize: '26px',
+                  fontWeight: '800',
+                  color: '#fff',
+                  lineHeight: 1.3,
+                  letterSpacing: '-0.01em',
+                  marginBottom: '8px',
+                  textShadow: '0 4px 20px rgba(0,0,0,0.9)',
+                }}
+              >
+                {currentSubtitle.korean}
+              </div>
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: 'rgba(255,255,255,0.6)',
+                  marginBottom: '10px',
+                  textShadow: '0 2px 8px rgba(0,0,0,0.8)',
+                }}
+              >
+                {currentSubtitle.roman}
+              </div>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setShowTranslation(!showTranslation)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ')
+                    setShowTranslation(!showTranslation);
+                }}
+                style={{
+                  display: 'inline-block',
+                  background: showTranslation
+                    ? 'rgba(0,227,253,0.12)'
+                    : 'transparent',
+                  border: 'none',
+                  borderRadius: '9999px',
+                  padding: '4px 12px',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  color: showTranslation
+                    ? '#00E3FD'
+                    : 'rgba(255,255,255,0.4)',
+                  fontFamily: 'Manrope, sans-serif',
+                  letterSpacing: '0.1em',
+                  textTransform: showTranslation ? 'none' : 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s',
+                }}
+              >
+                {showTranslation
+                  ? currentSubtitle.translation || '—'
+                  : 'translate'}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* 2. video-call-bar */}
         <div
           style={{
             position: 'absolute',
@@ -270,32 +374,64 @@ function CallPageContent() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 20px',
+            padding: '0 16px 0 12px',
             zIndex: 20,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => router.push('/my-90-seconds')}
               style={{
-                width: '8px',
-                height: '8px',
+                background: 'rgba(0,0,0,0.4)',
+                backdropFilter: 'blur(8px)',
+                border: 'none',
+                width: '32px',
+                height: '32px',
                 borderRadius: '50%',
-                background: '#FF3838',
-                boxShadow: '0 0 8px #FF3838',
-                animation: 'liveDot 1.5s ease-in-out infinite',
+                color: 'rgba(255,255,255,0.7)',
+                fontSize: '16px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
               }}
-            />
-            <span
-              style={{
-                fontFamily: 'Manrope, sans-serif',
-                fontSize: '11px',
-                fontWeight: '800',
-                color: '#FF3838',
-                letterSpacing: '0.15em',
-              }}
+              aria-label="Close and return to scenarios"
             >
-              LIVE
-            </span>
+              ✕
+            </button>
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <div
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#FF3838',
+                  boxShadow: '0 0 8px #FF3838',
+                  animation: 'liveDot 1.5s ease-in-out infinite',
+                }}
+              />
+              <span
+                style={{
+                  fontFamily: 'Manrope, sans-serif',
+                  fontSize: '12px',
+                  fontWeight: '800',
+                  color: '#FF3838',
+                  letterSpacing: '0.15em',
+                }}
+              >
+                LIVE
+              </span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -327,9 +463,9 @@ function CallPageContent() {
                     : 'rgba(255,255,255,0.1)',
                 color: timeRemaining <= 20 ? '#FF8AA9' : '#fff',
                 fontFamily: 'Manrope, sans-serif',
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: '800',
-                padding: '4px 12px',
+                padding: '3px 10px',
                 borderRadius: '9999px',
                 letterSpacing: '0.05em',
                 transition: 'all 0.3s',
@@ -341,7 +477,6 @@ function CallPageContent() {
           </div>
         </div>
 
-        {/* 3. idol-label + self-view */}
         <div
           style={{
             position: 'absolute',
@@ -357,34 +492,9 @@ function CallPageContent() {
               fontWeight: '800',
               color: '#fff',
               textShadow: '0 2px 12px rgba(0,0,0,0.6)',
-              marginBottom: '4px',
             }}
           >
             {voiceGender === 'FEMALE' ? 'Idol_F' : 'Idol_M'}
-          </div>
-          <div
-            style={{
-              fontFamily: 'Manrope, sans-serif',
-              fontSize: '10px',
-              fontWeight: '600',
-              color: 'rgba(255,255,255,0.7)',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <div
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: '#00E3FD',
-                boxShadow: '0 0 6px #00E3FD',
-              }}
-            />
-            live now
           </div>
         </div>
 
@@ -395,7 +505,8 @@ function CallPageContent() {
             right: '24px',
             width: '76px',
             height: '100px',
-            background: '#1a1a1c',
+            background:
+              'linear-gradient(135deg, #1a1a1c 0%, #2a2a2e 50%, #1a1a1c 100%)',
             borderRadius: '14px',
             zIndex: 5,
             display: 'flex',
@@ -419,78 +530,11 @@ function CallPageContent() {
           </div>
         </div>
 
-        {/* 4. subtitle-area */}
-        {currentSubtitle.visible && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '285px',
-              left: '24px',
-              right: '24px',
-              zIndex: 5,
-              textAlign: 'center',
-            }}
-          >
-            <div
-              style={{
-                fontFamily: 'Manrope, sans-serif',
-                fontSize: '26px',
-                fontWeight: '800',
-                color: '#fff',
-                lineHeight: 1.3,
-                letterSpacing: '-0.01em',
-                marginBottom: '8px',
-                textShadow: '0 4px 20px rgba(0,0,0,0.9)',
-              }}
-            >
-              {currentSubtitle.korean}
-            </div>
-            <div
-              style={{
-                fontSize: '12px',
-                color: 'rgba(255,255,255,0.6)',
-                marginBottom: '10px',
-                textShadow: '0 2px 8px rgba(0,0,0,0.8)',
-              }}
-            >
-              {currentSubtitle.roman}
-            </div>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => setShowTranslation(!showTranslation)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ')
-                  setShowTranslation(!showTranslation);
-              }}
-              style={{
-                display: 'inline-block',
-                background: 'rgba(0,227,253,0.12)',
-                backdropFilter: 'blur(12px)',
-                borderRadius: '9999px',
-                padding: '4px 12px',
-                fontSize: '10px',
-                fontWeight: '700',
-                color: '#00E3FD',
-                fontFamily: 'Manrope, sans-serif',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-              }}
-            >
-              {showTranslation
-                ? currentSubtitle.translation || '—'
-                : 'tap to translate'}
-            </div>
-          </div>
-        )}
-
-        {/* 5. emergency-cards */}
         {showEmergencyCards && (
           <div
             style={{
               position: 'absolute',
-              bottom: '205px',
+              bottom: '232px',
               left: '16px',
               right: '16px',
               display: 'flex',
@@ -529,21 +573,20 @@ function CallPageContent() {
           </div>
         )}
 
-        {/* 6. mic-button */}
         <div
           style={{
             position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
-            height: '280px',
+            height: '224px',
             background:
               'linear-gradient(180deg, transparent 0%, #0E0E0F 30%)',
             zIndex: 6,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            paddingBottom: '40px',
+            paddingBottom: '32px',
           }}
         >
           <div
@@ -554,42 +597,55 @@ function CallPageContent() {
               if (e.key === 'Enter' || e.key === ' ') handleMicTap();
             }}
             style={{
-              width: '260px',
-              height: '110px',
-              background:
-                micState === 'active'
-                  ? 'linear-gradient(135deg, #FF8AA9, #FF719B)'
-                  : micState === 'recording'
-                    ? 'rgba(255,80,80,0.2)'
-                    : 'linear-gradient(135deg, rgba(255,138,169,0.15), rgba(255,113,155,0.1))',
+              width: '220px',
+              height: '88px',
               borderRadius: '24px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              opacity: micState === 'listening-idol' ? 0.3 : 1,
-              boxShadow:
-                micState === 'active'
-                  ? '0 12px 40px rgba(255,138,169,0.4)'
-                  : 'none',
+              gap: '6px',
+              cursor:
+                micState === 'listening-idol' ? 'default' : 'pointer',
+              opacity: micState === 'listening-idol' ? 0.35 : 1,
               transition: 'all 0.3s',
               animation:
                 micState === 'recording'
                   ? 'recording 1.4s ease-in-out infinite'
                   : 'none',
+              boxSizing: 'border-box',
+              ...micBoxStyle,
             }}
           >
-            <div style={{ fontSize: '32px' }}>
-              {micState === 'recording' ? '🔴' : '🎤'}
-            </div>
+            {micState === 'processing' ? (
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 13 13"
+                fill="none"
+                aria-hidden
+              >
+                <circle
+                  cx="6.5"
+                  cy="6.5"
+                  r="5.5"
+                  stroke="#00E3FD"
+                  strokeWidth="1.3"
+                  strokeDasharray="3 2"
+                  opacity={0.85}
+                />
+              </svg>
+            ) : (
+              <div style={{ fontSize: '28px' }}>
+                {micState === 'recording' ? '🔴' : '🎤'}
+              </div>
+            )}
             <div
               style={{
                 fontFamily: 'Manrope, sans-serif',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: '700',
-                color: '#fff',
+                color: micState === 'processing' ? '#00E3FD' : undefined,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
               }}
@@ -605,29 +661,6 @@ function CallPageContent() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => router.push('/my-90-seconds')}
-          style={{
-            position: 'absolute',
-            top: '56px',
-            right: '110px',
-            zIndex: 25,
-            background: 'transparent',
-            border: 'none',
-            color: 'rgba(255,255,255,0.45)',
-            fontFamily: 'Manrope, sans-serif',
-            fontSize: '10px',
-            fontWeight: '700',
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-            padding: '4px 8px',
-          }}
-        >
-          ← Scenarios
-        </button>
-
         {process.env.NODE_ENV === 'development' && (
           <div
             style={{
@@ -642,6 +675,16 @@ function CallPageContent() {
               overflowY: 'auto',
             }}
           >
+            <span
+              style={{
+                fontSize: '10px',
+                fontFamily: 'Manrope, sans-serif',
+                color: 'rgba(255,255,255,0.5)',
+                textAlign: 'right',
+              }}
+            >
+              {scenarioId}
+            </span>
             {['intro', 'A', 'B', 'C', 'D'].map((p) => (
               <button
                 key={p}
