@@ -26,6 +26,10 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
         <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+        <link
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard-dynamic-subset.css"
           rel="stylesheet"
         />

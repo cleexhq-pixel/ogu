@@ -8,37 +8,45 @@ import {
 } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-const gradientByPhase = {
+const phaseGradients = {
   intro:
-    'radial-gradient(ellipse at 30% 20%, rgba(255,138,169,0.35) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(158,143,253,0.25) 0%, transparent 55%), #0E0E0F',
+    'radial-gradient(ellipse at 50% 30%, rgba(255,138,169,0.42), transparent 70%), #0E0E0F',
   A:
-    'radial-gradient(ellipse at 30% 20%, rgba(255,138,169,0.45) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(255,113,155,0.35) 0%, transparent 55%), radial-gradient(ellipse at 50% 100%, rgba(158,143,253,0.25) 0%, transparent 60%), linear-gradient(180deg, #1a0e1a 0%, #0E0E0F 100%)',
+    'radial-gradient(ellipse at 50% 40%, rgba(255,138,169,0.52), transparent 65%), #0E0E0F',
   B:
-    'radial-gradient(ellipse at 25% 30%, rgba(255,138,169,0.4) 0%, transparent 50%), radial-gradient(ellipse at 75% 40%, rgba(0,227,253,0.3) 0%, transparent 55%), radial-gradient(ellipse at 50% 90%, rgba(158,143,253,0.3) 0%, transparent 50%), linear-gradient(180deg, #1a0e1f 0%, #0E0E0F 100%)',
+    'radial-gradient(ellipse at 30% 50%, rgba(255,138,169,0.42), transparent 60%), radial-gradient(ellipse at 70% 50%, rgba(0,227,253,0.38), transparent 60%), #0E0E0F',
   C:
-    'radial-gradient(ellipse at 50% 25%, rgba(255,138,169,0.5) 0%, transparent 45%), radial-gradient(ellipse at 20% 60%, rgba(0,227,253,0.35) 0%, transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(255,216,77,0.2) 0%, transparent 50%), linear-gradient(180deg, #1f0e1a 0%, #0E0E0F 100%)',
-  D: '#050505',
+    'radial-gradient(ellipse at 30% 60%, rgba(0,227,253,0.48), transparent 60%), radial-gradient(ellipse at 70% 40%, rgba(255,216,77,0.32), transparent 60%), #0E0E0F',
+  D:
+    'radial-gradient(ellipse at 50% 50%, rgba(158,143,253,0.38), transparent 70%), #0E0E0F',
   ending: '#050505',
 };
 
 const PARTICLE_COLORS = [
-  'rgba(255,138,169,0.6)',
-  'rgba(0,227,253,0.5)',
-  'rgba(255,216,77,0.4)',
-  'rgba(158,143,253,0.5)',
-  'rgba(255,255,255,0.3)',
+  'rgba(255,138,169,0.65)',
+  'rgba(0,227,253,0.55)',
+  'rgba(255,216,77,0.45)',
+  'rgba(158,143,253,0.55)',
+  'rgba(255,255,255,0.35)',
 ];
 
 function buildParticles() {
-  return Array.from({ length: 18 }, (_, i) => ({
+  return Array.from({ length: 25 }, (_, i) => ({
     top: `${Math.random() * 80 + 10}%`,
     left: `${Math.random() * 90 + 5}%`,
-    size: Math.random() * 4 + 1,
+    size:
+      Math.random() > 0.52 ? Math.random() * 2 + 4 : Math.random() * 3 + 1,
     color: PARTICLE_COLORS[i % 5],
     delay: `${Math.random() * 5}s`,
     duration: `${Math.random() * 4 + 6}s`,
   }));
 }
+
+const emergencyCards = [
+  { en: 'Wait, restart', ko: '잠깐, 다시 말할게요' },
+  { en: 'Change topic', ko: '다른 얘기 할게요' },
+  { en: 'I love you', ko: '너무 좋아요' },
+];
 
 function CallPageContent() {
   const searchParams = useSearchParams();
@@ -61,7 +69,7 @@ function CallPageContent() {
   });
   const [micState, setMicState] = useState('idle');
   const [showEmergencyCards, setShowEmergencyCards] = useState(false);
-  const [showTranslation, setShowTranslation] = useState(false);
+  const [showRomanization, setShowRomanization] = useState(true);
 
   useEffect(() => {
     setParticles(buildParticles());
@@ -133,10 +141,10 @@ function CallPageContent() {
   const micBoxStyle = (() => {
     if (micState === 'listening-idol') {
       return {
-        background: '#E24B4A',
-        border: 'none',
+        background: 'rgba(0,227,253,0.14)',
+        border: '1.5px solid #00E3FD',
         color: '#fff',
-        boxShadow: 'none',
+        boxShadow: '0 0 28px rgba(0,227,253,0.35)',
       };
     }
     if (micState === 'recording') {
@@ -151,7 +159,7 @@ function CallPageContent() {
       return {
         background: '#2C2C2D',
         border: 'none',
-        color: '#9E9BA4',
+        color: '#00E3FD',
         boxShadow: 'none',
       };
     }
@@ -170,6 +178,18 @@ function CallPageContent() {
       boxShadow: 'none',
     };
   })();
+
+  const micLabel =
+    micState === 'listening-idol'
+      ? 'Listening...'
+      : micState === 'recording'
+        ? 'Speaking...'
+        : micState === 'processing'
+          ? 'Processing...'
+          : 'Your turn';
+
+  const bgLayer =
+    phaseGradients[phase] || phaseGradients.A;
 
   if (!isReady) {
     return (
@@ -209,7 +229,23 @@ function CallPageContent() {
           background: '#0E0E0F',
         }}
       >
-        {/* 1. photocard-area */}
+        {process.env.NODE_ENV === 'development' && scenarioId && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '8px',
+              right: '8px',
+              fontSize: '9px',
+              color: 'rgba(255,255,255,0.2)',
+              fontFamily: 'monospace',
+              zIndex: 10001,
+              pointerEvents: 'none',
+            }}
+          >
+            [DEV] {scenarioId}
+          </div>
+        )}
+
         <div
           style={{
             position: 'absolute',
@@ -217,7 +253,7 @@ function CallPageContent() {
             left: 0,
             right: 0,
             height: '620px',
-            background: gradientByPhase[phase] || gradientByPhase.A,
+            background: bgLayer,
             transition: 'background 1.5s ease-in-out',
             overflow: 'hidden',
           }}
@@ -233,6 +269,21 @@ function CallPageContent() {
             }}
           />
 
+          <div
+            style={{
+              position: 'absolute',
+              top: '20%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '120px',
+              height: '120px',
+              background:
+                'radial-gradient(circle, rgba(255,255,255,0.06), transparent 60%)',
+              pointerEvents: 'none',
+              zIndex: 2,
+            }}
+          />
+
           {particles.map((p, i) => (
             <div
               key={i}
@@ -244,7 +295,10 @@ function CallPageContent() {
                 height: `${p.size}px`,
                 borderRadius: '50%',
                 background: p.color,
-                animation: `float ${p.duration} ease-in-out ${p.delay} infinite`,
+                boxShadow: `0 0 ${Math.round(p.size * 2)}px ${p.color}`,
+                animation: `twinkle ${p.duration} ease-in-out ${p.delay} infinite`,
+                pointerEvents: 'none',
+                zIndex: 3,
               }}
             />
           ))}
@@ -253,9 +307,10 @@ function CallPageContent() {
             <div
               style={{
                 position: 'absolute',
-                bottom: '80px',
+                top: '30%',
                 left: '50%',
                 transform: 'translateX(-50%)',
+                zIndex: 4,
                 display: 'flex',
                 alignItems: 'flex-end',
                 gap: '4px',
@@ -269,7 +324,7 @@ function CallPageContent() {
                     width: '5px',
                     height: `${h}px`,
                     background:
-                      'linear-gradient(180deg, rgba(255,138,169,0.9), rgba(255,138,169,0.4))',
+                      'linear-gradient(180deg, rgba(0,227,253,0.95), rgba(0,227,253,0.35))',
                     borderRadius: '2px',
                     animation: `wave 1.4s ease-in-out ${i * 0.07}s infinite`,
                   }}
@@ -288,6 +343,7 @@ function CallPageContent() {
               background:
                 'linear-gradient(180deg, transparent 0%, rgba(14,14,15,0.7) 60%, #0E0E0F 100%)',
               pointerEvents: 'none',
+              zIndex: 4,
             }}
           />
 
@@ -304,60 +360,65 @@ function CallPageContent() {
             >
               <div
                 style={{
-                  fontFamily: 'Manrope, sans-serif',
-                  fontSize: '26px',
-                  fontWeight: '800',
-                  color: '#fff',
+                  fontSize: '22px',
+                  fontWeight: 600,
+                  color: 'rgba(255,255,255,0.95)',
+                  fontFamily: 'Inter, sans-serif',
+                  marginBottom: '12px',
                   lineHeight: 1.3,
-                  letterSpacing: '-0.01em',
-                  marginBottom: '8px',
-                  textShadow: '0 4px 20px rgba(0,0,0,0.9)',
+                  textShadow: '0 2px 16px rgba(0,0,0,0.85)',
+                }}
+              >
+                {currentSubtitle.translation ||
+                  currentSubtitle.korean ||
+                  '—'}
+              </div>
+              <div
+                style={{
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  color: '#fff',
+                  fontFamily: 'Manrope, sans-serif',
+                  marginBottom: '6px',
+                  lineHeight: 1.3,
+                  textShadow: '0 4px 16px rgba(0,0,0,0.9)',
                 }}
               >
                 {currentSubtitle.korean}
               </div>
-              <div
+              {showRomanization && (
+                <div
+                  style={{
+                    fontSize: '11px',
+                    color: 'rgba(255,255,255,0.5)',
+                    fontFamily: 'Inter, sans-serif',
+                    fontStyle: 'italic',
+                    letterSpacing: '0.02em',
+                    textShadow: '0 1px 8px rgba(0,0,0,0.8)',
+                  }}
+                >
+                  {currentSubtitle.roman}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowRomanization(!showRomanization)}
                 style={{
-                  fontSize: '12px',
-                  color: 'rgba(255,255,255,0.6)',
-                  marginBottom: '10px',
-                  textShadow: '0 2px 8px rgba(0,0,0,0.8)',
-                }}
-              >
-                {currentSubtitle.roman}
-              </div>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setShowTranslation(!showTranslation)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ')
-                    setShowTranslation(!showTranslation);
-                }}
-                style={{
-                  display: 'inline-block',
-                  background: showTranslation
-                    ? 'rgba(0,227,253,0.12)'
-                    : 'transparent',
+                  fontSize: '9px',
+                  color: 'rgba(255,255,255,0.4)',
+                  background: 'transparent',
                   border: 'none',
-                  borderRadius: '9999px',
-                  padding: '4px 12px',
-                  fontSize: '10px',
-                  fontWeight: '600',
-                  color: showTranslation
-                    ? '#00E3FD'
-                    : 'rgba(255,255,255,0.4)',
-                  fontFamily: 'Manrope, sans-serif',
+                  textTransform: 'uppercase',
                   letterSpacing: '0.1em',
-                  textTransform: showTranslation ? 'none' : 'uppercase',
+                  marginTop: '8px',
                   cursor: 'pointer',
-                  transition: 'all 0.3s',
+                  fontFamily: 'Inter, sans-serif',
                 }}
               >
-                {showTranslation
-                  ? currentSubtitle.translation || '—'
-                  : 'translate'}
-              </div>
+                {showRomanization
+                  ? 'hide pronunciation'
+                  : 'show pronunciation'}
+              </button>
             </div>
           )}
         </div>
@@ -370,71 +431,74 @@ function CallPageContent() {
             right: 0,
             height: '52px',
             background:
-              'linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%)',
+              'linear-gradient(180deg, rgba(0,0,0,0.78) 0%, transparent 100%)',
+            zIndex: 19,
+            pointerEvents: 'none',
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={() => router.push('/my-90-seconds')}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            left: '16px',
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(8px)',
+            border: 'none',
+            zIndex: 25,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'rgba(255,255,255,0.8)',
+            fontSize: '14px',
+            cursor: 'pointer',
+          }}
+          aria-label="Close and return to scenarios"
+        >
+          ✕
+        </button>
+
+        <div
+          style={{
+            position: 'absolute',
+            top: '14px',
+            left: '60px',
+            right: '16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 16px 0 12px',
             zIndex: 20,
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => router.push('/my-90-seconds')}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span
               style={{
-                background: 'rgba(0,0,0,0.4)',
-                backdropFilter: 'blur(8px)',
-                border: 'none',
-                width: '32px',
-                height: '32px',
+                width: '6px',
+                height: '6px',
                 borderRadius: '50%',
-                color: 'rgba(255,255,255,0.7)',
-                fontSize: '16px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
+                background: '#FF4444',
+                animation: 'liveDot 1.5s ease-in-out infinite',
               }}
-              aria-label="Close and return to scenarios"
+            />
+            <span
+              style={{
+                fontFamily: 'Manrope, sans-serif',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#FF4444',
+                letterSpacing: '0.12em',
+              }}
             >
-              ✕
-            </button>
-            <div
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <div
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: '#FF3838',
-                  boxShadow: '0 0 8px #FF3838',
-                  animation: 'liveDot 1.5s ease-in-out infinite',
-                }}
-              />
-              <span
-                style={{
-                  fontFamily: 'Manrope, sans-serif',
-                  fontSize: '12px',
-                  fontWeight: '800',
-                  color: '#FF3838',
-                  letterSpacing: '0.15em',
-                }}
-              >
-                LIVE
-              </span>
-            </div>
+              LIVE
+            </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
                 display: 'flex',
@@ -464,7 +528,7 @@ function CallPageContent() {
                 color: timeRemaining <= 20 ? '#FF8AA9' : '#fff',
                 fontFamily: 'Manrope, sans-serif',
                 fontSize: '11px',
-                fontWeight: '800',
+                fontWeight: 600,
                 padding: '3px 10px',
                 borderRadius: '9999px',
                 letterSpacing: '0.05em',
@@ -480,95 +544,162 @@ function CallPageContent() {
         <div
           style={{
             position: 'absolute',
-            top: '64px',
+            top: '60px',
             left: '24px',
             zIndex: 5,
           }}
         >
           <div
             style={{
-              fontFamily: 'Manrope, sans-serif',
               fontSize: '16px',
-              fontWeight: '800',
+              fontWeight: 700,
               color: '#fff',
+              letterSpacing: '0.05em',
+              fontFamily: 'Manrope, sans-serif',
               textShadow: '0 2px 12px rgba(0,0,0,0.6)',
             }}
           >
-            {voiceGender === 'FEMALE' ? 'Idol_F' : 'Idol_M'}
+            {voiceGender === 'FEMALE' ? 'WONYOUNG' : 'JISUNG'}
+          </div>
+          <div
+            style={{
+              fontSize: '10px',
+              fontWeight: 600,
+              color: 'rgba(255,255,255,0.45)',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              marginTop: '2px',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            Member · Group
           </div>
         </div>
 
         <div
           style={{
             position: 'absolute',
-            top: '64px',
+            top: '60px',
             right: '24px',
             width: '76px',
             height: '100px',
             background:
-              'linear-gradient(135deg, #1a1a1c 0%, #2a2a2e 50%, #1a1a1c 100%)',
+              'linear-gradient(135deg, rgba(40,40,44,0.9) 0%, rgba(20,20,22,0.95) 100%)',
             borderRadius: '14px',
             zIndex: 5,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '4px',
+            overflow: 'hidden',
           }}
         >
-          <div style={{ fontSize: '20px', opacity: 0.4 }}>📷</div>
           <div
             style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage:
+                'repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 3px)',
+              pointerEvents: 'none',
+            }}
+          />
+          <div
+            style={{
+              fontSize: '20px',
+              opacity: 0.3,
+              marginBottom: '8px',
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
+            📷
+          </div>
+          <div
+            style={{
+              fontSize: '10px',
+              fontWeight: 700,
+              color: 'rgba(255,255,255,0.5)',
+              letterSpacing: '0.15em',
               fontFamily: 'Manrope, sans-serif',
-              fontSize: '8px',
-              color: 'rgba(255,255,255,0.4)',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
+              position: 'relative',
+              zIndex: 1,
             }}
           >
             YOU
           </div>
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '6px',
+              right: '6px',
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: '#FF4444',
+              boxShadow: '0 0 6px #FF4444',
+              animation: 'pulse 2s infinite',
+              zIndex: 2,
+            }}
+          />
         </div>
 
         {showEmergencyCards && (
           <div
             style={{
               position: 'absolute',
-              bottom: '232px',
-              left: '16px',
-              right: '16px',
+              bottom: '120px',
+              left: 0,
+              right: 0,
               display: 'flex',
+              justifyContent: 'center',
               gap: '8px',
-              overflowX: 'auto',
-              zIndex: 7,
-              padding: '0 8px',
-              scrollbarWidth: 'none',
+              padding: '0 16px',
+              zIndex: 14,
+              flexWrap: 'wrap',
               animation: 'slideUpFade 0.4s ease-out',
             }}
           >
-            {[
-              '"잠깐, 다시 말할게요"',
-              '"다른 얘기 할게요"',
-              '"너무 좋아서 말이 안 나와요"',
-            ].map((text, i) => (
-              <div
+            {emergencyCards.map((card, i) => (
+              <button
                 key={i}
+                type="button"
                 style={{
-                  flexShrink: 0,
-                  background: 'rgba(255,255,255,0.06)',
-                  backdropFilter: 'blur(16px)',
-                  borderRadius: '9999px',
-                  padding: '10px 16px',
-                  fontFamily: 'Manrope, sans-serif',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: 'rgba(255,255,255,0.85)',
+                  flex: '1 1 0',
+                  maxWidth: '120px',
+                  padding: '8px 10px',
+                  background: 'rgba(255,138,169,0.15)',
+                  backdropFilter: 'blur(12px)',
+                  border: 'none',
+                  borderRadius: '14px',
                   cursor: 'pointer',
-                  whiteSpace: 'nowrap',
+                  textAlign: 'center',
+                  transition: 'all 0.2s',
                 }}
               >
-                {text}
-              </div>
+                <div
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    color: '#FF8AA9',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    marginBottom: '3px',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                >
+                  {card.en}
+                </div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    color: 'rgba(255,255,255,0.85)',
+                    fontFamily: 'Manrope, sans-serif',
+                  }}
+                >
+                  {card.ko}
+                </div>
+              </button>
             ))}
           </div>
         )}
@@ -607,7 +738,7 @@ function CallPageContent() {
               gap: '6px',
               cursor:
                 micState === 'listening-idol' ? 'default' : 'pointer',
-              opacity: micState === 'listening-idol' ? 0.35 : 1,
+              opacity: micState === 'listening-idol' ? 0.42 : 1,
               transition: 'all 0.3s',
               animation:
                 micState === 'recording'
@@ -645,18 +776,11 @@ function CallPageContent() {
                 fontFamily: 'Manrope, sans-serif',
                 fontSize: '12px',
                 fontWeight: '700',
-                color: micState === 'processing' ? '#00E3FD' : undefined,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
               }}
             >
-              {micState === 'listening-idol'
-                ? 'Listening...'
-                : micState === 'recording'
-                  ? 'Recording...'
-                  : micState === 'processing'
-                    ? 'Processing...'
-                    : 'Tap to speak'}
+              {micLabel}
             </div>
           </div>
         </div>
@@ -675,16 +799,6 @@ function CallPageContent() {
               overflowY: 'auto',
             }}
           >
-            <span
-              style={{
-                fontSize: '10px',
-                fontFamily: 'Manrope, sans-serif',
-                color: 'rgba(255,255,255,0.5)',
-                textAlign: 'right',
-              }}
-            >
-              {scenarioId}
-            </span>
             {['intro', 'A', 'B', 'C', 'D'].map((p) => (
               <button
                 key={p}
