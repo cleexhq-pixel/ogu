@@ -67,13 +67,19 @@ function CallPageContent() {
     translation: '',
     visible: true,
   });
-  const [micState, setMicState] = useState('idle');
+  const [micState, setMicState] = useState('your_turn');
   const [showEmergencyCards, setShowEmergencyCards] = useState(false);
   const [showRomanization, setShowRomanization] = useState(true);
 
   useEffect(() => {
     setParticles(buildParticles());
   }, []);
+
+  useEffect(() => {
+    if (micState !== 'processing') return undefined;
+    const id = window.setTimeout(() => setMicState('your_turn'), 1500);
+    return () => clearTimeout(id);
+  }, [micState]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -128,65 +134,22 @@ function CallPageContent() {
     }));
   }, [savedScript]);
 
-  const handleMicTap = useCallback(() => {
-    if (micState === 'listening-idol') return;
-    if (micState === 'idle' || micState === 'active') {
-      setMicState('recording');
-    } else if (micState === 'recording') {
-      setMicState('processing');
-      setTimeout(() => setMicState('active'), 1500);
-    }
-  }, [micState]);
+  const startSpeaking = useCallback(() => {
+    setMicState((s) => (s === 'your_turn' ? 'speaking' : s));
+  }, []);
 
-  const micBoxStyle = (() => {
-    if (micState === 'listening-idol') {
-      return {
-        background: 'rgba(0,227,253,0.14)',
-        border: '1.5px solid #00E3FD',
-        color: '#fff',
-        boxShadow: '0 0 28px rgba(0,227,253,0.35)',
-      };
-    }
-    if (micState === 'recording') {
-      return {
-        background: '#E24B4A',
-        border: 'none',
-        color: '#fff',
-        boxShadow: 'none',
-      };
-    }
-    if (micState === 'processing') {
-      return {
-        background: '#2C2C2D',
-        border: 'none',
-        color: '#00E3FD',
-        boxShadow: 'none',
-      };
-    }
-    if (micState === 'active') {
-      return {
-        background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
-        border: 'none',
-        color: '#fff',
-        boxShadow: '0 12px 40px rgba(255,138,169,0.35)',
-      };
-    }
-    return {
-      background: 'transparent',
-      border: '1.5px solid #FF8AA9',
-      color: '#FF8AA9',
-      boxShadow: 'none',
-    };
-  })();
+  const stopSpeaking = useCallback(() => {
+    setMicState((s) => (s === 'speaking' ? 'processing' : s));
+  }, []);
 
-  const micLabel =
-    micState === 'listening-idol'
-      ? 'Listening...'
-      : micState === 'recording'
-        ? 'Speaking...'
-        : micState === 'processing'
-          ? 'Processing...'
-          : 'Your turn';
+  const handleEmergencyCard = useCallback((card) => {
+    setCurrentSubtitle((prev) => ({
+      ...prev,
+      korean: card.ko,
+      translation: card.en,
+      visible: true,
+    }));
+  }, []);
 
   const bgLayer =
     phaseGradients[phase] || phaseGradients.A;
@@ -303,7 +266,7 @@ function CallPageContent() {
             />
           ))}
 
-          {micState === 'listening-idol' && (
+          {micState === 'idol_speaking' && (
             <div
               style={{
                 position: 'absolute',
@@ -329,6 +292,65 @@ function CallPageContent() {
                     animation: `wave 1.4s ease-in-out ${i * 0.07}s infinite`,
                   }}
                 />
+              ))}
+            </div>
+          )}
+
+          {showEmergencyCards && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '160px',
+                left: '12px',
+                right: '12px',
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '6px',
+                zIndex: 10,
+                animation: 'slideUp 0.4s ease-out',
+              }}
+            >
+              {emergencyCards.map((card, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleEmergencyCard(card)}
+                  style={{
+                    flex: '1 1 0',
+                    maxWidth: '110px',
+                    padding: '8px 10px',
+                    background: 'rgba(255,138,169,0.18)',
+                    backdropFilter: 'blur(12px)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '9px',
+                      fontWeight: 700,
+                      color: '#FF8AA9',
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      marginBottom: '2px',
+                    }}
+                  >
+                    {card.en}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 500,
+                      color: 'rgba(255,255,255,0.85)',
+                      fontFamily: 'Manrope, sans-serif',
+                    }}
+                  >
+                    {card.ko}
+                  </div>
+                </button>
               ))}
             </div>
           )}
@@ -643,146 +665,134 @@ function CallPageContent() {
           />
         </div>
 
-        {showEmergencyCards && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '120px',
-              left: 0,
-              right: 0,
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '8px',
-              padding: '0 16px',
-              zIndex: 14,
-              flexWrap: 'wrap',
-              animation: 'slideUpFade 0.4s ease-out',
-            }}
-          >
-            {emergencyCards.map((card, i) => (
-              <button
-                key={i}
-                type="button"
-                style={{
-                  flex: '1 1 0',
-                  maxWidth: '120px',
-                  padding: '8px 10px',
-                  background: 'rgba(255,138,169,0.15)',
-                  backdropFilter: 'blur(12px)',
-                  border: 'none',
-                  borderRadius: '14px',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  transition: 'all 0.2s',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    color: '#FF8AA9',
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase',
-                    marginBottom: '3px',
-                    fontFamily: 'Inter, sans-serif',
-                  }}
-                >
-                  {card.en}
-                </div>
-                <div
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    color: 'rgba(255,255,255,0.85)',
-                    fontFamily: 'Manrope, sans-serif',
-                  }}
-                >
-                  {card.ko}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-
         <div
           style={{
             position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
-            height: '224px',
+            height: '180px',
             background:
               'linear-gradient(180deg, transparent 0%, #0E0E0F 30%)',
             zIndex: 6,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            paddingBottom: '32px',
+            padding: '0 24px',
           }}
         >
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={handleMicTap}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') handleMicTap();
-            }}
-            style={{
-              width: '220px',
-              height: '88px',
-              borderRadius: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              cursor:
-                micState === 'listening-idol' ? 'default' : 'pointer',
-              opacity: micState === 'listening-idol' ? 0.42 : 1,
-              transition: 'all 0.3s',
-              animation:
-                micState === 'recording'
-                  ? 'recording 1.4s ease-in-out infinite'
-                  : 'none',
-              boxSizing: 'border-box',
-              ...micBoxStyle,
-            }}
-          >
-            {micState === 'processing' ? (
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 13 13"
-                fill="none"
-                aria-hidden
-              >
-                <circle
-                  cx="6.5"
-                  cy="6.5"
-                  r="5.5"
-                  stroke="#00E3FD"
-                  strokeWidth="1.3"
-                  strokeDasharray="3 2"
-                  opacity={0.85}
-                />
-              </svg>
-            ) : (
-              <div style={{ fontSize: '28px' }}>
-                {micState === 'recording' ? '🔴' : '🎤'}
-              </div>
-            )}
+          {micState === 'idol_speaking' && (
             <div
               style={{
-                fontFamily: 'Manrope, sans-serif',
-                fontSize: '12px',
-                fontWeight: '700',
-                letterSpacing: '0.08em',
+                width: '220px',
+                height: '88px',
+                margin: '0 auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'rgba(255,255,255,0.3)',
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.15em',
                 textTransform: 'uppercase',
+                fontFamily: 'Manrope, sans-serif',
               }}
             >
-              {micLabel}
+              Listen carefully...
             </div>
-          </div>
+          )}
+
+          {micState === 'your_turn' && (
+            <button
+              type="button"
+              onClick={startSpeaking}
+              style={{
+                width: '220px',
+                height: '88px',
+                background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+                border: 'none',
+                borderRadius: '9999px',
+                cursor: 'pointer',
+                color: '#fff',
+                fontSize: '14px',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                fontFamily: 'Manrope, sans-serif',
+                boxShadow: '0 0 24px rgba(255,138,169,0.4)',
+                animation: 'pulse-soft 2s infinite',
+                transition: 'transform 0.2s',
+              }}
+            >
+              Tap to speak
+            </button>
+          )}
+
+          {micState === 'speaking' && (
+            <button
+              type="button"
+              onClick={stopSpeaking}
+              style={{
+                width: '220px',
+                height: '88px',
+                background: 'rgba(255, 68, 68, 0.15)',
+                border: '2px solid rgba(255, 68, 68, 0.6)',
+                borderRadius: '9999px',
+                cursor: 'pointer',
+                color: '#FF4444',
+                fontSize: '14px',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                fontFamily: 'Manrope, sans-serif',
+                boxShadow: '0 0 24px rgba(255, 68, 68, 0.4)',
+                animation: 'pulse-recording 1s infinite',
+              }}
+            >
+              Speaking...
+            </button>
+          )}
+
+          {micState === 'processing' && (
+            <div
+              style={{
+                width: '220px',
+                height: '88px',
+                margin: '0 auto',
+                borderRadius: '9999px',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '9999px',
+                  border: '2px dashed rgba(0, 227, 253, 0.4)',
+                  animation: 'rotate-border 3s linear infinite',
+                  pointerEvents: 'none',
+                }}
+                aria-hidden
+              />
+              <span
+                style={{
+                  position: 'relative',
+                  zIndex: 1,
+                  color: '#00E3FD',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  fontFamily: 'Manrope, sans-serif',
+                }}
+              >
+                Processing...
+              </span>
+            </div>
+          )}
         </div>
 
         {process.env.NODE_ENV === 'development' && (
@@ -838,11 +848,7 @@ function CallPageContent() {
             </button>
             <button
               type="button"
-              onClick={() =>
-                setMicState((s) =>
-                  s === 'listening-idol' ? 'active' : 'listening-idol'
-                )
-              }
+              onClick={() => setMicState('idol_speaking')}
               style={{
                 background: '#00E3FD',
                 color: '#0E0E0F',
@@ -855,7 +861,58 @@ function CallPageContent() {
                 cursor: 'pointer',
               }}
             >
-              Wave (idol)
+              idol
+            </button>
+            <button
+              type="button"
+              onClick={() => setMicState('your_turn')}
+              style={{
+                background: '#FF8AA9',
+                color: '#0E0E0F',
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '6px 14px',
+                fontSize: '11px',
+                fontWeight: '800',
+                fontFamily: 'Manrope, sans-serif',
+                cursor: 'pointer',
+              }}
+            >
+              turn
+            </button>
+            <button
+              type="button"
+              onClick={() => setMicState('speaking')}
+              style={{
+                background: '#E24B4A',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '6px 14px',
+                fontSize: '11px',
+                fontWeight: '800',
+                fontFamily: 'Manrope, sans-serif',
+                cursor: 'pointer',
+              }}
+            >
+              speak
+            </button>
+            <button
+              type="button"
+              onClick={() => setMicState('processing')}
+              style={{
+                background: 'rgba(0,227,253,0.35)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '6px 14px',
+                fontSize: '11px',
+                fontWeight: '800',
+                fontFamily: 'Manrope, sans-serif',
+                cursor: 'pointer',
+              }}
+            >
+              process
             </button>
           </div>
         )}
