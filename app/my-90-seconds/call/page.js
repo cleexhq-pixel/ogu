@@ -4,6 +4,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -71,6 +72,14 @@ function CallPageContent() {
   const [showEmergencyCards, setShowEmergencyCards] = useState(false);
   const [showRomanization, setShowRomanization] = useState(true);
 
+  const [introStep, setIntroStep] = useState('connecting');
+  const [emotionalMoment, setEmotionalMoment] = useState(null);
+  const [positiveMoments, setPositiveMoments] = useState([]);
+  const [timerState, setTimerState] = useState('normal');
+
+  const emotionalClearRef = useRef(null);
+  const endSequenceRef = useRef(false);
+
   useEffect(() => {
     setParticles(buildParticles());
   }, []);
@@ -80,6 +89,103 @@ function CallPageContent() {
     const id = window.setTimeout(() => setMicState('your_turn'), 1500);
     return () => clearTimeout(id);
   }, [micState]);
+
+  useEffect(() => {
+    if (timeRemaining <= 5 && timeRemaining > 0) setTimerState('danger');
+    else if (timeRemaining <= 20 && timeRemaining > 5) setTimerState('warning');
+    else if (timeRemaining === 0) setTimerState('ended');
+    else setTimerState('normal');
+  }, [timeRemaining]);
+
+  useEffect(() => {
+    if (introStep === 'connecting') {
+      const t = window.setTimeout(() => setIntroStep('incoming'), 1800);
+      return () => clearTimeout(t);
+    }
+    if (introStep === 'answered') {
+      const t = window.setTimeout(() => setIntroStep('started'), 800);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [introStep]);
+
+  useEffect(() => {
+    if (introStep !== 'started') return undefined;
+    const id = window.setInterval(() => {
+      setTimeRemaining((t) => (t <= 0 ? 0 : t - 1));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [introStep]);
+
+  useEffect(() => {
+    if (introStep !== 'completed' || typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      'kkobi_m90s_positive_moments',
+      JSON.stringify(positiveMoments),
+    );
+    window.localStorage.setItem(
+      'kkobi_m90s_last_completed',
+      new Date().toISOString(),
+    );
+  }, [introStep, positiveMoments]);
+
+  const formatTime = (sec) =>
+    `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+
+  const playStaffEndingVoice = useCallback(async () => {
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: '통화 시간이 종료되었습니다. 수고하셨습니다.',
+          lang: 'ko-KR',
+          gender: voiceGender === 'MALE' ? 'MALE' : 'FEMALE',
+        }),
+      });
+      const data = await res.json();
+      if (data?.audioContent) {
+        const audio = new Audio(
+          `data:audio/mp3;base64,${data.audioContent}`,
+        );
+        await audio.play().catch(() => {});
+      }
+    } catch {
+      // staff TTS optional
+    }
+  }, [voiceGender]);
+
+  const playStaffRef = useRef(playStaffEndingVoice);
+  playStaffRef.current = playStaffEndingVoice;
+
+  useEffect(() => {
+    if (timeRemaining !== 0 || introStep !== 'started') return;
+    if (endSequenceRef.current) return;
+    endSequenceRef.current = true;
+
+    void playStaffRef.current();
+
+    setCurrentSubtitle((prev) => ({
+      ...prev,
+      korean: '다음에 또 봐요~',
+      roman: 'Daeume tto bawayo~',
+      translation: 'See you next time~',
+      visible: true,
+    }));
+
+    const t1 = window.setTimeout(() => {
+      setIntroStep('completed');
+      window.setTimeout(() => {
+        if (scenarioId) {
+          router.push(
+            `/my-90-seconds/review?scenario=${encodeURIComponent(scenarioId)}`,
+          );
+        }
+      }, 1000);
+    }, 2500);
+
+    return () => window.clearTimeout(t1);
+  }, [timeRemaining, introStep, scenarioId, router]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -151,6 +257,19 @@ function CallPageContent() {
     }));
   }, []);
 
+  const triggerEmotionalMoment = useCallback((type, context) => {
+    if (emotionalClearRef.current) window.clearTimeout(emotionalClearRef.current);
+    setEmotionalMoment(type);
+    setPositiveMoments((prev) => [
+      ...prev,
+      { type, context, timestamp: 90 - timeRemaining },
+    ]);
+    emotionalClearRef.current = window.setTimeout(() => {
+      setEmotionalMoment(null);
+      emotionalClearRef.current = null;
+    }, 1500);
+  }, [timeRemaining]);
+
   const bgLayer =
     phaseGradients[phase] || phaseGradients.A;
 
@@ -206,6 +325,171 @@ function CallPageContent() {
             }}
           >
             [DEV] {scenarioId}
+          </div>
+        )}
+
+        {introStep !== 'started' && introStep !== 'completed' && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: '#0E0E0F',
+              zIndex: 100,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'opacity 0.8s',
+              opacity: introStep === 'answered' ? 0 : 1,
+              pointerEvents: introStep === 'answered' ? 'none' : 'auto',
+            }}
+          >
+            {introStep === 'connecting' && (
+              <div
+                style={{
+                  textAlign: 'center',
+                  animation: 'fadeIn 0.5s ease-out',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: 'rgba(255,255,255,0.4)',
+                    letterSpacing: '0.3em',
+                    textTransform: 'uppercase',
+                    marginBottom: '24px',
+                    animation: 'pulse-text 1.5s infinite',
+                  }}
+                >
+                  Connecting...
+                </div>
+                <div
+                  style={{
+                    width: '60px',
+                    height: '4px',
+                    margin: '0 auto',
+                    background:
+                      'linear-gradient(90deg, transparent, rgba(255,138,169,0.4), transparent)',
+                    animation: 'connecting-bar 1.5s infinite',
+                  }}
+                />
+              </div>
+            )}
+
+            {introStep === 'incoming' && (
+              <div
+                style={{
+                  textAlign: 'center',
+                  animation: 'fadeIn 0.5s ease-out',
+                  padding: '0 40px',
+                }}
+              >
+                <div
+                  style={{
+                    width: '160px',
+                    height: '160px',
+                    margin: '0 auto 32px',
+                    position: 'relative',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: '50%',
+                      background:
+                        'linear-gradient(135deg, rgba(255,138,169,0.3), rgba(0,227,253,0.2))',
+                      animation: 'incoming-pulse 1.5s infinite',
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: '20px',
+                      borderRadius: '50%',
+                      background: '#1a1a1c',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '48px',
+                    }}
+                  >
+                    📞
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: 'rgba(255,138,169,0.8)',
+                    letterSpacing: '0.3em',
+                    textTransform: 'uppercase',
+                    marginBottom: '8px',
+                  }}
+                >
+                  Incoming video call
+                </div>
+
+                <div
+                  style={{
+                    fontSize: '24px',
+                    fontWeight: 700,
+                    color: '#fff',
+                    fontFamily: 'Manrope, sans-serif',
+                    letterSpacing: '-0.02em',
+                    marginBottom: '40px',
+                  }}
+                >
+                  {voiceGender === 'MALE' ? 'JISUNG' : 'WONYOUNG'}
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '40px',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => router.push('/my-90-seconds')}
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      background: 'rgba(255,68,68,0.15)',
+                      border: '2px solid rgba(255,68,68,0.4)',
+                      cursor: 'pointer',
+                      color: '#FF4444',
+                      fontSize: '24px',
+                    }}
+                  >
+                    ✗
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIntroStep('answered')}
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#fff',
+                      fontSize: '24px',
+                      boxShadow: '0 0 32px rgba(255,138,169,0.5)',
+                      animation: 'pulse-button 1.5s infinite',
+                    }}
+                  >
+                    ✓
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -368,6 +652,121 @@ function CallPageContent() {
               zIndex: 4,
             }}
           />
+
+          {emotionalMoment && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                pointerEvents: 'none',
+                zIndex: 12,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {emotionalMoment === 'first_korean' && (
+                <>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background:
+                        'radial-gradient(ellipse at center, rgba(255,138,169,0.25), transparent 60%)',
+                      animation: 'glow-fade 1.5s ease-out',
+                    }}
+                  />
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        position: 'absolute',
+                        top: `${30 + i * 15}%`,
+                        left: `${20 + i * 25}%`,
+                        fontSize: '20px',
+                        animation: `sparkle-${i} 1.5s ease-out`,
+                      }}
+                    >
+                      ✨
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {emotionalMoment === 'core_message' && (
+                <>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(255,138,169,0.4)',
+                      animation: 'flash 0.4s ease-out',
+                    }}
+                  />
+                  <div
+                    style={{
+                      fontSize: '80px',
+                      animation: 'heart-pop 1.5s ease-out',
+                    }}
+                  >
+                    💖
+                  </div>
+                </>
+              )}
+
+              {emotionalMoment === 'name_remembered' && (
+                <>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background:
+                        'radial-gradient(ellipse at center, rgba(255,216,77,0.2), transparent 60%)',
+                      animation: 'glow-fade 1.5s ease-out',
+                    }}
+                  />
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        position: 'absolute',
+                        top: `${20 + i * 12}%`,
+                        left: `${15 + i * 15}%`,
+                        fontSize: '24px',
+                        color: '#FFD84D',
+                        animation: `star-${i} 1.5s ease-out`,
+                      }}
+                    >
+                      ⭐
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+
+          {introStep === 'started' &&
+            timeRemaining <= 5 &&
+            timeRemaining > 0 && (
+              <div
+                key={timeRemaining}
+                style={{
+                  position: 'absolute',
+                  top: '40%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '120px',
+                  fontWeight: 900,
+                  color: 'rgba(255,68,68,0.4)',
+                  fontFamily: 'Manrope, sans-serif',
+                  pointerEvents: 'none',
+                  zIndex: 8,
+                  animation: 'countdown-pop 1s ease-out',
+                }}
+              >
+                {timeRemaining}
+              </div>
+            )}
 
           {currentSubtitle.visible && (
             <div
@@ -544,21 +943,45 @@ function CallPageContent() {
             <div
               style={{
                 background:
-                  timeRemaining <= 20
-                    ? 'rgba(255,138,169,0.2)'
-                    : 'rgba(255,255,255,0.1)',
-                color: timeRemaining <= 20 ? '#FF8AA9' : '#fff',
-                fontFamily: 'Manrope, sans-serif',
-                fontSize: '11px',
-                fontWeight: 600,
+                  timerState === 'danger'
+                    ? 'rgba(255,68,68,0.2)'
+                    : timerState === 'warning'
+                      ? 'rgba(255,216,77,0.18)'
+                      : timerState === 'ended'
+                        ? 'rgba(255,255,255,0.06)'
+                        : 'rgba(255,255,255,0.1)',
                 padding: '3px 10px',
                 borderRadius: '9999px',
                 letterSpacing: '0.05em',
                 transition: 'all 0.3s',
               }}
             >
-              {Math.floor(timeRemaining / 60)}:
-              {String(timeRemaining % 60).padStart(2, '0')}
+              <div
+                style={{
+                  fontSize: timerState === 'danger' ? '14px' : '11px',
+                  fontWeight: 700,
+                  color:
+                    timerState === 'danger'
+                      ? '#FF4444'
+                      : timerState === 'warning'
+                        ? '#FFD84D'
+                        : timerState === 'ended'
+                          ? 'rgba(255,255,255,0.35)'
+                          : 'rgba(255,255,255,0.7)',
+                  animation:
+                    timerState === 'danger'
+                      ? 'pulse-danger 0.5s infinite'
+                      : timerState === 'warning'
+                        ? 'pulse-warning 1s infinite'
+                        : 'none',
+                  transition: 'all 0.3s',
+                  fontFamily: 'Manrope, sans-serif',
+                  letterSpacing: '0.05em',
+                  textAlign: 'center',
+                }}
+              >
+                {formatTime(timeRemaining)}
+              </div>
             </div>
           </div>
         </div>
@@ -795,6 +1218,19 @@ function CallPageContent() {
           )}
         </div>
 
+        {introStep === 'completed' && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: '#0E0E0F',
+              zIndex: 200,
+              opacity: 0,
+              animation: 'fadeOut 1.5s ease-out forwards',
+            }}
+          />
+        )}
+
         {process.env.NODE_ENV === 'development' && (
           <div
             style={{
@@ -913,6 +1349,57 @@ function CallPageContent() {
               }}
             >
               process
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerEmotionalMoment('first_korean', 'test')}
+              style={{
+                background: '#2C2C2D',
+                color: '#FF8AA9',
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '6px 14px',
+                fontSize: '11px',
+                fontWeight: '800',
+                fontFamily: 'Manrope, sans-serif',
+                cursor: 'pointer',
+              }}
+            >
+              First
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerEmotionalMoment('core_message', 'test')}
+              style={{
+                background: '#2C2C2D',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '6px 14px',
+                fontSize: '11px',
+                fontWeight: '800',
+                fontFamily: 'Manrope, sans-serif',
+                cursor: 'pointer',
+              }}
+            >
+              Core
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerEmotionalMoment('name_remembered', 'test')}
+              style={{
+                background: '#2C2C2D',
+                color: '#FFD84D',
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '6px 14px',
+                fontSize: '11px',
+                fontWeight: '800',
+                fontFamily: 'Manrope, sans-serif',
+                cursor: 'pointer',
+              }}
+            >
+              Name
             </button>
           </div>
         )}
