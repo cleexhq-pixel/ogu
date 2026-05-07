@@ -2208,12 +2208,16 @@ body {
   }
 }
 
-@keyframes rotate-border {
-  from {
-    transform: rotate(0deg);
+@keyframes dot-bounce {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
   }
-  to {
-    transform: rotate(360deg);
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
   }
 }
 

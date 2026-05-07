@@ -1182,38 +1182,54 @@ function CallPageContent() {
                 width: '220px',
                 height: '88px',
                 margin: '0 auto',
+                background: 'rgba(0, 227, 253, 0.1)',
                 borderRadius: '9999px',
-                position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                gap: '10px',
+                color: '#00E3FD',
+                fontSize: '14px',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                cursor: 'not-allowed',
+                fontFamily: 'Manrope, sans-serif',
               }}
             >
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: '9999px',
-                  border: '2px dashed rgba(0, 227, 253, 0.4)',
-                  animation: 'rotate-border 3s linear infinite',
-                  pointerEvents: 'none',
-                }}
-                aria-hidden
-              />
-              <span
-                style={{
-                  position: 'relative',
-                  zIndex: 1,
-                  color: '#00E3FD',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  fontFamily: 'Manrope, sans-serif',
-                }}
-              >
-                Processing...
-              </span>
+              <span>Processing</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <span
+                  style={{
+                    width: '4px',
+                    height: '4px',
+                    borderRadius: '50%',
+                    background: '#00E3FD',
+                    animation: 'dot-bounce 1.4s infinite',
+                    animationDelay: '0s',
+                  }}
+                />
+                <span
+                  style={{
+                    width: '4px',
+                    height: '4px',
+                    borderRadius: '50%',
+                    background: '#00E3FD',
+                    animation: 'dot-bounce 1.4s infinite',
+                    animationDelay: '0.2s',
+                  }}
+                />
+                <span
+                  style={{
+                    width: '4px',
+                    height: '4px',
+                    borderRadius: '50%',
+                    background: '#00E3FD',
+                    animation: 'dot-bounce 1.4s infinite',
+                    animationDelay: '0.4s',
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>
