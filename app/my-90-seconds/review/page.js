@@ -7,16 +7,21 @@ const FALLBACK_REVIEW = {
   best_moment: {
     you_said_korean: '오빠를 정말 좋아해요',
     you_said_translation: 'I really like you',
+    you_said_romanization: 'Oppareul jeongmal joahaeyo',
     idol_replied_korean: '고마워요~ 너무 행복해요',
     idol_replied_translation: "Thank you~ I'm so happy",
+    idol_replied_romanization: 'Gomawoyo~ neomu haengbokhaeyo',
     moment_type: 'core_message',
   },
   missed_moment: {
     korean: '다음에 또 만나요',
     translation: "Let's meet again next time",
+    romanization: 'Daeume tto mannayo',
     tip: 'Practice with confidence — your Korean is already understandable.',
   },
   share_quote: '고마워요~ 너무 행복해요',
+  share_quote_translation: "Thank you~ I'm so happy",
+  share_quote_romanization: 'Gomawoyo~ neomu haengbokhaeyo',
 };
 
 function normalizeVoiceGender(raw) {
@@ -270,20 +275,57 @@ function ReviewContent() {
 
         <div
           style={{
-            fontSize: '28px',
-            fontWeight: 700,
-            color: '#fff',
             textAlign: 'center',
-            lineHeight: 1.4,
-            letterSpacing: '-0.02em',
             marginBottom: '16px',
-            fontFamily: 'Manrope, sans-serif',
-            maxWidth: '320px',
+            maxWidth: '340px',
           }}
         >
-          &ldquo;
-          {reviewData?.best_moment?.idol_replied_korean || '진짜요? 너무 고마워요~'}
-          &rdquo;
+          <div
+            style={{
+              fontSize: '22px',
+              fontWeight: 600,
+              color: 'rgba(255,255,255,0.95)',
+              lineHeight: 1.4,
+              letterSpacing: '-0.01em',
+              marginBottom: '14px',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            &ldquo;
+            {reviewData?.best_moment?.idol_replied_translation ||
+              'Really? Thank you so much~'}
+            &rdquo;
+          </div>
+
+          <div
+            style={{
+              fontSize: '24px',
+              fontWeight: 700,
+              color: '#fff',
+              lineHeight: 1.3,
+              letterSpacing: '-0.02em',
+              marginBottom: '8px',
+              fontFamily: 'Manrope, sans-serif',
+            }}
+          >
+            &ldquo;
+            {reviewData?.best_moment?.idol_replied_korean ||
+              '진짜요? 너무 고마워요~'}
+            &rdquo;
+          </div>
+
+          <div
+            style={{
+              fontSize: '12px',
+              color: 'rgba(255,255,255,0.5)',
+              fontStyle: 'italic',
+              fontFamily: 'Inter, sans-serif',
+              letterSpacing: '0.02em',
+            }}
+          >
+            {reviewData?.best_moment?.idol_replied_romanization ||
+              'Jinjayo? Neomu gomawoyo~'}
+          </div>
         </div>
 
         <div
@@ -404,10 +446,21 @@ function ReviewContent() {
             fontSize: '16px',
             fontWeight: 600,
             color: '#fff',
-            marginBottom: '12px',
+            marginBottom: '4px',
           }}
         >
           &ldquo;{reviewData?.best_moment?.you_said_korean}&rdquo;
+        </div>
+        <div
+          style={{
+            fontSize: '12px',
+            color: 'rgba(255,255,255,0.55)',
+            marginBottom: '12px',
+            fontStyle: 'italic',
+            fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          {reviewData?.best_moment?.you_said_translation}
         </div>
 
         <div
@@ -624,18 +677,30 @@ function ReviewContent() {
               fontSize: '13px',
               fontWeight: 700,
               color: '#fff',
-              marginBottom: '2px',
+              marginBottom: '4px',
             }}
           >
             Share your moment
           </div>
           <div
             style={{
-              fontSize: '11px',
-              color: 'rgba(255,255,255,0.5)',
+              fontSize: '12px',
+              color: 'rgba(255,255,255,0.7)',
+              fontWeight: 500,
+              marginBottom: '2px',
             }}
           >
             &ldquo;{reviewData?.share_quote}&rdquo;
+          </div>
+          <div
+            style={{
+              fontSize: '10px',
+              color: 'rgba(255,255,255,0.4)',
+              fontStyle: 'italic',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            {reviewData?.share_quote_translation || ''}
           </div>
         </div>
         <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>›</div>

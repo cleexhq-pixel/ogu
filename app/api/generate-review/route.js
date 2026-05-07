@@ -9,16 +9,21 @@ const FALLBACK_REVIEW = {
   best_moment: {
     you_said_korean: '오빠를 정말 좋아해요',
     you_said_translation: 'I really like you',
+    you_said_romanization: 'Oppareul jeongmal joahaeyo',
     idol_replied_korean: '고마워요~ 너무 행복해요',
     idol_replied_translation: "Thank you~ I'm so happy",
+    idol_replied_romanization: 'Gomawoyo~ neomu haengbokhaeyo',
     moment_type: 'core_message',
   },
   missed_moment: {
     korean: '다음에 또 만나요',
     translation: "Let's meet again next time",
+    romanization: 'Daeume tto mannayo',
     tip: 'Practice with confidence — your Korean is already understandable.',
   },
   share_quote: '고마워요~ 너무 행복해요',
+  share_quote_translation: "Thank you~ I'm so happy",
+  share_quote_romanization: 'Gomawoyo~ neomu haengbokhaeyo',
 };
 
 const scenarioContext = {
@@ -61,16 +66,21 @@ Generate a review JSON in this exact format:
   "best_moment": {
     "you_said_korean": "Korean line user delivered well",
     "you_said_translation": "English translation",
+    "you_said_romanization": "Romanization of Korean (e.g. 'Annyeonghaseyo')",
     "idol_replied_korean": "Idol's natural Korean reaction",
     "idol_replied_translation": "English translation",
+    "idol_replied_romanization": "Romanization of Korean reaction",
     "moment_type": "core_message" | "first_korean" | "name_remembered"
   },
   "missed_moment": {
     "korean": "Korean line that needed practice",
     "translation": "English translation",
+    "romanization": "Romanization of Korean",
     "tip": "One short coaching tip in English (max 20 words)"
   },
-  "share_quote": "The most shareable moment as a single Korean phrase under 15 chars"
+  "share_quote": "The most shareable moment as a single Korean phrase under 15 chars",
+  "share_quote_translation": "English translation of share quote",
+  "share_quote_romanization": "Romanization of share quote"
 }
 
 Rules:
@@ -80,6 +90,7 @@ Rules:
 - If user did well (4+/5 lines), make best_moment about the core emotional message
 - If user struggled, make best_moment about their first Korean attempt
 - All Korean must be authentic, not literal translations
+- Romanization should follow Revised Romanization (e.g. 안녕하세요 → Annyeonghaseyo)
 
 Return ONLY the JSON, no other text.`;
 
