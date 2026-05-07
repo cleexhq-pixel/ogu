@@ -1,363 +1,750 @@
-"use client";
+'use client';
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import scenarios from "../../../src/data/scenarios";
-import { generateReview } from "../../../src/lib/generateReview";
-import { saveSimulationLog } from "../../../src/lib/saveSimulationLog";
+import { useState, useEffect, Suspense, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-const LANG_KEY = "ogu_lang";
-
-const REVIEW_COPY = {
-  en: {
-    done_badge: "Done",
-    title: "You did it!",
-    sub: "Here's how your 90 seconds went.",
-    lines_label: "Lines delivered",
-    time_label: "Time used",
-    rate_label: "Delivery rate",
-    moments_label: "Starred moments",
-    tip_label: "Try this next time",
-    best_label: "Best moment of this session?",
-    retry: "Try again",
-    share: "Share",
-    home: "Go home",
-    moments: [
-      "When the idol understood me",
-      "When Korean came naturally",
-      "When I answered a question",
-    ],
+const FALLBACK_REVIEW = {
+  best_moment: {
+    you_said_korean: '오빠를 정말 좋아해요',
+    you_said_translation: 'I really like you',
+    idol_replied_korean: '고마워요~ 너무 행복해요',
+    idol_replied_translation: "Thank you~ I'm so happy",
+    moment_type: 'core_message',
   },
-  ko: {
-    done_badge: "완료",
-    title: "해냈어요!",
-    sub: "이번 90초, 이렇게 지나갔어요.",
-    lines_label: "전달한 라인",
-    time_label: "사용한 시간",
-    rate_label: "전달률",
-    moments_label: "좋았던 순간",
-    tip_label: "더 자연스럽게",
-    best_label: "이 연습에서 가장 좋았던 순간은?",
-    retry: "다시 연습하기",
-    share: "공유하기",
-    home: "홈으로 가기",
-    moments: [
-      "아이돌이 내 말을 알아들었을 때",
-      "한국어가 자연스럽게 나왔을 때",
-      "역질문에 대답했을 때",
-    ],
+  missed_moment: {
+    korean: '다음에 또 만나요',
+    translation: "Let's meet again next time",
+    tip: 'Practice with confidence — your Korean is already understandable.',
   },
-  id: {
-    done_badge: "Selesai",
-    title: "Kamu berhasil!",
-    sub: "Begini jalannya 90 detikmu.",
-    lines_label: "Kalimat tersampaikan",
-    time_label: "Waktu digunakan",
-    rate_label: "Tingkat penyampaian",
-    moments_label: "Momen berbintang",
-    tip_label: "Coba ini berikutnya",
-    best_label: "Momen terbaik sesi ini?",
-    retry: "Coba lagi",
-    share: "Bagikan",
-    home: "Ke beranda",
-    moments: [
-      "Saat idol mengerti ucapanku",
-      "Saat bahasa Korea keluar alami",
-      "Saat aku menjawab pertanyaan balik",
-    ],
-  },
-  pt: {
-    done_badge: "Concluído",
-    title: "Você conseguiu!",
-    sub: "Veja como foram seus 90 segundos.",
-    lines_label: "Frases entregues",
-    time_label: "Tempo usado",
-    rate_label: "Taxa de entrega",
-    moments_label: "Momentos marcados",
-    tip_label: "Tente isso da próxima vez",
-    best_label: "Melhor momento desta sessão?",
-    retry: "Tentar novamente",
-    share: "Compartilhar",
-    home: "Ir para início",
-    moments: [
-      "Quando o idol me entendeu",
-      "Quando o coreano saiu naturalmente",
-      "Quando respondi uma pergunta",
-    ],
-  },
-  fr: {
-    done_badge: "Terminé",
-    title: "Vous l'avez fait!",
-    sub: "Voici comment vos 90 secondes se sont passées.",
-    lines_label: "Répliques livrées",
-    time_label: "Temps utilisé",
-    rate_label: "Taux de livraison",
-    moments_label: "Moments en vedette",
-    tip_label: "Essayez ceci la prochaine fois",
-    best_label: "Meilleur moment de cette session?",
-    retry: "Réessayer",
-    share: "Partager",
-    home: "Aller à l'accueil",
-    moments: [
-      "Quand l'idol m'a compris",
-      "Quand le coréen est sorti naturellement",
-      "Quand j'ai répondu à une question",
-    ],
-  },
+  share_quote: '고마워요~ 너무 행복해요',
 };
 
-function ReviewPageInner() {
+function normalizeVoiceGender(raw) {
+  const s = String(raw || 'FEMALE').toLowerCase();
+  if (s === 'male' || s === 'm') return 'male';
+  return 'female';
+}
+
+function isMaleVoice(g) {
+  return g === 'male';
+}
+
+function ReviewContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const scenarioId = searchParams.get("scenario") || "compliment";
-  const logParam = searchParams.get("log");
+  const scenario = searchParams.get('scenario') || 'compliment';
 
-  const scenario = scenarios.find((s) => s.id === scenarioId) || scenarios[0];
+  const [stage, setStage] = useState('loading');
+  const [reviewData, setReviewData] = useState(null);
+  const [stats, setStats] = useState({
+    completedLines: 4,
+    totalLines: 5,
+    timeUsed: 65,
+    wins: 3,
+  });
+  const [voiceGender, setVoiceGender] = useState('female');
+  const [continueEnabled, setContinueEnabled] = useState(false);
 
-  const [log, setLog] = useState(null);
-  const [review, setReview] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [bestMoment, setBestMoment] = useState(null);
-  const [lang, setLang] = useState("en");
+  const idolLabel = isMaleVoice(voiceGender) ? 'JISUNG' : 'WONYOUNG';
 
-  useEffect(() => {
-    const savedLang = localStorage.getItem(LANG_KEY) || "en";
-    setLang(savedLang);
-  }, []);
-
-  useEffect(() => {
-    if (!logParam) return;
-
-    let parsed;
-    try {
-      parsed = JSON.parse(decodeURIComponent(logParam));
-      setLog(parsed);
-    } catch {
-      parsed = { linesDelivered: 0, totalTurns: 0, starredTurns: [] };
-      setLog(parsed);
-    }
-
-    async function load() {
+  const fetchReview = useCallback(
+    async (moments, gender, statPayload) => {
       try {
-        const result = await generateReview({
-          scenarioId,
-          linesDelivered: parsed.linesDelivered || 0,
-          totalTurns: parsed.totalTurns || 0,
+        const res = await fetch('/api/generate-review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scenario,
+            voiceGender: gender,
+            positiveMoments: moments,
+            completedLines: statPayload.completedLines,
+            totalLines: statPayload.totalLines,
+          }),
         });
-        setReview(result);
-
-        // Supabase 로그 저장
-        await saveSimulationLog({
-          scenarioId,
-          turnsCompleted: parsed.totalTurns || 0,
-          totalTimeUsed: 90,
-          linesDelivered: parsed.linesDelivered || 0,
-          linesTotal: 4,
-          idolResponses: parsed.starredTurns || [],
-          shared: false,
-          retried: false,
-        });
-      } catch {
-        setReview({
-          tip: "더 짧고 간단하게 말해봐요!",
-          example_before: "저는 오빠를 정말 많이 좋아해요",
-          example_after: "오빠 진짜 좋아요~",
-          encouragement: "You did amazing! Keep practicing!",
-        });
-      } finally {
-        setLoading(false);
+        const data = await res.json();
+        if (data?.review) {
+          setReviewData(data.review);
+        } else {
+          setReviewData(FALLBACK_REVIEW);
+        }
+      } catch (e) {
+        console.error('Review fetch error:', e);
+        setReviewData(FALLBACK_REVIEW);
       }
+      window.setTimeout(() => setStage('entry'), 500);
+    },
+    [scenario],
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const savedGenderRaw = localStorage.getItem('kkobi_voice_gender') || 'FEMALE';
+    const savedGender = normalizeVoiceGender(savedGenderRaw);
+    setVoiceGender(savedGender);
+
+    let savedMoments = [];
+    try {
+      savedMoments = JSON.parse(
+        localStorage.getItem('kkobi_m90s_positive_moments') || '[]',
+      );
+    } catch {
+      savedMoments = [];
     }
 
-    load();
-  }, [logParam]);
+    let savedStats = {};
+    try {
+      savedStats = JSON.parse(
+        localStorage.getItem('kkobi_m90s_last_stats') || '{}',
+      );
+    } catch {
+      savedStats = {};
+    }
 
-  function handleRetry() {
-    window.location.href = `/my-90-seconds/prep?scenario=${scenarioId}`;
-  }
+    const wins = Array.isArray(savedMoments) ? savedMoments.length : 0;
+    const mergedStats = {
+      completedLines:
+        savedStats.completedLines !== undefined
+          ? savedStats.completedLines
+          : 4,
+      totalLines: savedStats.totalLines !== undefined ? savedStats.totalLines : 5,
+      timeUsed: savedStats.timeUsed !== undefined ? savedStats.timeUsed : 65,
+      wins,
+    };
 
-  function handleShare() {
-    const text = `🎤 나 방금 AI 아이돌이랑 팬싸 연습했어!\n${log?.linesDelivered || 0}/4 라인 전달 성공!\n\nKkobi로 90초 연습하기 → talk.kkobi.app`;
-    if (navigator.share) {
-      navigator.share({ text });
+    setStats(mergedStats);
+    void fetchReview(savedMoments, savedGender, mergedStats);
+    return undefined;
+  }, [scenario, fetchReview]);
+
+  useEffect(() => {
+    if (stage !== 'entry') return undefined;
+    const t = window.setTimeout(() => setContinueEnabled(true), 3000);
+    return () => window.clearTimeout(t);
+  }, [stage]);
+
+  const handleTryAgain = () => {
+    if (typeof window === 'undefined') return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const lastDate = localStorage.getItem('kkobi_m90s_free_date');
+    const stored = parseInt(
+      localStorage.getItem('kkobi_m90s_free_count') || '0',
+      10,
+    );
+    const usesToday = lastDate === today ? stored : 0;
+
+    if (usesToday >= 1) {
+      router.push(
+        `/my-90-seconds/paywall?scenario=${encodeURIComponent(scenario)}`,
+      );
     } else {
-      navigator.clipboard.writeText(text);
-      alert("클립보드에 복사됐어요!");
+      localStorage.setItem('kkobi_m90s_free_date', today);
+      localStorage.setItem('kkobi_m90s_free_count', String(usesToday + 1));
+      router.push(
+        `/my-90-seconds/call?scenario=${encodeURIComponent(scenario)}`,
+      );
     }
-  }
+  };
 
-  // 점수 계산
-  const score = log ? Math.round((log.linesDelivered / 4) * 100) : 0;
-  const timeUsed = 90;
-  const tr = REVIEW_COPY[lang] || REVIEW_COPY.en;
+  const handleShare = () => {
+    if (!reviewData?.share_quote) return;
 
-  if (loading) {
+    const shareText = `Just practiced my fansign call with ${idolLabel} 💖\n"${reviewData.share_quote}"\n\nTry it: talk.kkobi.app`;
+
+    if (navigator.share) {
+      navigator.share({ text: shareText }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareText).catch(() => {});
+      window.alert('Copied to clipboard!');
+    }
+  };
+
+  if (stage === 'loading') {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontFamily: "var(--m-font-display)", fontSize: 22, fontWeight: 800, color: "var(--m-text-primary)", marginBottom: 8 }}>
-            결과 분석 중...
-          </div>
-          <div style={{ fontSize: 13, color: "var(--m-text-dim)" }}>AI 코치가 피드백을 작성하고 있어요</div>
+      <div
+        style={{
+          minHeight: '100vh',
+          background: '#0E0E0F',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '20px',
+            fontWeight: 700,
+            color: '#fff',
+            marginBottom: '8px',
+            fontFamily: 'Manrope, sans-serif',
+          }}
+        >
+          Analyzing your call...
+        </div>
+        <div
+          style={{
+            fontSize: '12px',
+            color: 'rgba(255,255,255,0.5)',
+            fontFamily: 'Manrope, sans-serif',
+          }}
+        >
+          AI coach is preparing your feedback
+        </div>
+        <div
+          style={{
+            marginTop: '24px',
+            display: 'flex',
+            gap: '6px',
+          }}
+        >
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: '#FF8AA9',
+                animation: `dot-bounce 1.4s ${i * 0.2}s infinite`,
+              }}
+            />
+          ))}
         </div>
       </div>
     );
   }
 
-  return (
-    <div style={{ padding: "44px 22px 40px", position: "relative" }}>
-
-      {/* Spotlight */}
-      <div className="m-spotlight" style={{ top: -80, right: -60 }} />
-
-      {/* 완료 배지 */}
-      <div style={{
-        display: "inline-flex", alignItems: "center", gap: 6,
-        background: "rgba(0,227,253,0.1)", borderRadius: 9999,
-        padding: "5px 12px", marginBottom: 16,
-      }}>
-        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--m-secondary)" }} />
-        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
-          textTransform: "uppercase", color: "var(--m-secondary)" }}>
-          {tr.done_badge}
-        </span>
-      </div>
-
-      {/* 타이틀 */}
-      <h1 style={{
-        fontFamily: "var(--m-font-display)", fontSize: 26, fontWeight: 800,
-        letterSpacing: "-0.02em", color: "var(--m-text-primary)",
-        lineHeight: 1.2, marginBottom: 6,
-      }}>
-        <span style={{
-          background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-        }}>
-          {tr.title}
-        </span>
-      </h1>
-      <p style={{ fontSize: 13, color: "var(--m-text-secondary)", marginBottom: 24 }}>
-        {review?.encouragement || tr.sub}
-      </p>
-
-      {/* 통계 카드 */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-        {[
-          { num: `${log?.linesDelivered || 0}/4`, label: tr.lines_label },
-          { num: `${timeUsed}s`, label: tr.time_label },
-          { num: `${score}%`, label: tr.rate_label },
-          { num: `${log?.starredTurns?.length || 0}`, label: `⭐ ${tr.moments_label}` },
-        ].map((stat, i) => (
-          <div key={i} className="m-card" style={{ padding: "14px 12px" }}>
-            <div style={{
-              fontFamily: "var(--m-font-display)", fontSize: 26, fontWeight: 800,
-              background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-              marginBottom: 3,
-            }}>
-              {stat.num}
-            </div>
-            <div style={{ fontSize: 10, color: "var(--m-text-dim)" }}>{stat.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* AI 팁 */}
-      {review && (
-        <div className="m-card m-card-featured" style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.1em",
-            textTransform: "uppercase", color: "var(--m-secondary)", marginBottom: 8 }}>
-            💡 {tr.tip_label}
-          </p>
-          <p style={{ fontSize: 13, color: "var(--m-text-primary)", fontWeight: 600, marginBottom: 10 }}>
-            {review.tip}
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, color: "var(--m-text-dim)", minWidth: 24 }}>전</span>
-              <span style={{ fontSize: 12, color: "var(--m-text-secondary)",
-                background: "var(--m-surface-low)", padding: "4px 10px", borderRadius: 8 }}>
-                {review.example_before}
-              </span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, color: "var(--m-secondary)", minWidth: 24 }}>후</span>
-              <span style={{ fontSize: 12, color: "var(--m-text-primary)",
-                background: "rgba(0,227,253,0.08)", padding: "4px 10px", borderRadius: 8 }}>
-                {review.example_after}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 가장 좋았던 순간 선택 */}
-      <div className="m-card" style={{ marginBottom: 20 }}>
-        <p style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.1em",
-          textTransform: "uppercase", color: "var(--m-text-dim)", marginBottom: 8 }}>
-          {tr.best_label}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {tr.moments.map((m, i) => (
-            <button key={i} onClick={() => setBestMoment(i)} style={{
-              padding: "8px 12px", borderRadius: 10, textAlign: "left",
-              background: bestMoment === i ? "rgba(255,138,169,0.15)" : "var(--m-surface-low)",
-              border: bestMoment === i ? "1.5px solid rgba(255,138,169,0.4)" : "1.5px solid transparent",
-              color: bestMoment === i ? "var(--m-primary)" : "var(--m-text-secondary)",
-              fontSize: 12, fontFamily: "var(--m-font-body)", cursor: "pointer",
-              transition: "all 0.15s",
-            }}>
-              {m}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* CTA 버튼 */}
-      <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={handleRetry} className="m-btn-primary" style={{ flex: 1 }}>
-          {tr.retry}
-        </button>
-        <button onClick={handleShare} className="m-btn-secondary" style={{ flex: 1 }}>
-          {tr.share}
-        </button>
-      </div>
-      <button
-        onClick={() => { window.location.href = "/"; }}
+  if (stage === 'entry') {
+    return (
+      <div
         style={{
-          width: "100%",
-          padding: "14px",
-          borderRadius: 9999,
-          border: "1px solid rgba(255,255,255,0.1)",
-          background: "transparent",
-          color: "#9E9BA4",
-          fontFamily: "'Manrope', sans-serif",
-          fontSize: 14, fontWeight: 600,
-          cursor: "pointer",
-          marginTop: 8,
+          minHeight: '100vh',
+          background: `
+          radial-gradient(ellipse at 50% 50%, rgba(255,138,169,0.25), transparent 60%),
+          #0E0E0F
+        `,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          animation: 'fadeIn 0.8s ease-out',
+          padding: '40px 20px',
         }}
       >
-        {tr.home}
+        {[...Array(12)].map((_, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              top: `${10 + (i * 7) % 80}%`,
+              left: `${10 + (i * 13) % 80}%`,
+              width: `${2 + (i % 3)}px`,
+              height: `${2 + (i % 3)}px`,
+              borderRadius: '50%',
+              background: ['#FFD84D', '#FF8AA9', '#00E3FD', '#9E8FFD', '#fff'][
+                i % 5
+              ],
+              animation: `twinkle 3s ${i * 0.3}s infinite`,
+              pointerEvents: 'none',
+            }}
+          />
+        ))}
+
+        <div
+          style={{
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
+            color: 'rgba(255,138,169,0.8)',
+            marginBottom: '32px',
+            textAlign: 'center',
+            fontFamily: 'Manrope, sans-serif',
+          }}
+        >
+          ⭐ Best Moment
+        </div>
+
+        <div
+          style={{
+            fontSize: '28px',
+            fontWeight: 700,
+            color: '#fff',
+            textAlign: 'center',
+            lineHeight: 1.4,
+            letterSpacing: '-0.02em',
+            marginBottom: '16px',
+            fontFamily: 'Manrope, sans-serif',
+            maxWidth: '320px',
+          }}
+        >
+          &ldquo;
+          {reviewData?.best_moment?.idol_replied_korean || '진짜요? 너무 고마워요~'}
+          &rdquo;
+        </div>
+
+        <div
+          style={{
+            fontSize: '13px',
+            color: 'rgba(255,255,255,0.5)',
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            marginBottom: '60px',
+            fontFamily: 'Manrope, sans-serif',
+          }}
+        >
+          — {idolLabel}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setStage('main')}
+          disabled={!continueEnabled}
+          style={{
+            padding: '12px 32px',
+            background: continueEnabled
+              ? 'rgba(255,255,255,0.12)'
+              : 'rgba(255,255,255,0.04)',
+            border: 'none',
+            borderRadius: '9999px',
+            color: continueEnabled
+              ? 'rgba(255,255,255,0.85)'
+              : 'rgba(255,255,255,0.3)',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            cursor: continueEnabled ? 'pointer' : 'not-allowed',
+            transition: 'all 0.3s',
+            fontFamily: 'Manrope, sans-serif',
+          }}
+        >
+          Continue ›
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#0E0E0F',
+        padding: '24px 20px 40px',
+        maxWidth: '480px',
+        margin: '0 auto',
+        animation: 'slideUp 0.5s ease-out',
+        fontFamily: 'Manrope, sans-serif',
+      }}
+    >
+      <div style={{ marginBottom: '24px', paddingTop: '12px' }}>
+        <div
+          style={{
+            fontSize: '10px',
+            color: 'rgba(255,255,255,0.4)',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            marginBottom: '4px',
+          }}
+        >
+          90 seconds with {idolLabel}
+        </div>
+        <div
+          style={{
+            fontSize: '28px',
+            fontWeight: 700,
+            color: '#fff',
+            lineHeight: 1.2,
+            letterSpacing: '-0.02em',
+          }}
+        >
+          You did <span style={{ color: '#FF8AA9' }}>great</span>.
+        </div>
+      </div>
+
+      <div
+        style={{
+          background:
+            'linear-gradient(135deg, rgba(255,138,169,0.18), rgba(255,138,169,0.05) 80%)',
+          borderRadius: '20px',
+          padding: '20px',
+          marginBottom: '16px',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '10px',
+            fontWeight: 700,
+            color: '#FF8AA9',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            marginBottom: '12px',
+          }}
+        >
+          ⭐ Best Moment
+        </div>
+
+        <div
+          style={{
+            fontSize: '11px',
+            color: 'rgba(255,255,255,0.5)',
+            marginBottom: '4px',
+            letterSpacing: '0.05em',
+          }}
+        >
+          YOU SAID
+        </div>
+        <div
+          style={{
+            fontSize: '16px',
+            fontWeight: 600,
+            color: '#fff',
+            marginBottom: '12px',
+          }}
+        >
+          &ldquo;{reviewData?.best_moment?.you_said_korean}&rdquo;
+        </div>
+
+        <div
+          style={{
+            color: 'rgba(255,138,169,0.6)',
+            fontSize: '18px',
+            marginBottom: '8px',
+            textAlign: 'center',
+          }}
+        >
+          ↓
+        </div>
+
+        <div
+          style={{
+            fontSize: '11px',
+            color: 'rgba(255,138,169,0.7)',
+            marginBottom: '4px',
+            letterSpacing: '0.05em',
+          }}
+        >
+          {idolLabel} REPLIED
+        </div>
+        <div
+          style={{
+            fontSize: '18px',
+            fontWeight: 700,
+            color: '#fff',
+            lineHeight: 1.3,
+            marginBottom: '4px',
+          }}
+        >
+          &ldquo;{reviewData?.best_moment?.idol_replied_korean}&rdquo;
+        </div>
+        <div
+          style={{
+            fontSize: '13px',
+            color: 'rgba(255,255,255,0.6)',
+            fontStyle: 'italic',
+          }}
+        >
+          {reviewData?.best_moment?.idol_replied_translation}
+        </div>
+      </div>
+
+      <div
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          borderRadius: '16px',
+          padding: '16px 20px',
+          marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-around',
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div
+            style={{
+              fontSize: '24px',
+              fontWeight: 700,
+              color: '#fff',
+              marginBottom: '2px',
+            }}
+          >
+            <span style={{ color: '#FFD84D' }}>{stats.completedLines}</span>/
+            {stats.totalLines}
+          </div>
+          <div
+            style={{
+              fontSize: '9px',
+              color: 'rgba(255,255,255,0.4)',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Lines
+          </div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div
+            style={{
+              fontSize: '24px',
+              fontWeight: 700,
+              color: '#fff',
+              marginBottom: '2px',
+            }}
+          >
+            {stats.timeUsed}s
+          </div>
+          <div
+            style={{
+              fontSize: '9px',
+              color: 'rgba(255,255,255,0.4)',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Used
+          </div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div
+            style={{
+              fontSize: '24px',
+              fontWeight: 700,
+              color: '#fff',
+              marginBottom: '2px',
+            }}
+          >
+            {stats.wins}
+          </div>
+          <div
+            style={{
+              fontSize: '9px',
+              color: 'rgba(255,255,255,0.4)',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Wins
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          borderRadius: '16px',
+          padding: '18px 20px',
+          marginBottom: '16px',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '10px',
+            fontWeight: 700,
+            color: 'rgba(255,216,77,0.8)',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            marginBottom: '10px',
+          }}
+        >
+          💡 One to practice
+        </div>
+        <div
+          style={{
+            fontSize: '15px',
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.85)',
+            marginBottom: '4px',
+          }}
+        >
+          &ldquo;{reviewData?.missed_moment?.korean}&rdquo;
+        </div>
+        <div
+          style={{
+            fontSize: '12px',
+            color: 'rgba(255,255,255,0.5)',
+          }}
+        >
+          {reviewData?.missed_moment?.translation}
+        </div>
+        <div
+          style={{
+            marginTop: '10px',
+            paddingTop: '10px',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            fontSize: '12px',
+            color: 'rgba(255,255,255,0.6)',
+            lineHeight: 1.4,
+          }}
+        >
+          {reviewData?.missed_moment?.tip}
+        </div>
+      </div>
+
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleShare}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') handleShare();
+        }}
+        style={{
+          background:
+            'linear-gradient(135deg, rgba(0,227,253,0.12), rgba(158,143,253,0.08))',
+          borderRadius: '16px',
+          padding: '16px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          cursor: 'pointer',
+        }}
+      >
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'rgba(0,227,253,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px',
+            flexShrink: 0,
+          }}
+        >
+          📤
+        </div>
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#fff',
+              marginBottom: '2px',
+            }}
+          >
+            Share your moment
+          </div>
+          <div
+            style={{
+              fontSize: '11px',
+              color: 'rgba(255,255,255,0.5)',
+            }}
+          >
+            &ldquo;{reviewData?.share_quote}&rdquo;
+          </div>
+        </div>
+        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>›</div>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleTryAgain}
+        style={{
+          width: '100%',
+          padding: '18px',
+          background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+          border: 'none',
+          borderRadius: '9999px',
+          color: '#fff',
+          fontSize: '14px',
+          fontWeight: 700,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          cursor: 'pointer',
+          marginBottom: '12px',
+          boxShadow: '0 4px 24px rgba(255,138,169,0.3)',
+          fontFamily: 'Manrope, sans-serif',
+        }}
+      >
+        Try once more
       </button>
+
+      <button
+        type="button"
+        onClick={() => router.push('/my-90-seconds')}
+        style={{
+          width: '100%',
+          padding: '16px',
+          background: 'rgba(255,255,255,0.06)',
+          border: 'none',
+          borderRadius: '9999px',
+          color: 'rgba(255,255,255,0.85)',
+          fontSize: '12px',
+          fontWeight: 600,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          cursor: 'pointer',
+          marginBottom: '16px',
+          fontFamily: 'Manrope, sans-serif',
+        }}
+      >
+        Back to scenarios
+      </button>
+
+      <div
+        style={{
+          textAlign: 'center',
+          fontSize: '11px',
+          color: 'rgba(255,255,255,0.4)',
+          lineHeight: 1.5,
+        }}
+      >
+        Free practice resets in 24h.
+        <br />
+        <span
+          role="link"
+          tabIndex={0}
+          onClick={() =>
+            router.push(
+              `/my-90-seconds/paywall?scenario=${encodeURIComponent(scenario)}`,
+            )
+          }
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              router.push(
+                `/my-90-seconds/paywall?scenario=${encodeURIComponent(scenario)}`,
+              );
+            }
+          }}
+          style={{
+            color: '#FFD84D',
+            fontWeight: 700,
+            cursor: 'pointer',
+            textDecoration: 'none',
+          }}
+        >
+          Get Prep Pass for unlimited →
+        </span>
+      </div>
     </div>
   );
 }
 
 export default function ReviewPage() {
   return (
-    <Suspense fallback={
-      <div style={{
-        minHeight: "100vh",
-        background: "#0E0E0F",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        <p style={{ color: "#5C5A62", fontSize: 13 }}>
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: '100vh',
+            background: '#0E0E0F',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'rgba(255,255,255,0.5)',
+            fontFamily: 'Manrope, sans-serif',
+          }}
+        >
           Loading...
-        </p>
-      </div>
-    }>
-      <ReviewPageInner />
+        </div>
+      }
+    >
+      <ReviewContent />
     </Suspense>
   );
 }

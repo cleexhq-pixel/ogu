@@ -127,7 +127,20 @@ function CallPageContent() {
       'kkobi_m90s_last_completed',
       new Date().toISOString(),
     );
-  }, [introStep, positiveMoments]);
+
+    const totalLines =
+      typeof savedScript?.lines?.length === 'number' && savedScript.lines.length > 0
+        ? savedScript.lines.length
+        : 5;
+
+    const stats = {
+      completedLines: positiveMoments.length || 4,
+      totalLines,
+      timeUsed: 90 - timeRemaining,
+      scenario: scenarioId,
+    };
+    window.localStorage.setItem('kkobi_m90s_last_stats', JSON.stringify(stats));
+  }, [introStep, positiveMoments, timeRemaining, scenarioId, savedScript]);
 
   const formatTime = (sec) =>
     `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;

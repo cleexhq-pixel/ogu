@@ -1,7 +1,9 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
-  "/my-90-seconds/page": "app/my-90-seconds/page.js",
+  "/api/generate-review/route": "app/api/generate-review/route.js",
   "/my-90-seconds/prep/page": "app/my-90-seconds/prep/page.js",
+  "/my-90-seconds/review/page": "app/my-90-seconds/review/page.js",
   "/my-90-seconds/call/page": "app/my-90-seconds/call/page.js",
-  "/my-90-seconds/review/page": "app/my-90-seconds/review/page.js"
+  "/my-90-seconds/page": "app/my-90-seconds/page.js"
 }
