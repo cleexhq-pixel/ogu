@@ -351,16 +351,54 @@ function ScenarioPageInner() {
           ))}
         </div>
 
-        <div style={{ marginTop: 20 }}>
-          <div style={{
-            fontSize: "11px",
-            fontWeight: 700,
-            color: "rgba(255,255,255,0.5)",
-            letterSpacing: "0.15em",
-            textTransform: "uppercase",
-            marginBottom: "10px",
-          }}>
-            Idol Name (optional)
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            borderRadius: "16px",
+            padding: "16px 18px",
+            marginTop: "12px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "4px",
+            }}
+          >
+            <span style={{ fontSize: "15px" }}>✨</span>
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "#fff",
+                fontFamily: "'Manrope', sans-serif",
+              }}
+            >
+              Idol&apos;s name
+            </span>
+            <span
+              style={{
+                fontSize: "10px",
+                color: "rgba(255,255,255,0.4)",
+                fontWeight: 400,
+                marginLeft: "2px",
+              }}
+            >
+              optional
+            </span>
+          </div>
+
+          <div
+            style={{
+              fontSize: "11px",
+              color: "rgba(255,255,255,0.45)",
+              marginBottom: "14px",
+              fontFamily: "'Inter', sans-serif",
+            }}
+          >
+            Your fansign call will use this name throughout
           </div>
 
           <input
@@ -375,14 +413,15 @@ function ScenarioPageInner() {
             maxLength={20}
             style={{
               width: "100%",
-              padding: "14px 16px",
-              background: "rgba(255,255,255,0.06)",
+              padding: "10px 16px",
+              background: "rgba(255,255,255,0.07)",
               border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "14px",
+              borderRadius: "9999px",
               color: "#fff",
-              fontSize: "15px",
-              fontFamily: "Manrope, Inter, sans-serif",
+              fontSize: "13px",
+              fontFamily: "'Inter', sans-serif",
               outline: "none",
+              boxSizing: "border-box",
               transition: "border-color 0.2s",
             }}
             onFocus={(e) => {
@@ -392,15 +431,6 @@ function ScenarioPageInner() {
               e.target.style.borderColor = "rgba(255,255,255,0.1)";
             }}
           />
-
-          <div style={{
-            fontSize: "10px",
-            color: "rgba(255,255,255,0.3)",
-            marginTop: "6px",
-            paddingLeft: "4px",
-          }}>
-            Your fansign call will use this name throughout
-          </div>
         </div>
       </div>
 

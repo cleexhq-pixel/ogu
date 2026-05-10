@@ -31,21 +31,6 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/my-90-seconds/call/page.js"
-    ],
-    "/my-90-seconds/review/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/my-90-seconds/review/page.js"
-    ],
-    "/my-90-seconds/paywall/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/my-90-seconds/paywall/page.js"
-    ],
-    "/redeem/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/redeem/page.js"
     ]
   }
 }
