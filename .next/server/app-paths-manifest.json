@@ -1,6 +1,6 @@
 {
-  "/my-90-seconds/review/page": "app/my-90-seconds/review/page.js",
   "/my-90-seconds/page": "app/my-90-seconds/page.js",
   "/my-90-seconds/prep/page": "app/my-90-seconds/prep/page.js",
+  "/my-90-seconds/review/page": "app/my-90-seconds/review/page.js",
   "/my-90-seconds/call/page": "app/my-90-seconds/call/page.js"
 }

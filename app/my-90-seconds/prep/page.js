@@ -101,6 +101,29 @@ const PREP_COPY = {
   },
 };
 
+const loadingTexts = {
+  en: {
+    title: "Preparing your script...",
+    subtitle: "AI coach is crafting your lines",
+  },
+  ko: {
+    title: "스크립트 준비 중...",
+    subtitle: "AI 코치가 대사를 만들고 있어요",
+  },
+  id: {
+    title: "Menyiapkan skrip kamu...",
+    subtitle: "Pelatih AI sedang membuat barisanmu",
+  },
+  fr: {
+    title: "Préparation de ton script...",
+    subtitle: "Le coach IA prépare tes répliques",
+  },
+  pt: {
+    title: "Preparando seu roteiro...",
+    subtitle: "O coach de IA está criando suas falas",
+  },
+};
+
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import scenarios from "../../../src/data/scenarios";
@@ -426,15 +449,62 @@ function PrepPageInner() {
   const allDone = completed.every(Boolean);
   const labels = ["인사", "핵심 메시지", "대화 이어가기", "마무리"];
   const t = PREP_COPY[lang] || PREP_COPY.en;
+  const loadT = loadingTexts[lang] || loadingTexts.en;
 
   if (loading) {
     return (
-      <div className="my90sec-layout" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontFamily: "var(--m-font-display)", fontSize: 22, fontWeight: 800, color: "var(--m-text-primary)", marginBottom: 8 }}>
-            스크립트 생성 중...
-          </div>
-          <div style={{ fontSize: 13, color: "var(--m-text-dim)" }}>AI가 맞춤 문장을 만들고 있어요</div>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#0E0E0F",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Manrope, Inter, sans-serif",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "20px",
+            fontWeight: 700,
+            color: "#fff",
+            marginBottom: "8px",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {loadT.title}
+        </div>
+
+        <div
+          style={{
+            fontSize: "12px",
+            color: "rgba(255,255,255,0.5)",
+            marginBottom: "32px",
+          }}
+        >
+          {loadT.subtitle}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "6px",
+          }}
+        >
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              style={{
+                width: "6px",
+                height: "6px",
+                borderRadius: "50%",
+                background: "#FF8AA9",
+                animation: `dot-bounce 1.4s ${i * 0.2}s infinite`,
+                display: "inline-block",
+              }}
+            />
+          ))}
         </div>
       </div>
     );
