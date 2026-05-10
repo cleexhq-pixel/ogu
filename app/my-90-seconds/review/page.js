@@ -180,19 +180,21 @@ function ReviewContent() {
             fontWeight: 700,
             color: '#fff',
             marginBottom: '8px',
+            letterSpacing: '-0.01em',
             fontFamily: 'Manrope, sans-serif',
           }}
         >
-          Analyzing your call...
+          Looking back at your 90 seconds...
         </div>
         <div
           style={{
             fontSize: '12px',
             color: 'rgba(255,255,255,0.5)',
+            marginBottom: '32px',
             fontFamily: 'Manrope, sans-serif',
           }}
         >
-          AI coach is preparing your feedback
+          Finding your best moment and what to work on next
         </div>
         <div
           style={{

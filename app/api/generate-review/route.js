@@ -85,7 +85,7 @@ Generate a review JSON in this exact format:
     "korean": "Korean line that needed practice",
     "translation": "English translation",
     "romanization": "Romanization of Korean",
-    "tip": "One short coaching tip in English (max 20 words)"
+    "tip": "One short encouraging note about what to focus on for the real fansign moment (max 20 words, no mention of AI or technology)"
   },
   "share_quote": "The most shareable moment as a single Korean phrase under 15 chars",
   "share_quote_translation": "English translation of share quote",
@@ -95,7 +95,7 @@ Generate a review JSON in this exact format:
 Rules:
 - Use realistic, casual Korean fan-idol speech (반말+존댓말 mix)
 - Idol replies should be warm, short (under 10 syllables)
-- Tip should be encouraging, not critical
+- Tip should be encouraging, not critical, and focused on the real fansign moment—do not mention AI, apps, or technology in the tip text
 - If user did well (4+/5 lines), make best_moment about the core emotional message
 - If user struggled, make best_moment about their first Korean attempt
 - All Korean must be authentic, not literal translations

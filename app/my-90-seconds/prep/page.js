@@ -103,24 +103,24 @@ const PREP_COPY = {
 
 const loadingTexts = {
   en: {
-    title: "Preparing your script...",
-    subtitle: "AI coach is crafting your lines",
+    title: "Getting your 90 seconds ready...",
+    subtitle: "Preparing every word for your fansign moment",
   },
   ko: {
-    title: "스크립트 준비 중...",
-    subtitle: "AI 코치가 대사를 만들고 있어요",
+    title: "90초를 준비하고 있어요...",
+    subtitle: "팬싸 순간을 위해 모든 대사를 준비 중이에요",
   },
   id: {
-    title: "Menyiapkan skrip kamu...",
-    subtitle: "Pelatih AI sedang membuat barisanmu",
+    title: "Menyiapkan 90 detikmu...",
+    subtitle: "Mempersiapkan setiap kata untuk momen fansign-mu",
   },
   fr: {
-    title: "Préparation de ton script...",
-    subtitle: "Le coach IA prépare tes répliques",
+    title: "Tes 90 secondes se préparent...",
+    subtitle: "Chaque mot est préparé pour ton moment fansign",
   },
   pt: {
-    title: "Preparando seu roteiro...",
-    subtitle: "O coach de IA está criando suas falas",
+    title: "Preparando seus 90 segundos...",
+    subtitle: "Cada palavra pronta para o seu momento no fansign",
   },
 };
 
