@@ -201,15 +201,29 @@ function PrepPageInner() {
   const [retryIndex, setRetryIndex] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playingLine, setPlayingLine] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [heard, setHeard] = useState([false, false, false, false]);
   const listenPhaseRef = useRef("idle");
   // "idle"      = 초기/완료 상태
   // "waiting"   = 탭했지만 아직 isListening=true 안 됨
-  // "listening" = isListening이 실제로 true가 된 상태
-  const isProcessingRef = useRef(false);
+  // "listening" = 녹음 중 (isListening true)
+  const currentLineRef = useRef(currentLine);
+  currentLineRef.current = currentLine;
+  const completedRef = useRef(completed);
+  completedRef.current = completed;
+  const lastCompletionKeyRef = useRef("");
   const audioRef = useRef(null);
-  const { transcript, isListening, hasResult, startListening, stopListening, reset } = useSpeechRecognition();
+  const [holdLineIndex, setHoldLineIndex] = useState(null);
+  const {
+    transcript,
+    isListening,
+    hasResult,
+    isTranscribing,
+    startListening,
+    stopListening,
+    reset,
+  } = useSpeechRecognition();
+
+  const micBusy = isTranscribing || holdLineIndex !== null;
 
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_KEY) || "en";
@@ -348,39 +362,58 @@ function PrepPageInner() {
   }
 
   useEffect(() => {
+    if (!hasResult || !transcript.trim()) {
+      lastCompletionKeyRef.current = "";
+      return undefined;
+    }
+
+    const line = currentLineRef.current;
+    if (line === null || line > 3 || completedRef.current[line]) {
+      return undefined;
+    }
     if (
-      (listenPhaseRef.current === "listening" ||
-       listenPhaseRef.current === "waiting") &&
-      !isListening &&
-      hasResult &&
-      transcript.trim().length > 0 &&
-      currentLine !== null &&
-      !completed[currentLine]
+      listenPhaseRef.current !== "listening" &&
+      listenPhaseRef.current !== "waiting"
     ) {
-      listenPhaseRef.current = "idle";
+      return undefined;
+    }
+
+    const key = `${line}|${transcript.trim()}`;
+    if (lastCompletionKeyRef.current === key) {
+      return undefined;
+    }
+    lastCompletionKeyRef.current = key;
+
+    listenPhaseRef.current = "idle";
+    setHoldLineIndex(line);
+
+    const id = setTimeout(() => {
+      lastCompletionKeyRef.current = "";
+      setHoldLineIndex(null);
       setRetryIndex(null);
-      isProcessingRef.current = false;
-      setIsProcessing(false);
 
-      const newCompleted = [...completed];
-      newCompleted[currentLine] = true;
-      setCompleted(newCompleted);
+      setCompleted((prev) => {
+        if (prev[line]) return prev;
+        const next = [...prev];
+        next[line] = true;
+        return next;
+      });
 
-      // 다음 라인으로 이동만 (startListening 없음)
-      const nextLine = currentLine + 1;
+      const nextLine = line + 1;
       if (nextLine < 4) {
         setCurrentLine(nextLine);
       }
 
-      console.log("[COMPLETE]", {
-        phase: listenPhaseRef.current,
-        isListening,
-        hasResult,
-        transcript,
-        currentLine,
-      });
-    }
-  }, [isListening, hasResult, transcript, currentLine, completed]);
+      reset();
+      listenPhaseRef.current = "idle";
+    }, 800);
+
+    return () => {
+      clearTimeout(id);
+      lastCompletionKeyRef.current = "";
+      setHoldLineIndex(null);
+    };
+  }, [hasResult, transcript, reset]);
 
   // waiting → listening 전환: isListening이 실제 true가 된 시점에 phase 갱신
   useEffect(() => {
@@ -398,25 +431,18 @@ function PrepPageInner() {
         if (
           listenPhaseRef.current === "listening" &&
           !hasResult &&
+          !isTranscribing &&
           currentLine !== null
         ) {
-          console.log("[RETRY]", {
-            phase: listenPhaseRef.current,
-            isListening,
-            hasResult,
-            transcript,
-            currentLine,
-          });
           setRetryIndex(currentLine);
           reset();
           listenPhaseRef.current = "idle";
-          isProcessingRef.current = false;
-          setIsProcessing(false);
+          setHoldLineIndex(null);
         }
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isListening, hasResult, currentLine, reset, transcript]);
+  }, [isListening, hasResult, currentLine, reset, transcript, isTranscribing]);
 
   function handleNext() {
     if (!lines?.length) return;
@@ -545,21 +571,13 @@ function PrepPageInner() {
         {lines && lines.map((line, i) => {
           const isDoneThis = completed[i];
           const isListeningThis = isListening && currentLine === i;
-          const isProcessingThis = isProcessingRef.current && currentLine === i;
+          const isProcessingThis =
+            currentLine === i &&
+            !completed[i] &&
+            !isListeningThis &&
+            (isTranscribing || holdLineIndex === i);
           const isPlayingThis = isPlaying && playingLine === i;
           const heardThis = heard[i];
-          if (currentLine === i) {
-            console.log("[STATE]", {
-              line: i,
-              isListening,
-              isProcessing,
-              currentLine,
-              isListeningThis,
-              isProcessingThis,
-              heardThis,
-              isDoneThis,
-            });
-          }
           return (
           <div
             key={i}
@@ -666,27 +684,21 @@ function PrepPageInner() {
               {/* Say it 버튼 */}
               <button
                 onClick={() => {
-                  if (completed[i] || isProcessing) return;
+                  if (completed[i] || micBusy) return;
 
                   if (isListening && currentLine === i) {
-                    // 두 번째 탭: 현재 라인 녹음 중지 → Processing
-                    isProcessingRef.current = true;
-                    setIsProcessing(true);
                     stopListening();
                     return;
                   }
 
                   if (isListening && currentLine !== i) {
-                    // 다른 라인 녹음 중 → 먼저 중지
                     stopListening();
                     reset();
                   }
 
-                  // 첫 번째 탭: 이 라인 녹음 시작
                   setCurrentLine(i);
                   setRetryIndex(null);
-                  isProcessingRef.current = false;
-                  setIsProcessing(false);
+                  setHoldLineIndex(null);
                   listenPhaseRef.current = "waiting";
 
                   setTimeout(() => {
@@ -697,22 +709,26 @@ function PrepPageInner() {
                 style={{
                   flex: 1, padding: "10px",
                   borderRadius: 9999, border: "none",
-                  cursor: isDoneThis || isProcessingThis
-                    ? "default" : "pointer",
-                  background: isProcessingThis
+                  cursor:
+                    isDoneThis || isProcessingThis
+                      ? "default"
+                      : "pointer",
+                  background: isListeningThis || isProcessingThis
                     ? "#2C2C2D"
                     : isDoneThis
                     ? "#2C2C2D"
-                    : isListeningThis
-                    ? "#E24B4A"
                     : heardThis
                     ? "#FF8AA9"
                     : "#2C2C2D",
-                  color: isDoneThis || isProcessingThis
-                    ? "#3A3A3A"
-                    : isListeningThis || heardThis
-                    ? "#fff"
-                    : "#5C5A62",
+                  color:
+                    isDoneThis
+                      ? "#3A3A3A"
+                      : isListeningThis || isProcessingThis
+                      ? "#00E3FD"
+                      : heardThis
+                      ? "#fff"
+                      : "#5C5A62",
+                  opacity: isProcessingThis ? 0.85 : 1,
                   fontFamily: "'Inter', sans-serif",
                   fontSize: 12, fontWeight: 700,
                   display: "flex", alignItems: "center",
@@ -720,34 +736,20 @@ function PrepPageInner() {
                   transition: "all 0.2s",
                 }}
               >
-                {(() => {
-                  if (currentLine === i) {
-                    console.log("[BUTTON RENDER]", {
-                      line: i,
-                      isProcessingThis,
-                      isListeningThis,
-                      branch: isProcessingThis
-                        ? "PROCESSING"
-                        : isListeningThis
-                        ? "LISTENING"
-                        : "DEFAULT",
-                    });
-                  }
-                  return null;
-                })()}
                 {isProcessingThis ? (
                   <>
                     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                       <circle cx="6.5" cy="6.5" r="5.5"
-                        stroke="#9E9BA4" strokeWidth="1.3"
-                        strokeDasharray="3 2"/>
+                        stroke="currentColor" strokeWidth="1.3"
+                        strokeDasharray="3 2"
+                        opacity={0.9}/>
                     </svg>
-                    {t.processing}
+                    <span style={{ opacity: 0.7 }}>{t.processing}</span>
                   </>
                 ) : isListeningThis ? (
                   <>
-                    <IconWave color="#fff" />
-                    {t.listening}
+                    <IconWave color="#00E3FD" />
+                    <span>{t.listening}</span>
                   </>
                 ) : (
                   <>
@@ -852,8 +854,8 @@ function PrepPageInner() {
             reset();
             listenPhaseRef.current = "idle";
             setRetryIndex(null);
-            isProcessingRef.current = false;
-            setIsProcessing(false);
+            lastCompletionKeyRef.current = "";
+            setHoldLineIndex(null);
             setCompleted([true, true, true, true]);
           }}
           style={{

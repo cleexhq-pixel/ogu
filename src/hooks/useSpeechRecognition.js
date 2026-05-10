@@ -5,6 +5,7 @@ export function useSpeechRecognition() {
   const [transcript, setTranscript] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [hasResult, setHasResult] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -14,6 +15,7 @@ export function useSpeechRecognition() {
   const reset = useCallback(() => {
     setTranscript("");
     setHasResult(false);
+    setIsTranscribing(false);
   }, []);
 
   const stopListening = useCallback(() => {
@@ -35,6 +37,7 @@ export function useSpeechRecognition() {
   const startListening = useCallback(async () => {
     setTranscript("");
     setHasResult(false);
+    setIsTranscribing(false);
     audioChunksRef.current = [];
 
     try {
@@ -64,16 +67,21 @@ export function useSpeechRecognition() {
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
 
+        // 녹음이 끝나는 즉시 Listening UI 종료 (전사는 별도 단계)
+        setIsListening(false);
+
         const audioBlob = new Blob(
           audioChunksRef.current,
           { type: mimeType }
         );
 
         if (audioBlob.size < 3000) {
-          setIsListening(false);
           setHasResult(false);
+          setIsTranscribing(false);
           return;
         }
+
+        setIsTranscribing(true);
 
         try {
           const formData = new FormData();
@@ -106,15 +114,16 @@ export function useSpeechRecognition() {
         } catch (err) {
           console.error("Whisper API error:", err);
           setHasResult(false);
+        } finally {
+          setIsTranscribing(false);
         }
-
-        setIsListening(false);
       };
 
       mediaRecorder.onerror = () => {
         stream.getTracks().forEach((track) => track.stop());
         setIsListening(false);
         setHasResult(false);
+        setIsTranscribing(false);
       };
 
       mediaRecorder.start();
@@ -133,6 +142,7 @@ export function useSpeechRecognition() {
       console.error("Microphone access error:", err);
       setIsListening(false);
       setHasResult(false);
+      setIsTranscribing(false);
     }
   }, []);
 
@@ -140,6 +150,7 @@ export function useSpeechRecognition() {
     transcript,
     isListening,
     hasResult,
+    isTranscribing,
     startListening,
     stopListening,
     reset,
