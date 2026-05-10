@@ -30,10 +30,6 @@ function normalizeVoiceGender(raw) {
   return 'female';
 }
 
-function isMaleVoice(g) {
-  return g === 'male';
-}
-
 function ReviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,13 +43,11 @@ function ReviewContent() {
     timeUsed: 65,
     wins: 3,
   });
-  const [voiceGender, setVoiceGender] = useState('female');
+  const [idolName, setIdolName] = useState('IDOL');
   const [continueEnabled, setContinueEnabled] = useState(false);
 
-  const idolLabel = isMaleVoice(voiceGender) ? 'JISUNG' : 'WONYOUNG';
-
   const fetchReview = useCallback(
-    async (moments, gender, statPayload) => {
+    async (moments, gender, statPayload, nameForPrompt) => {
       try {
         const res = await fetch('/api/generate-review', {
           method: 'POST',
@@ -64,6 +58,7 @@ function ReviewContent() {
             positiveMoments: moments,
             completedLines: statPayload.completedLines,
             totalLines: statPayload.totalLines,
+            idolName: nameForPrompt ?? '',
           }),
         });
         const data = await res.json();
@@ -86,7 +81,9 @@ function ReviewContent() {
 
     const savedGenderRaw = localStorage.getItem('kkobi_voice_gender') || 'FEMALE';
     const savedGender = normalizeVoiceGender(savedGenderRaw);
-    setVoiceGender(savedGender);
+
+    const savedIdolDisplay = localStorage.getItem('kkobi_idol_name') || 'IDOL';
+    setIdolName(savedIdolDisplay);
 
     let savedMoments = [];
     try {
@@ -118,7 +115,7 @@ function ReviewContent() {
     };
 
     setStats(mergedStats);
-    void fetchReview(savedMoments, savedGender, mergedStats);
+    void fetchReview(savedMoments, savedGender, mergedStats, savedIdolDisplay);
     return undefined;
   }, [scenario, fetchReview]);
 
@@ -155,7 +152,7 @@ function ReviewContent() {
   const handleShare = () => {
     if (!reviewData?.share_quote) return;
 
-    const shareText = `Just practiced my fansign call with ${idolLabel} 💖\n"${reviewData.share_quote}"\n\nTry it: talk.kkobi.app`;
+    const shareText = `Just practiced my fansign call with ${idolName} 💖\n"${reviewData.share_quote}"\n\nTry it: talk.kkobi.app`;
 
     if (navigator.share) {
       navigator.share({ text: shareText }).catch(() => {});
@@ -338,7 +335,7 @@ function ReviewContent() {
             fontFamily: 'Manrope, sans-serif',
           }}
         >
-          — {idolLabel}
+          — {idolName}
         </div>
 
         <button
@@ -392,7 +389,7 @@ function ReviewContent() {
             marginBottom: '4px',
           }}
         >
-          90 seconds with {idolLabel}
+          90 seconds with {idolName}
         </div>
         <div
           style={{
@@ -482,7 +479,7 @@ function ReviewContent() {
             letterSpacing: '0.05em',
           }}
         >
-          {idolLabel} REPLIED
+          {idolName} REPLIED
         </div>
         <div
           style={{

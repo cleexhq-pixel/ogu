@@ -55,6 +55,7 @@ function CallPageContent() {
 
   const [scenarioId, setScenarioId] = useState(null);
   const [voiceGender, setVoiceGender] = useState(null);
+  const [idolName, setIdolName] = useState('IDOL');
   const [savedScript, setSavedScript] = useState(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -237,6 +238,7 @@ function CallPageContent() {
 
     setScenarioId(sId);
     setVoiceGender(vGender);
+    setIdolName(localStorage.getItem('kkobi_idol_name') || 'IDOL');
     setSavedScript(parsedScript);
     setIsReady(true);
   }, [searchParams, router]);
@@ -455,7 +457,7 @@ function CallPageContent() {
                     marginBottom: '40px',
                   }}
                 >
-                  {voiceGender === 'MALE' ? 'JISUNG' : 'WONYOUNG'}
+                  {idolName}
                 </div>
 
                 <div
@@ -1017,7 +1019,7 @@ function CallPageContent() {
               textShadow: '0 2px 12px rgba(0,0,0,0.6)',
             }}
           >
-            {voiceGender === 'FEMALE' ? 'WONYOUNG' : 'JISUNG'}
+            {idolName}
           </div>
           <div
             style={{

@@ -44,10 +44,19 @@ export async function POST(req) {
       positiveMoments,
       completedLines,
       totalLines,
+      idolName: idolNameRaw,
     } = body || {};
 
-    const idolName =
-      String(voiceGender || '').toLowerCase() === 'male' ? 'JISUNG' : 'WONYOUNG';
+    const trimmedIdol =
+      typeof idolNameRaw === 'string' ? idolNameRaw.trim() : '';
+
+    const vgLower = String(voiceGender || '').toLowerCase();
+    const displayIdolName =
+      trimmedIdol.length > 0
+        ? trimmedIdol
+        : vgLower === 'male' || vgLower === 'm'
+          ? 'JISUNG'
+          : 'WONYOUNG';
 
     const scenarioKey = scenario && scenarioContext[scenario] ? scenario : 'compliment';
     const scenarioLine =
@@ -56,7 +65,7 @@ export async function POST(req) {
     const prompt = `You are an AI coach helping international K-pop fans practice for fansign video calls.
 
 Scenario: ${scenarioLine}
-Idol: ${idolName}
+Idol: ${displayIdolName}
 User completed ${completedLines ?? 4}/${totalLines ?? 5} prepared lines.
 Positive moments triggered: ${JSON.stringify(positiveMoments ?? [])}
 

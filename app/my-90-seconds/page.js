@@ -139,6 +139,7 @@ function ScenarioPageInner() {
   const [lang, setLang] = useState("en");
   const [remaining, setRemaining] = useState(DAILY_LIMIT);
   const [voiceGender, setVoiceGender] = useState("FEMALE");
+  const [idolName, setIdolName] = useState("");
 
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_KEY) || "en";
@@ -146,6 +147,10 @@ function ScenarioPageInner() {
     setRemaining(getRemainingCount());
     const savedGender = localStorage.getItem(VOICE_KEY) || "FEMALE";
     setVoiceGender(savedGender);
+    const savedIdol = localStorage.getItem("kkobi_idol_name");
+    if (savedIdol && savedIdol !== "IDOL") {
+      setIdolName(savedIdol);
+    }
   }, []);
 
   const t = COPY[lang] || COPY.en;
@@ -155,6 +160,11 @@ function ScenarioPageInner() {
   function handleStart() {
     if (!selected || remaining <= 0) return;
     markOneUsed();
+    if (typeof window !== "undefined") {
+      localStorage.setItem(VOICE_KEY, voiceGender);
+      const finalIdolName = idolName.trim().toUpperCase() || "IDOL";
+      localStorage.setItem("kkobi_idol_name", finalIdolName);
+    }
     window.location.href = `/my-90-seconds/prep?scenario=${selected}`;
   }
 
@@ -339,6 +349,58 @@ function ScenarioPageInner() {
               {g === "FEMALE" ? t.voice_female : t.voice_male}
             </button>
           ))}
+        </div>
+
+        <div style={{ marginTop: 20 }}>
+          <div style={{
+            fontSize: "11px",
+            fontWeight: 700,
+            color: "rgba(255,255,255,0.5)",
+            letterSpacing: "0.15em",
+            textTransform: "uppercase",
+            marginBottom: "10px",
+          }}>
+            Idol Name (optional)
+          </div>
+
+          <input
+            type="text"
+            value={idolName}
+            onChange={(e) => setIdolName(e.target.value)}
+            placeholder={
+              voiceGender === "MALE"
+                ? "e.g. Jisung, Felix, Mingyu"
+                : "e.g. Wonyoung, Chaeyeon, Karina"
+            }
+            maxLength={20}
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "14px",
+              color: "#fff",
+              fontSize: "15px",
+              fontFamily: "Manrope, Inter, sans-serif",
+              outline: "none",
+              transition: "border-color 0.2s",
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = "rgba(255,138,169,0.5)";
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = "rgba(255,255,255,0.1)";
+            }}
+          />
+
+          <div style={{
+            fontSize: "10px",
+            color: "rgba(255,255,255,0.3)",
+            marginTop: "6px",
+            paddingLeft: "4px",
+          }}>
+            Your fansign call will use this name throughout
+          </div>
         </div>
       </div>
 
