@@ -214,25 +214,36 @@ export default function HomePage() {
     const refreshDerived = async (maybeUser) => {
       const paid = runPaidRead();
       setIsPaid(paid);
-      setSessionsLeft(
-        getSessionsRemaining(maybeUser?.id ?? null, paid),
-      );
+      setSessionsLeft(getSessionsRemaining(maybeUser?.id ?? null, paid));
     };
 
-    const init = async () => {
+    async function init() {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       await refreshDerived(currentUser);
-    };
+    }
     init();
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("code")) {
+        setTimeout(async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          const u = session?.user ?? null;
+          setUser(u);
+          await refreshDerived(u);
+          window.history.replaceState({}, "", window.location.pathname);
+        }, 500);
+      }
+    }
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      void refreshDerived(currentUser);
+      await refreshDerived(currentUser);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -510,10 +521,33 @@ export default function HomePage() {
             </>
           ) : (
             <>
-              Free · 1 session today &nbsp;·&nbsp;
-              <span style={{ color: "rgba(255,255,255,0.5)" }}>
+              Free · 1 session today ·{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  void (async () => {
+                    const next = encodeURIComponent("/");
+                    await supabase.auth.signInWithOAuth({
+                      provider: "google",
+                      options: {
+                        redirectTo: `${window.location.origin}/auth/callback?next=${next}`,
+                      },
+                    });
+                  })();
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  color: "#FF8AA9",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                }}
+              >
                 Sign in for 3/day
-              </span>
+              </button>
             </>
           )}
         </p>

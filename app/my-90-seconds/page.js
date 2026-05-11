@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { getSessionsRemaining, DAILY_LIMIT } from "@/lib/freeLimit";
+import { getSessionsRemaining } from "@/lib/freeLimit";
 import { getSupabase } from "@/lib/supabase";
 
 const LANG_KEY = "ogu_lang";
@@ -154,7 +154,7 @@ function ScenarioPageInner() {
       setSessionsLeft(getSessionsRemaining(maybeUser?.id ?? null, paid));
     }
 
-    async function boot() {
+    async function init() {
       let currentUser = null;
       if (supabase) {
         const {
@@ -165,15 +165,38 @@ function ScenarioPageInner() {
       }
       applyDerived(currentUser);
     }
-    boot();
+
+    void init();
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("code")) {
+        setTimeout(() => {
+          void (async () => {
+            let currentUser = null;
+            if (supabase) {
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              currentUser = session?.user ?? null;
+              setUser(currentUser);
+            }
+            applyDerived(currentUser);
+            window.history.replaceState({}, "", window.location.pathname);
+          })();
+        }, 500);
+      }
+    }
 
     let authSubscription = null;
     if (supabase) {
-      const { data } = supabase.auth.onAuthStateChange((_e, session) => {
-        const u = session?.user ?? null;
-        setUser(u);
-        applyDerived(u);
-      });
+      const { data } = supabase.auth.onAuthStateChange(
+        async (_event, session) => {
+          const u = session?.user ?? null;
+          setUser(u);
+          applyDerived(u);
+        },
+      );
       authSubscription = data?.subscription ?? null;
     }
 
@@ -226,9 +249,6 @@ function ScenarioPageInner() {
     }
     window.location.href = `/my-90-seconds/prep?scenario=${selected}`;
   }
-
-  const maxDots =
-    !isPaid && user ? DAILY_LIMIT.member : !isPaid && !user ? DAILY_LIMIT.guest : 0;
 
   return (
     <div style={{
@@ -413,79 +433,49 @@ function ScenarioPageInner() {
         </div>
       )}
 
-      {/* 남은 횟수 도트 */}
-      {maxDots > 0 && sessionsLeft !== null && Number.isFinite(sessionsLeft) && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            margin: "14px 0 0",
-          }}
-        >
-          {Array.from({ length: maxDots }, (_, dot) => (
-            <div
-              key={dot}
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background:
-                  dot < sessionsLeft
-                    ? "linear-gradient(135deg, #FF8AA9, #FF719B)"
-                    : "#2C2C2D",
-              }}
-            />
-          ))}
-          <span style={{ fontSize: 11, color: "#5C5A62", marginLeft: 4 }}>
-            {sessionsLeft} left today
-          </span>
-        </div>
-      )}
-
       {/* 구분선 */}
       <div style={{
         height: 1,
         background: "rgba(255,255,255,0.06)",
         margin: "16px 0",
       }} />
+
       <div style={{
-        background: "#1A191B",
-        borderRadius: 14,
-        padding: "14px 16px",
-        marginBottom: 16,
+        background: "rgba(255,255,255,0.04)",
+        border: "0.5px solid rgba(255,255,255,0.08)",
+        borderRadius: "14px",
+        padding: "16px",
+        marginBottom: "10px",
       }}>
-        {/* 헤더 */}
-        <div style={{
+        <p style={{
+          fontSize: "13px",
+          fontWeight: 600,
+          color: "#fff",
+          margin: "0 0 4px",
           display: "flex",
           alignItems: "center",
-          gap: 6,
-          marginBottom: 6,
+          gap: "6px",
         }}>
-          <span style={{ fontSize: 14 }}>🎧</span>
-          <p style={{
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: 12, fontWeight: 700,
-            color: "#F2F0F4", margin: 0,
-          }}>
-            {t.voice_label}
-          </p>
-        </div>
-
-        {/* 설명 */}
+          <span aria-hidden="true">🎧</span>
+          <span>{t.voice_label}</span>
+        </p>
         <p style={{
-          fontSize: 10, color: "#5C5A62",
-          margin: "0 0 12px", lineHeight: 1.5,
+          fontSize: "11px",
+          color: "rgba(255,255,255,0.3)",
+          margin: "0 0 12px",
+          lineHeight: 1.5,
         }}>
           {t.voice_desc}
         </p>
-
-        {/* 가로 배치 버튼 */}
-        <div style={{ display: "flex", gap: 8 }}>
-          {["FEMALE", "MALE"].map((g) => (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "8px",
+        }}>
+          {(["FEMALE", "MALE"]).map((g) => (
             <button
               key={g}
+              type="button"
               onClick={() => {
                 setVoiceGender(g);
                 if (typeof window !== "undefined") {
@@ -493,109 +483,83 @@ function ScenarioPageInner() {
                 }
               }}
               style={{
-                flex: 1,
-                padding: "10px",
-                borderRadius: 10,
-                border: "none",
                 background: voiceGender === g
-                  ? "#FF8AA9"
-                  : "#2C2C2D",
-                color: voiceGender === g
-                  ? "#fff"
-                  : "#5C5A62",
-                fontSize: 12,
-                fontWeight: voiceGender === g ? 700 : 600,
+                  ? "linear-gradient(135deg, #FF8AA9, #FF719B)"
+                  : "rgba(255,255,255,0.07)",
+                border: "none",
+                borderRadius: "99px",
+                padding: "10px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: voiceGender === g ? "#fff" : "rgba(255,255,255,0.5)",
                 cursor: "pointer",
                 fontFamily: "'Inter', sans-serif",
-                transition: "all 0.15s",
               }}
             >
               {g === "FEMALE" ? t.voice_female : t.voice_male}
             </button>
           ))}
         </div>
+      </div>
 
-        <div
+      <div style={{
+        background: "rgba(255,255,255,0.04)",
+        border: "0.5px solid rgba(255,255,255,0.08)",
+        borderRadius: "14px",
+        padding: "16px",
+        marginBottom: "10px",
+      }}>
+        <p style={{
+          fontSize: "13px",
+          fontWeight: 600,
+          color: "#fff",
+          margin: "0 0 4px",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          flexWrap: "wrap",
+        }}>
+          <span aria-hidden="true">✨</span>
+          <span>Idol&apos;s name</span>
+          <span style={{
+            fontSize: "11px",
+            fontWeight: 400,
+            color: "rgba(255,255,255,0.3)",
+          }}>
+            optional
+          </span>
+        </p>
+        <p style={{
+          fontSize: "11px",
+          color: "rgba(255,255,255,0.3)",
+          margin: "0 0 12px",
+          lineHeight: 1.5,
+        }}>
+          Your fansign call will use this name throughout
+        </p>
+        <input
+          type="text"
+          value={idolName}
+          onChange={(e) => setIdolName(e.target.value)}
+          placeholder={
+            voiceGender === "MALE"
+              ? "e.g. Jisung, Felix, Mingyu"
+              : "e.g. Wonyoung, Chaeyeon, Karina"
+          }
+          maxLength={20}
           style={{
-            background: "rgba(255,255,255,0.05)",
-            borderRadius: "16px",
-            padding: "16px 18px",
-            marginTop: "12px",
+            width: "100%",
+            background: "rgba(255,255,255,0.06)",
+            border: "none",
+            borderRadius: "10px",
+            padding: "12px 14px",
+            fontSize: "13px",
+            color: "#fff",
+            boxSizing: "border-box",
+            fontFamily: "'Inter', sans-serif",
+            outline: "none",
           }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              marginBottom: "4px",
-            }}
-          >
-            <span style={{ fontSize: "15px" }}>✨</span>
-            <span
-              style={{
-                fontSize: "13px",
-                fontWeight: 700,
-                color: "#fff",
-                fontFamily: "'Manrope', sans-serif",
-              }}
-            >
-              Idol&apos;s name
-            </span>
-            <span
-              style={{
-                fontSize: "10px",
-                color: "rgba(255,255,255,0.4)",
-                fontWeight: 400,
-                marginLeft: "2px",
-              }}
-            >
-              optional
-            </span>
-          </div>
-
-          <div
-            style={{
-              fontSize: "11px",
-              color: "rgba(255,255,255,0.45)",
-              marginBottom: "14px",
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            Your fansign call will use this name throughout
-          </div>
-
-          <input
-            type="text"
-            value={idolName}
-            onChange={(e) => setIdolName(e.target.value)}
-            placeholder={
-              voiceGender === "MALE"
-                ? "e.g. Jisung, Felix, Mingyu"
-                : "e.g. Wonyoung, Chaeyeon, Karina"
-            }
-            maxLength={20}
-            style={{
-              width: "100%",
-              padding: "10px 16px",
-              background: "rgba(255,255,255,0.07)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "9999px",
-              color: "#fff",
-              fontSize: "13px",
-              fontFamily: "'Inter', sans-serif",
-              outline: "none",
-              boxSizing: "border-box",
-              transition: "border-color 0.2s",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "rgba(255,138,169,0.5)";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "rgba(255,255,255,0.1)";
-            }}
-          />
-        </div>
+        />
       </div>
 
       {/* CTA 영역 */}
