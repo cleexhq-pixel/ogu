@@ -23,7 +23,7 @@ export async function POST(request) {
     });
 
     const transcription = await openai.audio.transcriptions.create({
-      model: "whisper-1",
+      model: "gpt-4o-mini-transcribe",
       file: file,
       language: "ko",
       response_format: "json",
