@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import scenarios from "@/data/scenarios";
-import { checkFreeLimit, markOneUsed, getRemainingCount } from "@/lib/freeLimit";
+import { checkFreeLimit, getRemainingCount } from "@/lib/freeLimit";
 
 export default function ScenarioSelectPage() {
   const [selected, setSelected] = useState(null);
@@ -18,9 +18,6 @@ export default function ScenarioSelectPage() {
 
     const status = checkFreeLimit();
     if (!status.canPlay) return;
-
-    // 사용 횟수 차감
-    markOneUsed();
 
     window.location.href = `/my-90-seconds/prep?scenario=${selected}`;
   }

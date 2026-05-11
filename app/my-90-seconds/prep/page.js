@@ -469,7 +469,10 @@ function PrepPageInner() {
     );
     localStorage.setItem("kkobi_m90s_last_scenario", scenarioId);
 
-    window.location.href = `/my-90-seconds/call?scenario=${scenarioId}`;
+    const billing = `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    window.location.href = `/my-90-seconds/call?scenario=${scenarioId}&billing=${encodeURIComponent(
+      billing,
+    )}`;
   }
 
   const allDone = completed.every(Boolean);

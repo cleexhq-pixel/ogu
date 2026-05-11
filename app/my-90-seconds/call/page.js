@@ -8,6 +8,8 @@ import {
   useState,
 } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { getSupabase } from '@/lib/supabase';
+import { hasReachedDailyLimit, incrementSessionsUsed } from '@/lib/freeLimit';
 
 const phaseGradients = {
   intro:
@@ -202,8 +204,9 @@ function CallPageContent() {
   }, [timeRemaining, introStep, scenarioId, router]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return undefined;
 
+    let cancelled = false;
     const sId = searchParams.get('scenario');
 
     const vGender = localStorage.getItem('kkobi_voice_gender') || 'FEMALE';
@@ -215,7 +218,7 @@ function CallPageContent() {
       console.log('scenario:', sId);
       console.log('savedScript:', savedRaw);
       router.push('/my-90-seconds');
-      return;
+      return undefined;
     }
 
     let parsedScript;
@@ -224,23 +227,66 @@ function CallPageContent() {
     } catch (e) {
       console.error('[Phase B] savedScript 파싱 실패:', e);
       router.push('/my-90-seconds');
-      return;
+      return undefined;
     }
 
-    console.log('=== Phase B 진입 데이터 확인 ===');
-    console.log('Scenario ID:', sId);
-    console.log('Voice Gender:', vGender);
-    console.log('Last Scenario:', lastScenario);
-    console.log('Saved Script:', parsedScript);
-    console.log('Lines count:', parsedScript?.lines?.length);
-    console.log('First line:', parsedScript?.lines?.[0]);
-    console.log('==============================');
+    void (async () => {
+      const supabase = getSupabase();
+      const sessionRes = supabase
+        ? await supabase.auth.getSession()
+        : { data: { session: null } };
+      if (cancelled) return;
 
-    setScenarioId(sId);
-    setVoiceGender(vGender);
-    setIdolName(localStorage.getItem('kkobi_idol_name') || 'IDOL');
-    setSavedScript(parsedScript);
-    setIsReady(true);
+      const currentUser = sessionRes.data.session?.user ?? null;
+
+      const tier = localStorage.getItem('kkobi_pass_tier');
+      const expires = localStorage.getItem('kkobi_pass_expires');
+      const paid = Boolean(
+        tier === 'prep_pass' &&
+          expires &&
+          new Date(expires) > new Date(),
+      );
+
+      if (hasReachedDailyLimit(currentUser?.id, paid)) {
+        router.replace(
+          `/my-90-seconds/paywall?scenario=${encodeURIComponent(sId)}`,
+        );
+        return;
+      }
+
+      const billing = searchParams.get('billing') || '';
+      const userKey = currentUser?.id ?? 'guest';
+      const todayKey = new Date().toISOString().split('T')[0];
+      const capKey = `kkobi_m90s_charged_${userKey}_${todayKey}_${billing}_${sId}`;
+
+      if (!sessionStorage.getItem(capKey)) {
+        if (!paid) {
+          incrementSessionsUsed(currentUser?.id ?? null);
+        }
+        sessionStorage.setItem(capKey, '1');
+      }
+
+      if (cancelled) return;
+
+      console.log('=== Phase B 진입 데이터 확인 ===');
+      console.log('Scenario ID:', sId);
+      console.log('Voice Gender:', vGender);
+      console.log('Last Scenario:', lastScenario);
+      console.log('Saved Script:', parsedScript);
+      console.log('Lines count:', parsedScript?.lines?.length);
+      console.log('First line:', parsedScript?.lines?.[0]);
+      console.log('==============================');
+
+      setScenarioId(sId);
+      setVoiceGender(vGender);
+      setIdolName(localStorage.getItem('kkobi_idol_name') || 'IDOL');
+      setSavedScript(parsedScript);
+      setIsReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams, router]);
 
   useEffect(() => {

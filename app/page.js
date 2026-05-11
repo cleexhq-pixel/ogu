@@ -3,15 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { getSessionsRemaining } from "@/lib/freeLimit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const DAILY_LIMIT = 3;
-const FREE_DATE_KEY = "kkobi_m90s_free_date";
-const FREE_COUNT_KEY = "kkobi_m90s_free_count";
 const LANG_KEY = "ogu_lang";
 
 const LANGS = [
@@ -190,26 +188,53 @@ const SCENARIOS = [
   { emoji: "💗", id: "confession" },
 ];
 
-function getRemainingCount() {
-  if (typeof window === "undefined") return DAILY_LIMIT;
-  const today = new Date().toISOString().slice(0, 10);
-  const lastDate = localStorage.getItem(FREE_DATE_KEY);
-  if (lastDate !== today) return DAILY_LIMIT;
-  const count = parseInt(localStorage.getItem(FREE_COUNT_KEY) || "0");
-  return Math.max(0, DAILY_LIMIT - count);
-}
-
 export default function HomePage() {
-  const [remaining, setRemaining] = useState(3);
+  const [user, setUser] = useState(null);
+  const [isPaid, setIsPaid] = useState(false);
+  const [sessionsLeft, setSessionsLeft] = useState(null);
   const [lang, setLang] = useState("en");
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
 
   useEffect(() => {
-    setRemaining(getRemainingCount());
     const saved = localStorage.getItem(LANG_KEY) || "en";
     setLang(saved);
+
+    const runPaidRead = () => {
+      const tier = localStorage.getItem("kkobi_pass_tier");
+      const expires = localStorage.getItem("kkobi_pass_expires");
+      return (
+        tier === "prep_pass" &&
+        expires &&
+        new Date(expires) > new Date()
+      );
+    };
+
+    const refreshDerived = async (maybeUser) => {
+      const paid = runPaidRead();
+      setIsPaid(paid);
+      setSessionsLeft(
+        getSessionsRemaining(maybeUser?.id ?? null, paid),
+      );
+    };
+
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      await refreshDerived(currentUser);
+    };
+    init();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      void refreshDerived(currentUser);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -305,17 +330,6 @@ export default function HomePage() {
         </span>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* 한국어 학습 링크 */}
-          <Link href="/first-line" style={{
-            fontSize: 11, color: "#5C5A62",
-            textDecoration: "none",
-            padding: "6px 10px",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 9999,
-          }}>
-            {t.nav_learn}
-          </Link>
-
           {/* 언어 선택 버튼 */}
           <div style={{ position: "relative" }}>
             <button
@@ -368,6 +382,25 @@ export default function HomePage() {
               </div>
             )}
           </div>
+
+          {user && (
+            <div
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "#fff",
+              }}
+            >
+              {user.email?.[0]?.toUpperCase() ?? "U"}
+            </div>
+          )}
         </div>
       </div>
 
@@ -455,13 +488,34 @@ export default function HomePage() {
           </div>
         </Link>
 
-        <p style={{
-          textAlign: "center", fontSize: 11,
-          color: "#5C5A62", marginBottom: 48,
-        }}>
-          {typeof t.free_badge === "function"
-            ? t.free_badge(remaining)
-            : t.free_note}
+        <p
+          style={{
+            fontSize: "12px",
+            color: "rgba(255,255,255,0.3)",
+            textAlign: "center",
+            marginTop: "8px",
+            marginBottom: 48,
+          }}
+        >
+          {user ? (
+            <>
+              Free ·{" "}
+              <span style={{ color: "#FF8AA9" }}>
+                {isPaid
+                  ? "Unlimited"
+                  : sessionsLeft === null
+                    ? "..."
+                    : `${sessionsLeft} session${sessionsLeft !== 1 ? "s" : ""} left today`}
+              </span>
+            </>
+          ) : (
+            <>
+              Free · 1 session today &nbsp;·&nbsp;
+              <span style={{ color: "rgba(255,255,255,0.5)" }}>
+                Sign in for 3/day
+              </span>
+            </>
+          )}
         </p>
       </div>
 
@@ -544,7 +598,7 @@ export default function HomePage() {
 
       {/* 하단 섹션 */}
       <div style={{ padding: "0 22px 48px", position: "relative", zIndex: 1 }}>
-        {/* 기존 꼬비 학습 링크 */}
+        {user && (
         <div style={{
           background: "#131314", borderRadius: 14,
           padding: "14px 16px",
@@ -571,6 +625,7 @@ export default function HomePage() {
             {t.learn_btn}
           </Link>
         </div>
+        )}
 
         {/* 실시간 접속자 수 */}
         {activeCount > 0 && (

@@ -2,10 +2,9 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { getSessionsRemaining, DAILY_LIMIT } from "@/lib/freeLimit";
+import { getSupabase } from "@/lib/supabase";
 
-const DAILY_LIMIT = 3;
-const FREE_DATE_KEY = "kkobi_m90s_free_date";
-const FREE_COUNT_KEY = "kkobi_m90s_free_count";
 const LANG_KEY = "ogu_lang";
 const VOICE_KEY = "kkobi_voice_gender";
 
@@ -114,52 +113,112 @@ const SCENARIO_IDS = [
 
 const EMOJIS = ["💝", "🎂", "🎮", "🎤", "💬", "💗"];
 
-function getRemainingCount() {
-  if (typeof window === "undefined") return DAILY_LIMIT;
-  const today = new Date().toISOString().slice(0, 10);
-  const lastDate = localStorage.getItem(FREE_DATE_KEY);
-  if (lastDate !== today) return DAILY_LIMIT;
-  const count = parseInt(localStorage.getItem(FREE_COUNT_KEY) || "0");
-  return Math.max(0, DAILY_LIMIT - count);
-}
-
-function markOneUsed() {
-  if (typeof window === "undefined") return;
-  const today = new Date().toISOString().slice(0, 10);
-  localStorage.setItem(FREE_DATE_KEY, today);
-  const count = parseInt(localStorage.getItem(FREE_COUNT_KEY) || "0");
-  localStorage.setItem(FREE_COUNT_KEY, String(count + 1));
-}
-
 function ScenarioPageInner() {
   const searchParams = useSearchParams();
   const preSelected = searchParams.get("scenario");
 
   const [selected, setSelected] = useState(preSelected || null);
   const [lang, setLang] = useState("en");
-  const [remaining, setRemaining] = useState(DAILY_LIMIT);
+  const [user, setUser] = useState(null);
+  const [isPaid, setIsPaid] = useState(false);
+  const [sessionsLeft, setSessionsLeft] = useState(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [voiceGender, setVoiceGender] = useState("FEMALE");
   const [idolName, setIdolName] = useState("");
 
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_KEY) || "en";
     setLang(savedLang);
-    setRemaining(getRemainingCount());
     const savedGender = localStorage.getItem(VOICE_KEY) || "FEMALE";
     setVoiceGender(savedGender);
     const savedIdol = localStorage.getItem("kkobi_idol_name");
     if (savedIdol && savedIdol !== "IDOL") {
       setIdolName(savedIdol);
     }
+
+    const supabase = getSupabase();
+
+    const readPaid = () => {
+      const tier = localStorage.getItem("kkobi_pass_tier");
+      const expires = localStorage.getItem("kkobi_pass_expires");
+      return Boolean(
+        tier === "prep_pass" &&
+          expires &&
+          new Date(expires) > new Date(),
+      );
+    };
+
+    function applyDerived(maybeUser) {
+      const paid = readPaid();
+      setIsPaid(paid);
+      setSessionsLeft(getSessionsRemaining(maybeUser?.id ?? null, paid));
+    }
+
+    async function boot() {
+      let currentUser = null;
+      if (supabase) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        currentUser = session?.user ?? null;
+        setUser(currentUser);
+      }
+      applyDerived(currentUser);
+    }
+    boot();
+
+    let authSubscription = null;
+    if (supabase) {
+      const { data } = supabase.auth.onAuthStateChange((_e, session) => {
+        const u = session?.user ?? null;
+        setUser(u);
+        applyDerived(u);
+      });
+      authSubscription = data?.subscription ?? null;
+    }
+
+    return () => authSubscription?.unsubscribe?.();
   }, []);
 
   const t = COPY[lang] || COPY.en;
   const selectedIndex = SCENARIO_IDS.indexOf(selected);
   const selectedLabel = selectedIndex >= 0 ? t.scenarios[selectedIndex] : null;
 
+  function isLocked(index) {
+    if (user) return false;
+    return index !== 0;
+  }
+
+  async function continueWithGoogle() {
+    if (typeof window === "undefined") return;
+    const supabase = getSupabase();
+    if (!supabase) return;
+    const next = encodeURIComponent("/my-90-seconds");
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${next}`,
+      },
+    });
+  }
+
   function handleStart() {
-    if (!selected || remaining <= 0) return;
-    markOneUsed();
+    if (!selected) return;
+    const idx = SCENARIO_IDS.indexOf(selected);
+    if (idx < 0) return;
+
+    if (isLocked(idx)) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (!isPaid && sessionsLeft !== null && sessionsLeft <= 0) {
+      window.location.href = `/my-90-seconds/paywall?scenario=${encodeURIComponent(
+        selected,
+      )}`;
+      return;
+    }
+
     if (typeof window !== "undefined") {
       localStorage.setItem(VOICE_KEY, voiceGender);
       const finalIdolName = idolName.trim().toUpperCase() || "IDOL";
@@ -167,6 +226,9 @@ function ScenarioPageInner() {
     }
     window.location.href = `/my-90-seconds/prep?scenario=${selected}`;
   }
+
+  const maxDots =
+    !isPaid && user ? DAILY_LIMIT.member : !isPaid && !user ? DAILY_LIMIT.guest : 0;
 
   return (
     <div style={{
@@ -239,18 +301,26 @@ function ScenarioPageInner() {
       <div style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
-        gap: 8, marginBottom: 24,
+        gap: 8, marginBottom: 8,
       }}>
         {SCENARIO_IDS.map((id, i) => (
           <button
             key={id}
-            onClick={() => setSelected(id)}
+            type="button"
+            onClick={() => {
+              if (isLocked(i)) {
+                setShowLoginModal(true);
+                return;
+              }
+              setSelected(id);
+            }}
             style={{
               background: selected === id ? "#221e23" : "#1A191B",
               borderRadius: 14, padding: "14px 12px",
               border: "none", cursor: "pointer",
               textAlign: "center", position: "relative",
               overflow: "hidden", transition: "background 0.15s",
+              opacity: isLocked(i) ? 0.38 : 1,
             }}
           >
             {selected === id && (
@@ -274,9 +344,105 @@ function ScenarioPageInner() {
             }}>
               {t.scenarios[i]}
             </p>
+            {!user && i === 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: "6px",
+                  right: "6px",
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  background: "rgba(255,138,169,0.18)",
+                  color: "#FF8AA9",
+                  padding: "2px 6px",
+                  borderRadius: "99px",
+                }}
+              >
+                Free
+              </span>
+            )}
+            {isLocked(i) && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: "7px",
+                  right: "8px",
+                  fontSize: "11px",
+                  color: "rgba(255,255,255,0.2)",
+                }}
+              >
+                🔒
+              </span>
+            )}
           </button>
         ))}
       </div>
+
+      {!user && (
+        <div
+          style={{
+            margin: "8px 0 0",
+            background: "rgba(255,255,255,0.03)",
+            border: "0.5px solid rgba(255,255,255,0.07)",
+            borderRadius: "10px",
+            padding: "9px 12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "8px",
+          }}
+        >
+          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.32)" }}>
+            Sign in to unlock all scenarios — free
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowLoginModal(true)}
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "#FF8AA9",
+              background: "none",
+              border: "none",
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+            }}
+          >
+            Sign in →
+          </button>
+        </div>
+      )}
+
+      {/* 남은 횟수 도트 */}
+      {maxDots > 0 && sessionsLeft !== null && Number.isFinite(sessionsLeft) && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            margin: "14px 0 0",
+          }}
+        >
+          {Array.from({ length: maxDots }, (_, dot) => (
+            <div
+              key={dot}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background:
+                  dot < sessionsLeft
+                    ? "linear-gradient(135deg, #FF8AA9, #FF719B)"
+                    : "#2C2C2D",
+              }}
+            />
+          ))}
+          <span style={{ fontSize: 11, color: "#5C5A62", marginLeft: 4 }}>
+            {sessionsLeft} left today
+          </span>
+        </div>
+      )}
 
       {/* 구분선 */}
       <div style={{
@@ -284,8 +450,6 @@ function ScenarioPageInner() {
         background: "rgba(255,255,255,0.06)",
         margin: "16px 0",
       }} />
-
-      {/* 목소리 선택 */}
       <div style={{
         background: "#1A191B",
         borderRadius: 14,
@@ -435,7 +599,7 @@ function ScenarioPageInner() {
       </div>
 
       {/* CTA 영역 */}
-      {remaining <= 0 ? (
+      {!isPaid && sessionsLeft !== null && sessionsLeft <= 0 ? (
         <div style={{
           background: "#1A191B",
           borderRadius: 14, padding: "18px 16px",
@@ -500,16 +664,141 @@ function ScenarioPageInner() {
             </div>
           </button>
 
-          {/* 횟수 한 줄만 */}
-          <p style={{
-            textAlign: "center", fontSize: 11,
-            color: "#5C5A62", margin: 0,
-          }}>
-            {typeof t.free_badge === "function"
-              ? t.free_badge(remaining)
-              : `Free · ${remaining} sessions left today`}
+          {/* 횟수 표시 */}
+          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", textAlign: "center", marginTop: "8px" }}>
+            {user ? (
+              <>
+                Free ·{" "}
+                <span style={{ color: "#FF8AA9" }}>
+                  {isPaid
+                    ? "Unlimited"
+                    : sessionsLeft === null
+                      ? "…"
+                      : `${sessionsLeft} session${sessionsLeft !== 1 ? "s" : ""} left today`}
+                </span>
+              </>
+            ) : (
+              "Free · 1 session today"
+            )}
           </p>
         </>
+      )}
+
+      {showLoginModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: "0 24px",
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            style={{
+              background: "#1A191B",
+              borderRadius: "20px",
+              padding: "28px 24px",
+              width: "100%",
+              maxWidth: "340px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: "36px", marginBottom: "12px" }}>🔒</div>
+            <p
+              style={{
+                fontSize: "18px",
+                fontWeight: 700,
+                color: "#fff",
+                margin: "0 0 8px",
+              }}
+            >
+              Unlock all 5 scenarios
+            </p>
+            <p
+              style={{
+                fontSize: "13px",
+                color: "rgba(255,255,255,0.4)",
+                margin: "0 0 20px",
+                lineHeight: 1.6,
+              }}
+            >
+              Sign in to practice every fansign moment — free.
+            </p>
+
+            {[
+              "All 5 scenarios unlocked",
+              "3 sessions per day — free",
+              "Progress & idol name saved",
+              "Korean lessons access",
+            ].map((perk) => (
+              <div
+                key={perk}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "13px",
+                  color: "rgba(255,255,255,0.6)",
+                  textAlign: "left",
+                  marginBottom: "8px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    background: "#FF8AA9",
+                    flexShrink: 0,
+                  }}
+                />
+                {perk}
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => void continueWithGoogle()}
+              style={{
+                width: "100%",
+                background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
+                border: "none",
+                borderRadius: "99px",
+                padding: "14px",
+                fontSize: "14px",
+                fontWeight: 700,
+                color: "#fff",
+                cursor: "pointer",
+                marginTop: "8px",
+              }}
+            >
+              Continue with Google
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowLoginModal(false)}
+              style={{
+                width: "100%",
+                background: "none",
+                border: "0.5px solid rgba(255,255,255,0.15)",
+                borderRadius: "99px",
+                padding: "12px",
+                fontSize: "13px",
+                color: "rgba(255,255,255,0.4)",
+                cursor: "pointer",
+                marginTop: "8px",
+              }}
+            >
+              Maybe later
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

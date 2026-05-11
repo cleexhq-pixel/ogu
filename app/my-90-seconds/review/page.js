@@ -2,6 +2,8 @@
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { getSupabase } from '@/lib/supabase';
+import { hasReachedDailyLimit } from '@/lib/freeLimit';
 
 const FALLBACK_REVIEW = {
   best_moment: {
@@ -45,6 +47,7 @@ function ReviewContent() {
   });
   const [idolName, setIdolName] = useState('IDOL');
   const [continueEnabled, setContinueEnabled] = useState(false);
+  const [user, setUser] = useState(null);
 
   const fetchReview = useCallback(
     async (moments, gender, statPayload, nameForPrompt) => {
@@ -120,6 +123,18 @@ function ReviewContent() {
   }, [scenario, fetchReview]);
 
   useEffect(() => {
+    const loadUser = async () => {
+      const supabase = getSupabase();
+      if (!supabase) return;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+    };
+    void loadUser();
+  }, []);
+
+  useEffect(() => {
     if (stage !== 'entry') return undefined;
     const t = window.setTimeout(() => setContinueEnabled(true), 3000);
     return () => window.clearTimeout(t);
@@ -127,26 +142,30 @@ function ReviewContent() {
 
   const handleTryAgain = () => {
     if (typeof window === 'undefined') return;
+    void (async () => {
+      const supabase = getSupabase();
+      const sess = supabase
+        ? (await supabase.auth.getSession()).data.session
+        : null;
+      const uid = sess?.user?.id ?? null;
 
-    const today = new Date().toISOString().split('T')[0];
-    const lastDate = localStorage.getItem('kkobi_m90s_free_date');
-    const stored = parseInt(
-      localStorage.getItem('kkobi_m90s_free_count') || '0',
-      10,
-    );
-    const usesToday = lastDate === today ? stored : 0;
+      const tier = localStorage.getItem('kkobi_pass_tier');
+      const expires = localStorage.getItem('kkobi_pass_expires');
+      const paid =
+        tier === 'prep_pass' &&
+        expires &&
+        new Date(expires) > new Date();
 
-    if (usesToday >= 1) {
-      router.push(
-        `/my-90-seconds/paywall?scenario=${encodeURIComponent(scenario)}`,
-      );
-    } else {
-      localStorage.setItem('kkobi_m90s_free_date', today);
-      localStorage.setItem('kkobi_m90s_free_count', String(usesToday + 1));
-      router.push(
-        `/my-90-seconds/call?scenario=${encodeURIComponent(scenario)}`,
-      );
-    }
+      if (hasReachedDailyLimit(uid, paid)) {
+        router.push(
+          `/my-90-seconds/paywall?scenario=${encodeURIComponent(scenario)}`,
+        );
+      } else {
+        router.push(
+          `/my-90-seconds/prep?scenario=${encodeURIComponent(scenario)}`,
+        );
+      }
+    })();
   };
 
   const handleShare = () => {
@@ -750,40 +769,74 @@ function ReviewContent() {
         Back to scenarios
       </button>
 
-      <div
-        style={{
-          textAlign: 'center',
-          fontSize: '11px',
-          color: 'rgba(255,255,255,0.4)',
-          lineHeight: 1.5,
-        }}
-      >
-        Free practice resets in 24h.
-        <br />
-        <span
-          role="link"
-          tabIndex={0}
-          onClick={() =>
-            router.push(
-              `/my-90-seconds/paywall?scenario=${encodeURIComponent(scenario)}`,
-            )
-          }
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              router.push(
-                `/my-90-seconds/paywall?scenario=${encodeURIComponent(scenario)}`,
-              );
-            }
+      <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
+        {!user && (
+          <div style={{ marginBottom: '10px' }}>
+            <p
+              style={{
+                fontSize: '12px',
+                color: 'rgba(255,255,255,0.3)',
+                margin: '0 0 4px',
+              }}
+            >
+              Want 3 sessions a day?
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void (async () => {
+                  const supabase = getSupabase();
+                  if (!supabase || typeof window === 'undefined') return;
+                  const next = encodeURIComponent(
+                    `${window.location.pathname}${window.location.search}`,
+                  );
+                  await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                      redirectTo: `${window.location.origin}/auth/callback?next=${next}`,
+                    },
+                  });
+                })();
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#FF8AA9',
+                cursor: 'pointer',
+              }}
+            >
+              Sign in — it's free →
+            </button>
+          </div>
+        )}
+
+        <p
+          style={{
+            fontSize: '12px',
+            color: 'rgba(255,255,255,0.22)',
+            margin: '0 0 4px',
+          }}
+        >
+          Free practice resets in 24h.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = '/my-90-seconds/paywall';
           }}
           style={{
+            background: 'none',
+            border: 'none',
+            fontSize: '12px',
+            fontWeight: 600,
             color: '#FFD84D',
-            fontWeight: 700,
             cursor: 'pointer',
-            textDecoration: 'none',
           }}
         >
           Get Prep Pass for unlimited →
-        </span>
+        </button>
       </div>
     </div>
   );

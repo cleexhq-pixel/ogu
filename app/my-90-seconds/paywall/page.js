@@ -1,7 +1,8 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { getSupabase } from '@/lib/supabase';
 
 const GUMROAD_URL = 'https://cleexhq.gumroad.com/l/fansign-prep-pass';
 
@@ -10,6 +11,20 @@ function PaywallContent() {
   const searchParams = useSearchParams();
   const scenario = searchParams.get('scenario') || 'compliment';
   const gumroadWithContext = `${GUMROAD_URL}?scenario=${encodeURIComponent(scenario)}`;
+
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const run = async () => {
+      const supabase = getSupabase();
+      if (!supabase) return;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+    };
+    void run();
+  }, []);
 
   return (
     <div
@@ -74,20 +89,84 @@ function PaywallContent() {
         real 90 seconds
       </div>
 
-      <div
+      <p
         style={{
-          fontSize: '13px',
-          color: 'rgba(255,255,255,0.55)',
+          fontSize: '14px',
+          color: 'rgba(255,255,255,0.4)',
           textAlign: 'center',
           lineHeight: 1.6,
+          whiteSpace: 'pre-line',
           marginBottom: '36px',
-          padding: '0 20px',
         }}
       >
-        You&apos;ve used today&apos;s free practice.
-        <br />
-        Get unlimited access before your fansign.
-      </div>
+        {user
+          ? "You've used today's 3 free sessions.\nGet unlimited access before your fansign."
+          : "You've used today's free session.\nSign in for 3/day free — or go unlimited."}
+      </p>
+
+      {!user && (
+        <>
+          <div
+            style={{
+              margin: '16px 0',
+              background: 'rgba(255,255,255,0.04)',
+              border: '0.5px solid rgba(255,255,255,0.1)',
+              borderRadius: '14px',
+              padding: '16px',
+              textAlign: 'center',
+            }}
+          >
+            <p
+              style={{
+                fontSize: '13px',
+                color: 'rgba(255,255,255,0.5)',
+                margin: '0 0 12px',
+              }}
+            >
+              Get 3 sessions/day — completely free
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void (async () => {
+                  const supabase = getSupabase();
+                  if (!supabase || typeof window === 'undefined') return;
+                  const next = encodeURIComponent('/my-90-seconds');
+                  await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                      redirectTo: `${window.location.origin}/auth/callback?next=${next}`,
+                    },
+                  });
+                })();
+              }}
+              style={{
+                width: '100%',
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                borderRadius: '99px',
+                padding: '13px',
+                fontSize: '14px',
+                fontWeight: 700,
+                color: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              Continue with Google
+            </button>
+          </div>
+          <p
+            style={{
+              textAlign: 'center',
+              fontSize: '12px',
+              color: 'rgba(255,255,255,0.2)',
+              margin: '0 0 12px',
+            }}
+          >
+            or
+          </p>
+        </>
+      )}
 
       <div
         role="button"
@@ -254,26 +333,18 @@ function PaywallContent() {
         </button>
       </div>
 
-      <div
+      <p
         style={{
-          marginTop: '20px',
+          fontSize: '12px',
+          color: 'rgba(255,255,255,0.22)',
           textAlign: 'center',
+          marginTop: '12px',
         }}
       >
-        <button
-          type="button"
-          onClick={() => router.push('/my-90-seconds')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'rgba(255,255,255,0.35)',
-            fontSize: '12px',
-            cursor: 'pointer',
-          }}
-        >
-          Come back tomorrow for 1 free try
-        </button>
-      </div>
+        {user
+          ? 'Come back tomorrow for 3 free tries'
+          : 'Come back tomorrow for 1 free try'}
+      </p>
     </div>
   );
 }
