@@ -1,10 +1,148 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { normalizeLang } from '@/app/lib/i18n';
 
 const GUMROAD_URL = 'https://cleexhq.gumroad.com/l/fansign-prep-pass';
+
+const PAYWALL_COPY = {
+  en: {
+    back: '← Back',
+    titleLine1: "Don't waste your",
+    titleLine2: 'real 90 seconds',
+    subGuest:
+      "You've used today's free session.\nSign in for 3/day free — or go unlimited.",
+    subSignedIn:
+      "You've used today's 3 free sessions.\nGet unlimited access before your fansign.",
+    freeStripe: 'Get 3 sessions/day — completely free',
+    continueGoogle: 'Continue with Google',
+    or: 'or',
+    popular: 'Most Popular',
+    product: 'Fansign Prep Pass',
+    priceSub: '7 days · unlimited practice',
+    perks: [
+      'Unlimited 90-second simulations',
+      'All 5 scenarios unlocked',
+      'AI coach feedback after every call',
+      "Practice until you're ready",
+    ],
+    cta: 'Get Prep Pass →',
+    redeemLead: 'Already have a license key?',
+    redeemAction: 'Enter code here →',
+    footerGuest: 'Come back tomorrow for 1 free try',
+    footerSignedIn: 'Come back tomorrow for 3 free tries',
+    fallbackLoading: 'Loading...',
+  },
+  ko: {
+    back: '← 뒤로',
+    titleLine1: '본 팬싸 90초를',
+    titleLine2: '허비하지 마세요',
+    subGuest:
+      '오늘 무료 1번 썼어요.\n로그인하면 매일 3번 · 아니면 무제한 패스!',
+    subSignedIn: '오늘 무료 3번 다 썼어요.\n진짜 팬싸 전에 무제한 연습 가보자.',
+    freeStripe: '로그인만 하면 하루 3판 무료',
+    continueGoogle: 'Google로 계속하기',
+    or: '또는',
+    popular: '인기 픽',
+    product: '팬싸 준비 패스',
+    priceSub: '7일 · 무제한 연습',
+    perks: [
+      '90초 시뮬 무제한',
+      '시나리오 5종 전부 오픈',
+      '통화 후마다 AI 코칭 피드백',
+      '본 무대 전까지 마음 놓고 연습',
+    ],
+    cta: '패스 받기 →',
+    redeemLead: '이미 라이선스 키 있어요?',
+    redeemAction: '코드 입력은 여기 →',
+    footerGuest: '내일 또 무료 1번 돌려요',
+    footerSignedIn: '내일 무료 3판 또 올 거예요',
+    fallbackLoading: '불러오는 중...',
+  },
+  id: {
+    back: '← Kembali',
+    titleLine1: 'Jangan buang',
+    titleLine2: '90 detik aslimu',
+    subGuest:
+      'Sesi gratis hari ini habis.\nMasuk dapat 3/hari gratis — atau paket tanpa batas.',
+    subSignedIn:
+      '3 sesi gratis hari ini habis.\nAkses tanpa batas sebelum fansign sungguhan.',
+    freeStripe: '3 sesi/hari — gratis total',
+    continueGoogle: 'Lanjut dengan Google',
+    or: 'atau',
+    popular: 'Paling laris',
+    product: 'Fansign Prep Pass',
+    priceSub: '7 hari · latihan tanpa batas',
+    perks: [
+      'Simulasi 90 detik tanpa batas',
+      'Semua 5 skenario terbuka',
+      'Feedback pelatih AI tiap panggilan',
+      'Latihan sampai benar-benar pede',
+    ],
+    cta: 'Ambil Prep Pass →',
+    redeemLead: 'Sudah punya license key?',
+    redeemAction: 'Masukkan kode di sini →',
+    footerGuest: 'Besok ada 1 percobaan gratis lagi',
+    footerSignedIn: 'Besok ada 3 sesi gratis lagi',
+    fallbackLoading: 'Memuat…',
+  },
+  fr: {
+    back: '← Retour',
+    titleLine1: 'Ne gâche pas',
+    titleLine2: 'tes 90 vraies secondes',
+    subGuest:
+      "La session gratuite du jour est finie.\nConnecte-toi pour 3/jour — ou passe illimité.",
+    subSignedIn:
+      "Tes 3 essais gratuits du jour sont finis.\nPasse en illimité avant le vrai fansign.",
+    freeStripe: '3 sessions/jour — totalement gratuites',
+    continueGoogle: 'Continuer avec Google',
+    or: 'ou',
+    popular: 'Le plus choisi',
+    product: 'Fansign Prep Pass',
+    priceSub: '7 jours · entraînement illimité',
+    perks: [
+      'Simulations 90 s illimitées',
+      'Les 5 scénarios débloqués',
+      'Retour coach IA après chaque appel',
+      "S'entraîner jusqu'à être prêt·e",
+    ],
+    cta: 'Prendre le Prep Pass →',
+    redeemLead: 'Tu as déjà une clé de licence ?',
+    redeemAction: 'Entrer le code ici →',
+    footerGuest: 'Demain, 1 essai gratuit de plus',
+    footerSignedIn: 'Demain, 3 essais gratuits de plus',
+    fallbackLoading: 'Chargement…',
+  },
+  pt: {
+    back: '← Voltar',
+    titleLine1: 'Não desperdice',
+    titleLine2: 'seus 90 segundos de verdade',
+    subGuest:
+      'A sessão grátis de hoje acabou.\nEntre para 3/dia grátis — ou vá ilimitado.',
+    subSignedIn:
+      'As 3 sessões grátis de hoje acabaram.\nPratique ilimitado antes do fansign real.',
+    freeStripe: '3 sessões/dia — totalmente grátis',
+    continueGoogle: 'Continuar com Google',
+    or: 'ou',
+    popular: 'Mais popular',
+    product: 'Fansign Prep Pass',
+    priceSub: '7 dias · prática ilimitada',
+    perks: [
+      'Simulações de 90 s ilimitadas',
+      'Os 5 cenários liberados',
+      'Feedback do coach IA após cada call',
+      'Treine até sentir confiança',
+    ],
+    cta: 'Pegar Prep Pass →',
+    redeemLead: 'Já tem uma chave de licença?',
+    redeemAction: 'Digite o código aqui →',
+    footerGuest: 'Amanhã tem mais 1 tentativa grátis',
+    footerSignedIn: 'Amanhã voltam 3 sessões grátis',
+    fallbackLoading: 'Carregando…',
+  },
+};
 
 function PaywallContent() {
   const router = useRouter();
@@ -13,6 +151,16 @@ function PaywallContent() {
   const gumroadWithContext = `${GUMROAD_URL}?scenario=${encodeURIComponent(scenario)}`;
 
   const [user, setUser] = useState(null);
+  const [uiLang, setUiLang] = useState('en');
+
+  useEffect(() => {
+    setUiLang(normalizeLang(localStorage.getItem('ogu_lang') || 'en'));
+  }, []);
+
+  const t = useMemo(() => {
+    const k = normalizeLang(uiLang);
+    return PAYWALL_COPY[k] || PAYWALL_COPY.en;
+  }, [uiLang]);
 
   useEffect(() => {
     const run = async () => {
@@ -53,7 +201,7 @@ function PaywallContent() {
           gap: '6px',
         }}
       >
-        ← Back
+        {t.back}
       </button>
 
       <div
@@ -84,9 +232,9 @@ function PaywallContent() {
           marginBottom: '12px',
         }}
       >
-        Don&apos;t waste your
+        {t.titleLine1}
         <br />
-        real 90 seconds
+        {t.titleLine2}
       </div>
 
       <p
@@ -99,9 +247,7 @@ function PaywallContent() {
           marginBottom: '36px',
         }}
       >
-        {user
-          ? "You've used today's 3 free sessions.\nGet unlimited access before your fansign."
-          : "You've used today's free session.\nSign in for 3/day free — or go unlimited."}
+        {user ? t.subSignedIn : t.subGuest}
       </p>
 
       {!user && (
@@ -123,7 +269,7 @@ function PaywallContent() {
                 margin: '0 0 12px',
               }}
             >
-              Get 3 sessions/day — completely free
+              {t.freeStripe}
             </p>
             <button
               type="button"
@@ -152,7 +298,7 @@ function PaywallContent() {
                 cursor: 'pointer',
               }}
             >
-              Continue with Google
+              {t.continueGoogle}
             </button>
           </div>
           <p
@@ -163,7 +309,7 @@ function PaywallContent() {
               margin: '0 0 12px',
             }}
           >
-            or
+            {t.or}
           </p>
         </>
       )}
@@ -205,7 +351,7 @@ function PaywallContent() {
             borderRadius: '9999px',
           }}
         >
-          Most Popular
+          {t.popular}
         </div>
 
         <div
@@ -218,7 +364,7 @@ function PaywallContent() {
             marginBottom: '8px',
           }}
         >
-          Fansign Prep Pass
+          {t.product}
         </div>
 
         <div
@@ -240,16 +386,11 @@ function PaywallContent() {
             marginBottom: '20px',
           }}
         >
-          7 days · unlimited practice
+          {t.priceSub}
         </div>
 
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 20px' }}>
-          {[
-            'Unlimited 90-second simulations',
-            'All 5 scenarios unlocked',
-            'AI coach feedback after every call',
-            "Practice until you're ready",
-          ].map((item, i) => (
+          {t.perks.map((item, i) => (
             <li
               key={i}
               style={{
@@ -295,7 +436,7 @@ function PaywallContent() {
             cursor: 'pointer',
           }}
         >
-          Get Prep Pass →
+          {t.cta}
         </button>
       </div>
 
@@ -314,7 +455,7 @@ function PaywallContent() {
             marginBottom: '10px',
           }}
         >
-          Already have a license key?
+          {t.redeemLead}
         </div>
         <button
           type="button"
@@ -329,7 +470,7 @@ function PaywallContent() {
             textDecoration: 'underline',
           }}
         >
-          Enter code here →
+          {t.redeemAction}
         </button>
       </div>
 
@@ -341,9 +482,7 @@ function PaywallContent() {
           marginTop: '12px',
         }}
       >
-        {user
-          ? 'Come back tomorrow for 3 free tries'
-          : 'Come back tomorrow for 1 free try'}
+        {user ? t.footerSignedIn : t.footerGuest}
       </p>
     </div>
   );

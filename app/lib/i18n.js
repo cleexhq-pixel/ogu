@@ -1,9 +1,10 @@
-/** @typedef {'en'|'id'|'fr'|'pt'} UILang */
+/** @typedef {'en'|'ko'|'id'|'fr'|'pt'} UILang */
 
 import { JOURNEY_UI } from "./journey-ui-strings";
 import { FL5_STR } from "./fl5-strings";
+import { STR_KO_CORE } from "./i18n-str-ko";
 
-export const LANG_CODES = /** @type {const} */ (["en", "id", "fr", "pt"]);
+export const LANG_CODES = /** @type {const} */ (["en", "ko", "id", "fr", "pt"]);
 export const OGU_LANG_KEY = "ogu_lang";
 
 /**
@@ -12,7 +13,7 @@ export const OGU_LANG_KEY = "ogu_lang";
  */
 export function normalizeLang(code) {
   const c = String(code || "").toLowerCase();
-  if (c === "ko" || c === "kr") return "en";
+  if (c === "kr") return "ko";
   if (c === "pt-br" || c === "pt_br") return "pt";
   return /** @type {UILang} */ (LANG_CODES.includes(c) ? c : "en");
 }
@@ -31,7 +32,7 @@ export function isValidLang(code) {
  */
 export function resolveLangFromUrlAndStorage(urlLang, storedLang) {
   if (isValidLang(urlLang)) return normalizeLang(urlLang);
-  if (String(storedLang || "").toLowerCase() === "ko") return "en";
+  if (String(storedLang || "").toLowerCase() === "kr") return "ko";
   if (isValidLang(storedLang)) return normalizeLang(storedLang);
   return "en";
 }
@@ -194,6 +195,11 @@ const STR = {
     fl_submitStt: "Submit",
     fl_retryMicPreview: "🎙 Try again",
     fl_sttEmptyHint: "Tap “Try again” to speak once more"
+  },
+  ko: {
+    ...FL5_STR.ko,
+    ...JOURNEY_UI.ko,
+    ...STR_KO_CORE,
   },
   id: {
     ...FL5_STR.id,

@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 
+import { normalizeLang } from '@/app/lib/i18n';
+
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -32,6 +34,7 @@ const scenarioContext = {
   game: 'playing a fun game with idol',
   request: 'asking idol for a special action',
   ask: 'asking a meaningful question',
+  question: 'asking a meaningful question',
   confession: 'confessing love and gratitude',
 };
 
@@ -45,7 +48,10 @@ export async function POST(req) {
       completedLines,
       totalLines,
       idolName: idolNameRaw,
+      lang: langRaw,
     } = body || {};
+
+    const lang = normalizeLang(typeof langRaw === 'string' ? langRaw : 'en');
 
     const trimmedIdol =
       typeof idolNameRaw === 'string' ? idolNameRaw.trim() : '';
@@ -62,7 +68,11 @@ export async function POST(req) {
     const scenarioLine =
       scenarioContext[scenarioKey] || String(scenario || 'practice session');
 
-    const prompt = `You are an AI coach helping international K-pop fans practice for fansign video calls.
+    const uiLangInstructions =
+      `사용자 인터페이스 언어: ${lang}\n` +
+      `피드백, 코멘트, 설명은 반드시 ${lang} 언어로 출력하세요.\n\n`;
+
+    const prompt = `${uiLangInstructions}You are an AI coach helping international K-pop fans practice for fansign video calls.
 
 Scenario: ${scenarioLine}
 Idol: ${displayIdolName}
@@ -74,28 +84,28 @@ Generate a review JSON in this exact format:
 {
   "best_moment": {
     "you_said_korean": "Korean line user delivered well",
-    "you_said_translation": "English translation",
-    "you_said_romanization": "Romanization of Korean (e.g. 'Annyeonghaseyo')",
-    "idol_replied_korean": "Idol's natural Korean reaction",
-    "idol_replied_translation": "English translation",
+    "you_said_translation": "Short meaning in UI language (${lang}); not Korean unless UI is Korean",
+    "you_said_romanization": "Romanization of Korean (e.g. Annyeonghaseyo)",
+    "idol_replied_korean": "Idol natural Korean reaction",
+    "idol_replied_translation": "Short meaning in UI language (${lang})",
     "idol_replied_romanization": "Romanization of Korean reaction",
     "moment_type": "core_message" | "first_korean" | "name_remembered"
   },
   "missed_moment": {
     "korean": "Korean line that needed practice",
-    "translation": "English translation",
+    "translation": "Short meaning in UI language (${lang})",
     "romanization": "Romanization of Korean",
-    "tip": "One short encouraging note about what to focus on for the real fansign moment (max 20 words, no mention of AI or technology)"
+    "tip": "One short encouraging note in UI language (${lang}), max ~20 words, no mention of AI or technology"
   },
-  "share_quote": "The most shareable moment as a single Korean phrase under 15 chars",
-  "share_quote_translation": "English translation of share quote",
+  "share_quote": "Most shareable moment as a single Korean phrase, under ~15 syllables",
+  "share_quote_translation": "Short meaning in UI language (${lang})",
   "share_quote_romanization": "Romanization of share quote"
 }
 
 Rules:
 - Use realistic, casual Korean fan-idol speech (반말+존댓말 mix)
 - Idol replies should be warm, short (under 10 syllables)
-- Tip should be encouraging, not critical, and focused on the real fansign moment—do not mention AI, apps, or technology in the tip text
+- Tip text must follow UI language (${lang}); do not mention AI, apps, or technology
 - If user did well (4+/5 lines), make best_moment about the core emotional message
 - If user struggled, make best_moment about their first Korean attempt
 - All Korean must be authentic, not literal translations

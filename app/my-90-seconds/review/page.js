@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { hasReachedDailyLimit } from '@/lib/freeLimit';
+import { normalizeLang } from '@/app/lib/i18n';
 
 const FALLBACK_REVIEW = {
   best_moment: {
@@ -52,6 +53,12 @@ function ReviewContent() {
   const fetchReview = useCallback(
     async (moments, gender, statPayload, nameForPrompt) => {
       try {
+        let lang = 'en';
+        if (typeof window !== 'undefined') {
+          lang = normalizeLang(
+            window.localStorage.getItem('ogu_lang') || 'en',
+          );
+        }
         const res = await fetch('/api/generate-review', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -62,6 +69,7 @@ function ReviewContent() {
             completedLines: statPayload.completedLines,
             totalLines: statPayload.totalLines,
             idolName: nameForPrompt ?? '',
+            lang,
           }),
         });
         const data = await res.json();

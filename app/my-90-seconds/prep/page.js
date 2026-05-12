@@ -129,6 +129,7 @@ import { useSearchParams } from "next/navigation";
 import scenarios from "../../../src/data/scenarios";
 import { generateScript } from "../../../src/lib/generateScript";
 import { useSpeechRecognition } from "../../../src/hooks/useSpeechRecognition";
+import { normalizeLang } from "../../lib/i18n";
 
 // 고정 템플릿 (API 호출 불필요)
 const LINE1 = {
@@ -236,7 +237,12 @@ function PrepPageInner() {
     if (!scenarioId) return;
 
     async function loadScript() {
-      const cacheKey = `kkobi_m90s_v3_${scenarioId}`;
+      const uiLang = normalizeLang(
+        typeof window !== "undefined"
+          ? localStorage.getItem(LANG_KEY) || "en"
+          : "en",
+      );
+      const cacheKey = `kkobi_m90s_v4_${scenarioId}_${uiLang}`;
 
       try {
         const cached = localStorage.getItem(cacheKey);
