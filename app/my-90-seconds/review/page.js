@@ -11,35 +11,120 @@ import { REVIEW_COPY } from './review-copy';
 
 const FANSIGN_DATE_KEY = 'kkobi_m90s_fansign_date';
 
-const FALLBACK_REVIEW = {
-  scores: {
+/** Same score shape when review API/network fails — copy is localized by UI lang */
+function getFallbackReview(lang) {
+  const L = normalizeLang(lang);
+  const scores = {
     communication: 4,
     korean_attempts: 4,
     conversation_flow: 3,
     time_used: 4,
     total: 3.8,
-  },
-  real_talk: '',
-  encouragement: 'Good job — keep practicing!',
-  best_moment: {
-    you_said_korean: '오빠를 정말 좋아해요',
-    you_said_translation: 'I really like you',
-    you_said_romanization: 'Oppareul jeongmal joahaeyo',
-    idol_replied_korean: '고마워요~ 너무 행복해요',
-    idol_replied_translation: "Thank you~ I'm so happy",
-    idol_replied_romanization: 'Gomawoyo~ neomu haengbokhaeyo',
-    moment_type: 'core_message',
-  },
-  missed_moment: {
-    korean: '다음에 또 만나요',
-    translation: "Let's meet again next time",
-    romanization: 'Daeume tto mannayo',
-    tip: 'Practice with confidence — your Korean is already understandable.',
-  },
-  share_quote: '고마워요~ 너무 행복해요',
-  share_quote_translation: "Thank you~ I'm so happy",
-  share_quote_romanization: 'Gomawoyo~ neomu haengbokhaeyo',
-};
+  };
+  const shareQuoteKo = '고마워요~ 너무 행복해요';
+  const shareQuoteRo = 'Gomawoyo~ neomu haengbokhaeyo';
+  /** Shared Hangul cue for fallback card */
+  const missedKo = '한 번 더 연습하면 상세 코칭을 받아요';
+  const missedRoman =
+    'Han beon deo yeonseuphamyeon sangse kochingeul badayo.';
+
+  const fallbacks = {
+    en: {
+      scores,
+      real_talk:
+        'We could not refresh your breakdown this round. Run one more rehearsal to unlock coach notes.',
+      encouragement:
+        'Practice complete. Try once more to get a detailed review.',
+      best_moment: null,
+      missed_moment: {
+        korean: missedKo,
+        translation:
+          'If you rehearse once more, we can unlock a fuller coaching recap.',
+        romanization: missedRoman,
+        tip: 'Hit Prep again—the next session usually pulls everything through.',
+      },
+      share_quote: shareQuoteKo,
+      share_quote_translation: "Thank you~ I'm so happy",
+      share_quote_romanization: shareQuoteRo,
+    },
+    ko: {
+      scores,
+      real_talk:
+        '이번엔 디테일 리뷰를 못 받았어요. 한 번 더 돌려보면 꽉 찬 코칭 줄게요.',
+      encouragement:
+        '연습 완료! 한 번 더 해보면 상세 코칭을 받을 수 있어요',
+      best_moment: null,
+      missed_moment: {
+        korean: missedKo,
+        translation: '조금 더 이어 가면 디테일한 피드백 받을 수 있어요!',
+        romanization: missedRoman,
+        tip: '같은 흐름으로 한 번만 더 들어오면 거의 다 받아져요 💪',
+      },
+      share_quote: shareQuoteKo,
+      share_quote_translation: '너무 고마워요~ 진짜 행복해요!',
+      share_quote_romanization: shareQuoteRo,
+    },
+    id: {
+      scores,
+      real_talk:
+        'Detail review kamu gagal kepanggil sekarang. Latihan lagi buat bisa dapet full coaching.',
+      encouragement:
+        'Latihan selesai. Coba sekali lagi untuk review lengkap.',
+      best_moment: null,
+      missed_moment: {
+        korean: missedKo,
+        translation:
+          'Kalau ada satu sesi lagi, kita bisa bongkar semua umpan balik.',
+        romanization: missedRoman,
+        tip: 'Masuk lagi sebentar—biasanya baru nyantol total coach notes-nya.',
+      },
+      share_quote: shareQuoteKo,
+      share_quote_translation:
+        'Makasih banget ya~ aku lagi seneng-senengnya!',
+      share_quote_romanization: shareQuoteRo,
+    },
+    pt: {
+      scores,
+      real_talk:
+        'Não conseguimos atualizar esse feedback denso dessa vez. Mais um treino liberando o relatório inteiro.',
+      encouragement:
+        'Prática concluída. Tente mais uma vez para um review completo.',
+      best_moment: null,
+      missed_moment: {
+        korean: missedKo,
+        translation:
+          'Rodando mais uma leva a gente consegue o pacote inteiro do coach.',
+        romanization: missedRoman,
+        tip:
+          'Só clicar pra voltar aos 90 segundos — ali o app costuma puxar tudo.',
+      },
+      share_quote: shareQuoteKo,
+      share_quote_translation: 'Caraca, obrigado~ tô absurdamente feliz!',
+      share_quote_romanization: shareQuoteRo,
+    },
+    fr: {
+      scores,
+      real_talk:
+        'La planche coach n’a pas chargé tout de suite cette fois-ci. Un run de plus ouvre généralement le pack complet.',
+      encouragement:
+        'Pratique terminée. Réessayez pour un retour détaillé.',
+      best_moment: null,
+      missed_moment: {
+        korean: missedKo,
+        translation:
+          'Une session supplémentaire suffit habituellement à débloquer la version maxi du debrief.',
+        romanization: missedRoman,
+        tip:
+          'Reviens vite sur la répète — comme ça tout le feedback remonte bien.',
+      },
+      share_quote: shareQuoteKo,
+      share_quote_translation:
+        'Merciiii~ trop trop heureuse en ce moment !',
+      share_quote_romanization: shareQuoteRo,
+    },
+  };
+  return fallbacks[L] || fallbacks.en;
+}
 
 function normalizeVoiceGender(raw) {
   const s = String(raw || 'FEMALE').toLowerCase();
@@ -217,11 +302,11 @@ function ReviewContent() {
         if (data?.review) {
           setReviewData(data.review);
         } else {
-          setReviewData(FALLBACK_REVIEW);
+          setReviewData(getFallbackReview(lang));
         }
       } catch (e) {
         console.error('Review fetch error:', e);
-        setReviewData(FALLBACK_REVIEW);
+        setReviewData(getFallbackReview(lang));
       }
       window.setTimeout(() => setStage('main'), 500);
     },
@@ -317,7 +402,8 @@ function ReviewContent() {
   const handleShare = () => {
     if (!reviewData?.share_quote) return;
 
-    const shareText = `Just practiced my fansign call with ${idolName} 💖\n"${reviewData.share_quote}"\n\nTry it: talk.kkobi.app`;
+    const shareLang = REVIEW_COPY[normalizeLang(uiLang)] ?? REVIEW_COPY.en;
+    const shareText = `${shareLang.share_text_template}\n"${reviewData.share_quote}"\n\ntalk.kkobi.app`;
 
     if (navigator.share) {
       navigator.share({ text: shareText }).catch(() => {});

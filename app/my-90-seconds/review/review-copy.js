@@ -44,6 +44,8 @@ export const REVIEW_COPY = {
     back_to_scenarios: 'Back to scenarios',
     share_card_title: 'Share your highlight',
     clipboard_copied: 'Copied!',
+    share_text_template:
+      'Just practiced 90 seconds with my bias on My 90 Seconds 🎤',
     premium_status: 'Premium · Unlimited practice',
     sign_in_prompt: 'Want 3 free sessions daily?',
     sign_in_cta: 'Sign in with Google · free →',
@@ -91,6 +93,8 @@ export const REVIEW_COPY = {
     back_to_scenarios: '시나리오 선택으로 돌아가기',
     share_card_title: '오늘의 한 컷 공유하기',
     clipboard_copied: '클립보드에 저장했어요!',
+    share_text_template:
+      '최애와 90초 영통 연습 완료! My 90 Seconds 🎤',
     premium_status: '프리미엄 · 무제한 연습',
     sign_in_prompt: '매일 세 번까지 무료?',
     sign_in_cta: '구글 로그인 (무료) →',
@@ -140,6 +144,8 @@ export const REVIEW_COPY = {
     back_to_scenarios: 'Balik ke pilih skenario',
     share_card_title: 'Share snippet terbaik',
     clipboard_copied: 'Udah kepoin clipboard!',
+    share_text_template:
+      'Baru saja latihan 90 detik dengan bias-ku di My 90 Seconds 🎤',
     premium_status: 'Premium · limitless practice',
     sign_in_prompt: 'Mau 3 slot gratis tiap hari?',
     sign_in_cta: 'Login Google gratis →',
@@ -190,6 +196,8 @@ export const REVIEW_COPY = {
     back_to_scenarios: 'Voltar pros roteiros',
     share_card_title: 'Share do melhor momento',
     clipboard_copied: 'Copiado na área!',
+    share_text_template:
+      'Acabei de praticar 90 segundos com meu bias no My 90 Seconds 🎤',
     premium_status: 'Premium · modo ilimitado',
     sign_in_prompt: 'Quer 3 tiros grátis por dia?',
     sign_in_cta: 'Login Google já é gratuitão →',
@@ -242,6 +250,8 @@ export const REVIEW_COPY = {
     back_to_scenarios: 'Retour aux scénarios',
     share_card_title: 'Poster ce micro moment',
     clipboard_copied: 'Copié dans le press-papier !',
+    share_text_template:
+      "Je viens de m'entraîner 90 secondes avec mon bias sur My 90 Seconds 🎤",
     premium_status: 'Premium · entraînement illimité',
     sign_in_prompt: 'Trois essais gratos par jour t’interessent?',
     sign_in_cta: 'Connexion Google (gratuite) →',
