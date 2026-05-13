@@ -80,7 +80,7 @@ function CallPageContent() {
   const [showEmergencyCards, setShowEmergencyCards] = useState(false);
   const [showRomanization, setShowRomanization] = useState(true);
 
-  const [introStep, setIntroStep] = useState('connecting');
+  const [introStep, setIntroStep] = useState('await_start');
   const [emotionalMoment, setEmotionalMoment] = useState(null);
   const [positiveMoments, setPositiveMoments] = useState([]);
   const [timerState, setTimerState] = useState('normal');
@@ -139,11 +139,24 @@ function CallPageContent() {
   }, [timeRemaining]);
 
   useEffect(() => {
+    introStepRef.current = introStep;
+  }, [introStep]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     setUiLang(normalizeLang(localStorage.getItem('ogu_lang') || 'en'));
   }, []);
 
   const started = introStep === 'started';
+
+  const unlockAudioAndStartConnecting = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const audio = new Audio();
+    void audio.play().catch((err) => {
+      console.error('Audio unlock failed:', err);
+    });
+    setIntroStep('connecting');
+  }, []);
 
   useEffect(() => {
     if (!started) return;
@@ -275,7 +288,10 @@ function CallPageContent() {
         await new Promise((resolve) => {
           audio.onended = resolve;
           audio.onerror = resolve;
-          void audio.play().catch(() => resolve());
+          void audio.play().catch((err) => {
+            console.error('TTS play failed:', err);
+            resolve();
+          });
         });
       } catch {
         /* subtitle-only */
@@ -480,12 +496,6 @@ function CallPageContent() {
     yourTurnHintTimeoutRef.current = window.setTimeout(() => {
       const hintText = `💡 ${line.korean}`;
       setLineHint(hintText);
-      setCurrentSubtitle({
-        korean: hintText,
-        roman: line.romanization || line.roman || '',
-        translation: '',
-        visible: true,
-      });
     }, 3000);
     return () => window.clearTimeout(yourTurnHintTimeoutRef.current);
   }, [micState, introStep, savedScript]);
@@ -799,12 +809,7 @@ function CallPageContent() {
   }, []);
 
   const handleEmergencyCard = useCallback((card) => {
-    setCurrentSubtitle((prev) => ({
-      ...prev,
-      korean: card.ko,
-      translation: card.en,
-      visible: true,
-    }));
+    setLineHint(card.ko);
   }, []);
 
   const triggerEmotionalMoment = useCallback((type, context) => {
@@ -827,7 +832,10 @@ function CallPageContent() {
     return (
       <div
         style={{
-          minHeight: '100vh',
+          minHeight: '100dvh',
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
           background: '#0E0E0F',
           color: '#fff',
           display: 'flex',
@@ -844,23 +852,39 @@ function CallPageContent() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
+        width: '100%',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
         background: '#0E0E0F',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        flexDirection: 'column',
+        boxSizing: 'border-box',
       }}
     >
       <div
         style={{
+          flex: 1,
           width: '100%',
-          maxWidth: '390px',
-          height: '100svh',
-          position: 'relative',
-          overflow: 'hidden',
-          background: '#0E0E0F',
+          display: 'flex',
+          justifyContent: 'center',
+          minHeight: 0,
+          boxSizing: 'border-box',
         }}
       >
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '390px',
+            flex: 1,
+            minHeight: 0,
+            position: 'relative',
+            overflow: 'hidden',
+            background: '#0E0E0F',
+            boxSizing: 'border-box',
+          }}
+        >
         {process.env.NODE_ENV === 'development' && scenarioId && (
           <div
             style={{
@@ -878,7 +902,76 @@ function CallPageContent() {
           </div>
         )}
 
-        {introStep !== 'started' && introStep !== 'completed' && (
+        {introStep === 'await_start' && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: '#0E0E0F',
+              zIndex: 100,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '40px 32px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '32px',
+                fontWeight: 800,
+                color: '#fff',
+                letterSpacing: '-0.03em',
+                fontFamily: 'Manrope, sans-serif',
+                textAlign: 'center',
+              }}
+            >
+              {idolName}
+            </div>
+            <div
+              style={{
+                marginTop: '14px',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: 'rgba(255,255,255,0.55)',
+                textAlign: 'center',
+                lineHeight: 1.45,
+                fontFamily: 'Manrope, sans-serif',
+                maxWidth: '280px',
+              }}
+            >
+              Get ready for your 90 seconds
+            </div>
+            <button
+              type="button"
+              onClick={unlockAudioAndStartConnecting}
+              style={{
+                marginTop: '40px',
+                width: '100%',
+                maxWidth: '260px',
+                padding: '16px 24px',
+                borderRadius: '9999px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '15px',
+                fontWeight: 800,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                fontFamily: 'Manrope, sans-serif',
+                color: '#fff',
+                background:
+                  'linear-gradient(135deg, #FF8AA9, #FF719B)',
+                boxShadow: '0 0 32px rgba(255,138,169,0.45)',
+              }}
+            >
+              Start call
+            </button>
+          </div>
+        )}
+
+        {(introStep === 'connecting' ||
+          introStep === 'incoming' ||
+          introStep === 'answered') && (
           <div
             style={{
               position: 'fixed',
@@ -1049,7 +1142,7 @@ function CallPageContent() {
             top: 0,
             left: 0,
             right: 0,
-            height: '620px',
+            bottom: 0,
             background: bgLayer,
             transition: 'background 1.5s ease-in-out',
             overflow: 'hidden',
@@ -1126,65 +1219,6 @@ function CallPageContent() {
                     animation: `wave 1.4s ease-in-out ${i * 0.07}s infinite`,
                   }}
                 />
-              ))}
-            </div>
-          )}
-
-          {showEmergencyCards && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '160px',
-                left: '12px',
-                right: '12px',
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '6px',
-                zIndex: 10,
-                animation: 'slideUp 0.4s ease-out',
-              }}
-            >
-              {emergencyCards.map((card, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => handleEmergencyCard(card)}
-                  style={{
-                    flex: '1 1 0',
-                    maxWidth: '110px',
-                    padding: '8px 10px',
-                    background: 'rgba(255,138,169,0.18)',
-                    backdropFilter: 'blur(12px)',
-                    border: 'none',
-                    borderRadius: '12px',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '9px',
-                      fontWeight: 700,
-                      color: '#FF8AA9',
-                      letterSpacing: '0.05em',
-                      textTransform: 'uppercase',
-                      marginBottom: '2px',
-                    }}
-                  >
-                    {card.en}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '10px',
-                      fontWeight: 500,
-                      color: 'rgba(255,255,255,0.85)',
-                      fontFamily: 'Manrope, sans-serif',
-                    }}
-                  >
-                    {card.ko}
-                  </div>
-                </button>
               ))}
             </div>
           )}
@@ -1318,80 +1352,6 @@ function CallPageContent() {
               </div>
             )}
 
-          {currentSubtitle.visible && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '40px',
-                left: '24px',
-                right: '24px',
-                zIndex: 8,
-                textAlign: 'center',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '22px',
-                  fontWeight: 600,
-                  color: 'rgba(255,255,255,0.95)',
-                  fontFamily: 'Inter, sans-serif',
-                  marginBottom: '12px',
-                  lineHeight: 1.3,
-                  textShadow: '0 2px 16px rgba(0,0,0,0.85)',
-                }}
-              >
-                {currentSubtitle.translation ||
-                  currentSubtitle.korean ||
-                  '—'}
-              </div>
-              <div
-                style={{
-                  fontSize: '18px',
-                  fontWeight: 700,
-                  color: '#fff',
-                  fontFamily: 'Manrope, sans-serif',
-                  marginBottom: '6px',
-                  lineHeight: 1.3,
-                  textShadow: '0 4px 16px rgba(0,0,0,0.9)',
-                }}
-              >
-                {currentSubtitle.korean}
-              </div>
-              {showRomanization && (
-                <div
-                  style={{
-                    fontSize: '11px',
-                    color: 'rgba(255,255,255,0.5)',
-                    fontFamily: 'Inter, sans-serif',
-                    fontStyle: 'italic',
-                    letterSpacing: '0.02em',
-                    textShadow: '0 1px 8px rgba(0,0,0,0.8)',
-                  }}
-                >
-                  {currentSubtitle.roman}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => setShowRomanization(!showRomanization)}
-                style={{
-                  fontSize: '9px',
-                  color: 'rgba(255,255,255,0.4)',
-                  background: 'transparent',
-                  border: 'none',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                  marginTop: '8px',
-                  cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
-                }}
-              >
-                {showRomanization
-                  ? 'hide pronunciation'
-                  : 'show pronunciation'}
-              </button>
-            </div>
-          )}
         </div>
 
         <div
@@ -1428,6 +1388,7 @@ function CallPageContent() {
             color: 'rgba(255,255,255,0.8)',
             fontSize: '14px',
             cursor: 'pointer',
+            pointerEvents: 'auto',
           }}
           aria-label="Close and return to scenarios"
         >
@@ -1567,7 +1528,7 @@ function CallPageContent() {
               fontFamily: 'Inter, sans-serif',
             }}
           >
-            Member · Group
+            MEMBER · GROUP
           </div>
         </div>
 
@@ -1639,37 +1600,245 @@ function CallPageContent() {
         </div>
 
         {introStep === 'started' && timeRemaining > 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              left: '12px',
+              right: '12px',
+              top: '174px',
+              bottom:
+                'calc(150px + env(safe-area-inset-bottom))',
+              zIndex: 22,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                pointerEvents: 'auto',
+                flexShrink: 0,
+                background: 'rgba(255,138,169,0.08)',
+                borderRadius: '14px',
+                padding: '14px 12px',
+                minHeight: '110px',
+                boxSizing: 'border-box',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '9px',
+                  color:
+                    micState === 'idol_speaking'
+                      ? '#FF8AA9'
+                      : 'rgba(255,255,255,0.35)',
+                  letterSpacing: '1px',
+                  fontWeight: 700,
+                  fontFamily: 'Manrope, sans-serif',
+                  textTransform: 'uppercase',
+                  marginBottom: '8px',
+                }}
+              >
+                {`${String(idolName).toUpperCase()} SAYS`}
+              </div>
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                  color: 'rgba(255,255,255,0.95)',
+                  fontFamily: 'Manrope, sans-serif',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {currentSubtitle.visible && currentSubtitle.korean
+                  ? currentSubtitle.korean
+                  : '\u00a0'}
+              </div>
+              {showRomanization &&
+                currentSubtitle.visible &&
+                currentSubtitle.roman?.trim?.() ? (
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      fontSize: '11px',
+                      lineHeight: 1.35,
+                      fontStyle: 'italic',
+                      color: 'rgba(255,255,255,0.5)',
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    {currentSubtitle.roman}
+                  </div>
+                ) : null}
+              {currentSubtitle.visible &&
+              currentSubtitle.translation?.trim?.() ? (
+                <div
+                  style={{
+                    marginTop: '6px',
+                    fontSize: '12px',
+                    lineHeight: 1.35,
+                    color: 'rgba(255,255,255,0.65)',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                >
+                  {currentSubtitle.translation}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setShowRomanization(!showRomanization)}
+                style={{
+                  fontSize: '9px',
+                  color: 'rgba(255,255,255,0.4)',
+                  background: 'transparent',
+                  border: 'none',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginTop: '8px',
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
+                  padding: 0,
+                }}
+              >
+                {showRomanization
+                  ? 'Hide pronunciation'
+                  : 'Show pronunciation'}
+              </button>
+            </div>
+
+            {micState === 'your_turn' ? (
+              <div
+                style={{
+                  pointerEvents: 'auto',
+                  flexShrink: 0,
+                  background: 'rgba(0,227,253,0.06)',
+                  borderRadius: '14px',
+                  padding: '12px',
+                  minHeight: '56px',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '9px',
+                    color: '#00E3FD',
+                    letterSpacing: '1px',
+                    fontWeight: 700,
+                    fontFamily: 'Manrope, sans-serif',
+                    textTransform: 'uppercase',
+                    marginBottom: '6px',
+                  }}
+                >
+                  Your turn · Hint
+                </div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    lineHeight: 1.4,
+                    color: 'rgba(255,255,255,0.85)',
+                    fontFamily: 'Manrope, sans-serif',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {lineHint || '\u00a0'}
+                </div>
+              </div>
+            ) : null}
+
+            <div style={{ flex: 1, minHeight: 0 }} />
+          </div>
+        )}
+
+        {introStep === 'started' && timeRemaining > 0 && (
         <div
           style={{
             position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
-            height: '180px',
-            background:
-              'linear-gradient(180deg, transparent 0%, #0E0E0F 30%)',
-            zIndex: 6,
+            zIndex: 24,
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 24px',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            padding: '0 16px',
+            paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+            pointerEvents: 'none',
+            gap: '10px',
+            background:
+              'linear-gradient(180deg, transparent 0%, rgba(14,14,15,0.92) 24%, #0E0E0F 100%)',
           }}
         >
+          {showEmergencyCards && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '6px',
+                pointerEvents: 'auto',
+                animation: 'slideUp 0.4s ease-out',
+              }}
+            >
+              {emergencyCards.map((card, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleEmergencyCard(card)}
+                  style={{
+                    flex: '1 1 0',
+                    maxWidth: '110px',
+                    padding: '8px 10px',
+                    background: 'rgba(255,138,169,0.18)',
+                    backdropFilter: 'blur(12px)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '9px',
+                      fontWeight: 700,
+                      color: '#FF8AA9',
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      marginBottom: '2px',
+                    }}
+                  >
+                    {card.en}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 500,
+                      color: 'rgba(255,255,255,0.85)',
+                      fontFamily: 'Manrope, sans-serif',
+                    }}
+                  >
+                    {card.ko}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
           {micState === 'idle' && (
             <div
               style={{
-                width: '220px',
-                height: '88px',
-                margin: '0 auto',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'rgba(255,255,255,0.35)',
-                fontSize: '11px',
-                fontWeight: 600,
-                letterSpacing: '0.12em',
+                width: '100%',
+                pointerEvents: 'auto',
+                borderRadius: '28px',
+                padding: '16px',
+                textAlign: 'center',
+                color: 'rgba(255,255,255,0.45)',
+                fontSize: '12px',
+                fontWeight: 700,
+                letterSpacing: '0.14em',
                 textTransform: 'uppercase',
                 fontFamily: 'Manrope, sans-serif',
+                background: 'rgba(255,138,169,0.12)',
               }}
             >
               Preparing mic…
@@ -1678,97 +1847,95 @@ function CallPageContent() {
           {micState === 'idol_speaking' && (
             <div
               style={{
-                width: '220px',
-                height: '88px',
-                margin: '0 auto',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'rgba(255,255,255,0.3)',
-                fontSize: '11px',
-                fontWeight: 600,
-                letterSpacing: '0.15em',
+                width: '100%',
+                pointerEvents: 'auto',
+                borderRadius: '28px',
+                padding: '16px',
+                textAlign: 'center',
+                color: 'rgba(255,255,255,0.85)',
+                fontSize: '12px',
+                fontWeight: 800,
+                letterSpacing: '0.14em',
                 textTransform: 'uppercase',
                 fontFamily: 'Manrope, sans-serif',
+                background:
+                  'linear-gradient(135deg, #FF8AA9, #FF719B)',
+                boxShadow: '0 0 24px rgba(255,138,169,0.35)',
               }}
             >
-              Listen carefully...
+              {`${String(idolName).toUpperCase()} is speaking`}
             </div>
           )}
-
           {micState === 'your_turn' && (
             <button
               type="button"
               onClick={startSpeaking}
               style={{
-                width: '220px',
-                height: '88px',
-                background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+                width: '100%',
+                pointerEvents: 'auto',
+                borderRadius: '28px',
+                padding: '16px',
                 border: 'none',
-                borderRadius: '9999px',
                 cursor: 'pointer',
                 color: '#fff',
-                fontSize: '14px',
-                fontWeight: 700,
-                letterSpacing: '0.1em',
+                fontSize: '13px',
+                fontWeight: 800,
+                letterSpacing: '0.14em',
                 textTransform: 'uppercase',
                 fontFamily: 'Manrope, sans-serif',
-                boxShadow: '0 0 24px rgba(255,138,169,0.4)',
-                animation: 'pulse-soft 2s infinite',
-                transition: 'transform 0.2s',
+                background:
+                  'linear-gradient(135deg, #FF8AA9, #FF719B)',
+                boxShadow: '0 0 24px rgba(255,138,169,0.45)',
               }}
             >
               Tap to speak
             </button>
           )}
-
           {micState === 'speaking' && (
             <button
               type="button"
               onClick={stopSpeaking}
               style={{
-                width: '220px',
-                height: '88px',
-                background: 'rgba(255, 68, 68, 0.15)',
-                border: '2px solid rgba(255, 68, 68, 0.6)',
-                borderRadius: '9999px',
+                width: '100%',
+                pointerEvents: 'auto',
+                borderRadius: '28px',
+                padding: '16px',
+                border: '2px solid rgba(255, 68, 68, 0.55)',
                 cursor: 'pointer',
-                color: '#FF4444',
-                fontSize: '14px',
-                fontWeight: 700,
-                letterSpacing: '0.1em',
+                background: 'rgba(255, 68, 68, 0.12)',
+                color: '#FF6B7A',
+                fontSize: '13px',
+                fontWeight: 800,
+                letterSpacing: '0.14em',
                 textTransform: 'uppercase',
                 fontFamily: 'Manrope, sans-serif',
-                boxShadow: '0 0 24px rgba(255, 68, 68, 0.4)',
-                animation: 'pulse-recording 1s infinite',
               }}
             >
-              Speaking...
+              Speaking…
             </button>
           )}
-
           {micState === 'processing' && (
             <div
               style={{
-                width: '220px',
-                height: '88px',
-                margin: '0 auto',
-                background: 'rgba(0, 227, 253, 0.1)',
-                borderRadius: '9999px',
+                width: '100%',
+                pointerEvents: 'auto',
+                borderRadius: '28px',
+                padding: '16px',
+                border: '1px solid rgba(0,227,253,0.35)',
+                background: 'rgba(0,227,253,0.08)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '10px',
                 color: '#00E3FD',
-                fontSize: '14px',
-                fontWeight: 700,
-                letterSpacing: '0.1em',
+                fontSize: '13px',
+                fontWeight: 800,
+                letterSpacing: '0.14em',
                 textTransform: 'uppercase',
-                cursor: 'not-allowed',
                 fontFamily: 'Manrope, sans-serif',
               }}
             >
-              <span>Processing</span>
+              <span>Processing…</span>
               <div style={{ display: 'flex', gap: '4px' }}>
                 <span
                   style={{
@@ -1823,7 +1990,7 @@ function CallPageContent() {
           <div
             style={{
               position: 'fixed',
-              bottom: '24px',
+              bottom: 'calc(24px + env(safe-area-inset-bottom))',
               right: '24px',
               display: 'flex',
               flexDirection: 'column',
@@ -1991,6 +2158,7 @@ function CallPageContent() {
             </button>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
