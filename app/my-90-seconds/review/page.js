@@ -7,6 +7,14 @@ import { hasReachedDailyLimit } from '@/lib/freeLimit';
 import { normalizeLang } from '@/app/lib/i18n';
 
 const FALLBACK_REVIEW = {
+  scores: {
+    communication: 4,
+    korean_attempts: 4,
+    conversation_flow: 3,
+    time_used: 4,
+    total: 3.8,
+  },
+  encouragement: 'Good job — keep practicing!',
   best_moment: {
     you_said_korean: '오빠를 정말 좋아해요',
     you_said_translation: 'I really like you',
@@ -53,12 +61,32 @@ function ReviewContent() {
   const fetchReview = useCallback(
     async (moments, gender, statPayload, nameForPrompt) => {
       try {
-        let lang = 'en';
-        if (typeof window !== 'undefined') {
-          lang = normalizeLang(
-            window.localStorage.getItem('ogu_lang') || 'en',
-          );
+        const lang = normalizeLang(
+          window.localStorage.getItem('ogu_lang') || 'en',
+        );
+
+        let conversationHistory = [];
+        try {
+          const rawC = window.localStorage.getItem('kkobi_m90s_conversation');
+          if (rawC) {
+            const p = JSON.parse(rawC);
+            conversationHistory = Array.isArray(p) ? p : [];
+          }
+        } catch {
+          conversationHistory = [];
         }
+
+        let phaseLog = {};
+        try {
+          const rawP = window.localStorage.getItem('kkobi_m90s_phase_log');
+          if (rawP) {
+            const p = JSON.parse(rawP);
+            if (p && typeof p === 'object' && !Array.isArray(p)) phaseLog = p;
+          }
+        } catch {
+          phaseLog = {};
+        }
+
         const res = await fetch('/api/generate-review', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -70,6 +98,8 @@ function ReviewContent() {
             totalLines: statPayload.totalLines,
             idolName: nameForPrompt ?? '',
             lang,
+            conversationHistory,
+            phaseLog,
           }),
         });
         const data = await res.json();

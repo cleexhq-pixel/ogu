@@ -56,6 +56,11 @@ const emergencyCards = [
   { en: 'I love you', ko: '너무 좋아요' },
 ];
 
+/** 대화 타임라인 항목 (localStorage kkobi_m90s_conversation) */
+function historyEntry(role, text) {
+  return { role, text, timestamp: Date.now() };
+}
+
 function CallPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -113,6 +118,8 @@ function CallPageContent() {
   const scenarioIdRef = useRef(null);
   const currentPhaseRef = useRef('PHASE_A');
   const timeRemainingRef = useRef(90);
+  const phaseLogRef = useRef({});
+  const prevPhaseForLogRef = useRef(null);
 
   useEffect(() => {
     setParticles(buildParticles());
@@ -141,6 +148,26 @@ function CallPageContent() {
   useEffect(() => {
     introStepRef.current = introStep;
   }, [introStep]);
+
+  useEffect(() => {
+    if (introStep !== 'started' || timeRemaining !== 90) return undefined;
+    phaseLogRef.current = {};
+    prevPhaseForLogRef.current = 'PHASE_A';
+    return undefined;
+  }, [introStep, timeRemaining]);
+
+  useEffect(() => {
+    if (introStep !== 'started') return;
+    const elapsed = 90 - timeRemaining;
+    const prev = prevPhaseForLogRef.current;
+    if (prev != null && prev !== currentPhase) {
+      if (prev === 'PHASE_A') phaseLogRef.current.phaseA_end = elapsed;
+      if (prev === 'PHASE_B') phaseLogRef.current.phaseB_end = elapsed;
+      if (prev === 'PHASE_C') phaseLogRef.current.phaseC_end = elapsed;
+      if (prev === 'PHASE_D') phaseLogRef.current.phaseD_end = elapsed;
+    }
+    prevPhaseForLogRef.current = currentPhase;
+  }, [introStep, currentPhase, timeRemaining]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -217,6 +244,20 @@ function CallPageContent() {
       scenario: scenarioId,
     };
     window.localStorage.setItem('kkobi_m90s_last_stats', JSON.stringify(stats));
+
+    const finalizedPhaseLog = { ...phaseLogRef.current };
+    if (finalizedPhaseLog.phaseD_end === undefined) {
+      finalizedPhaseLog.phaseD_end = 90;
+    }
+    window.localStorage.setItem(
+      'kkobi_m90s_phase_log',
+      JSON.stringify(finalizedPhaseLog),
+    );
+
+    window.localStorage.setItem(
+      'kkobi_m90s_conversation',
+      JSON.stringify(conversationHistoryRef.current),
+    );
   }, [introStep, positiveMoments, timeRemaining, scenarioId, savedScript]);
 
   const formatTime = (sec) =>
@@ -456,7 +497,7 @@ function CallPageContent() {
       if (cancelled || endSequenceRef.current) return;
       const greet = getRandomLine('greeting');
       const text = greet?.text || '안녕하세요~';
-      const opening = [{ role: 'idol', text }];
+      const opening = [historyEntry('idol', text)];
       setMicState('idol_speaking');
       conversationHistoryRef.current = opening;
       setConversationHistory(opening);
@@ -570,11 +611,12 @@ function CallPageContent() {
         const fb = getNervousResponse();
         const fbText =
           fb?.text || '괜찮아요~ 천천히 해요.';
+        const t0 = Date.now();
         setConversationHistory((prev) => {
           const next = [
             ...prev,
-            { role: 'user', text: '(인식 실패)' },
-            { role: 'idol', text: fbText },
+            { role: 'user', text: '(인식 실패)', timestamp: t0 },
+            { role: 'idol', text: fbText, timestamp: t0 + 1 },
           ];
           conversationHistoryRef.current = next;
           return next;
@@ -593,11 +635,12 @@ function CallPageContent() {
       if (!userText.trim()) {
         const fb = getNervousResponse();
         const fbText = fb?.text || '괜찮아요~ 천천히 해요.';
+        const t0 = Date.now();
         setConversationHistory((prev) => {
           const next = [
             ...prev,
-            { role: 'user', text: '(…)' },
-            { role: 'idol', text: fbText },
+            { role: 'user', text: '(…)', timestamp: t0 },
+            { role: 'idol', text: fbText, timestamp: t0 + 1 },
           ];
           conversationHistoryRef.current = next;
           return next;
@@ -667,13 +710,18 @@ function CallPageContent() {
       }
 
       setConversationHistory(() => {
+        const t0 = Date.now();
         const next = [
           ...histBefore,
-          { role: 'user', text: userText },
-          { role: 'idol', text: idolMain },
+          { role: 'user', text: userText, timestamp: t0 },
+          { role: 'idol', text: idolMain, timestamp: t0 + 1 },
         ];
         if (shouldAsk && idolQuestionStr) {
-          next.push({ role: 'idol', text: idolQuestionStr });
+          next.push({
+            role: 'idol',
+            text: idolQuestionStr,
+            timestamp: t0 + 2,
+          });
         }
         conversationHistoryRef.current = next;
         return next;
