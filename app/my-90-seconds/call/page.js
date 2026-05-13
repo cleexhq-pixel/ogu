@@ -10,6 +10,11 @@ import {
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { hasReachedDailyLimit, incrementSessionsUsed } from '@/lib/freeLimit';
+import { normalizeLang } from '@/app/lib/i18n';
+import idolScripts, { getRandomLine, getNervousResponse } from '@/src/data/idol-scripts';
+
+/** 팬싱 분류 전용 채팅 라우트 (기존 /api/chat 학습 기능과 분리) */
+const FANSIGN_CHAT_API = '/api/chat/fansign';
 
 const phaseGradients = {
   intro:
@@ -71,7 +76,7 @@ function CallPageContent() {
     translation: '',
     visible: true,
   });
-  const [micState, setMicState] = useState('your_turn');
+  const [micState, setMicState] = useState('idle');
   const [showEmergencyCards, setShowEmergencyCards] = useState(false);
   const [showRomanization, setShowRomanization] = useState(true);
 
@@ -80,18 +85,74 @@ function CallPageContent() {
   const [positiveMoments, setPositiveMoments] = useState([]);
   const [timerState, setTimerState] = useState('normal');
 
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [currentPhase, setCurrentPhase] = useState('PHASE_A');
+  const [idolQuestionCount, setIdolQuestionCount] = useState(0);
+  const [silenceTimer, setSilenceTimer] = useState(null);
+  const [uiLang, setUiLang] = useState('en');
+  const [lineHint, setLineHint] = useState('');
+
   const emotionalClearRef = useRef(null);
   const endSequenceRef = useRef(false);
+  const conversationHistoryRef = useRef([]);
+  const micStateRef = useRef('idle');
+  const introStepRef = useRef(introStep);
+  const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const silenceRafRef = useRef(null);
+  const silenceAudioCtxRef = useRef(null);
+  const recordingStartMsRef = useRef(0);
+  const lastSpeechTsRef = useRef(0);
+  const phaseAIntroStartedRef = useRef(false);
+  const scriptHintIndexRef = useRef(0);
+  const yourTurnHintTimeoutRef = useRef(null);
+  const stopSpeakingInnerRef = useRef(() => {});
+  const scenarioIdRef = useRef(null);
+  const currentPhaseRef = useRef('PHASE_A');
+  const timeRemainingRef = useRef(90);
 
   useEffect(() => {
     setParticles(buildParticles());
   }, []);
 
   useEffect(() => {
-    if (micState !== 'processing') return undefined;
-    const id = window.setTimeout(() => setMicState('your_turn'), 1500);
-    return () => clearTimeout(id);
+    conversationHistoryRef.current = conversationHistory;
+  }, [conversationHistory]);
+
+  useEffect(() => {
+    micStateRef.current = micState;
   }, [micState]);
+
+  useEffect(() => {
+    scenarioIdRef.current = scenarioId;
+  }, [scenarioId]);
+
+  useEffect(() => {
+    currentPhaseRef.current = currentPhase;
+  }, [currentPhase]);
+
+  useEffect(() => {
+    timeRemainingRef.current = timeRemaining;
+  }, [timeRemaining]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setUiLang(normalizeLang(localStorage.getItem('ogu_lang') || 'en'));
+  }, []);
+
+  const started = introStep === 'started';
+
+  useEffect(() => {
+    if (!started) return;
+    const elapsed = 90 - timeRemaining;
+    if (elapsed >= 75) setCurrentPhase('PHASE_D');
+    else if (elapsed >= 60) setCurrentPhase('PHASE_C');
+    else if (elapsed >= 15) setCurrentPhase('PHASE_B');
+    else setCurrentPhase('PHASE_A');
+  }, [timeRemaining, started]);
 
   useEffect(() => {
     if (timeRemaining <= 5 && timeRemaining > 0) setTimerState('danger');
@@ -148,60 +209,138 @@ function CallPageContent() {
   const formatTime = (sec) =>
     `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 
-  const playStaffEndingVoice = useCallback(async () => {
+  const genderTts =
+    voiceGender === 'MALE' || String(voiceGender || '').toLowerCase() === 'male'
+      ? 'MALE'
+      : 'FEMALE';
+
+  function cleanupSpeechDetection() {
+    if (silenceRafRef.current != null) {
+      window.cancelAnimationFrame(silenceRafRef.current);
+      silenceRafRef.current = null;
+    }
     try {
-      const res = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: '통화 시간이 종료되었습니다. 수고하셨습니다.',
-          lang: 'ko-KR',
-          gender: voiceGender === 'MALE' ? 'MALE' : 'FEMALE',
-        }),
-      });
-      const data = await res.json();
-      if (data?.audioContent) {
+      void silenceAudioCtxRef.current?.close?.();
+    } catch {
+      /* ignore */
+    }
+    silenceAudioCtxRef.current = null;
+  }
+
+  function cleanupMicPipeline() {
+    cleanupSpeechDetection();
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== 'inactive') {
+      try {
+        mr.stop();
+      } catch {
+        /* noop */
+      }
+    }
+    mediaRecorderRef.current = null;
+    try {
+      streamRef.current?.getTracks?.().forEach((t) => t.stop());
+    } catch {
+      /* noop */
+    }
+    streamRef.current = null;
+    audioChunksRef.current = [];
+    setMediaRecorder(null);
+    setAudioChunks([]);
+    setSilenceTimer((prev) => {
+      if (prev != null) window.clearTimeout(prev);
+      return null;
+    });
+  }
+
+  const playTtsAndWait = useCallback(
+    async (text) => {
+      const trimmed = typeof text === 'string' ? text.trim() : '';
+      if (!trimmed || typeof window === 'undefined') return;
+      try {
+        const res = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: trimmed,
+            lang: 'ko-KR',
+            gender: genderTts,
+          }),
+        });
+        const data = await res.json();
+        if (!data?.audioContent) return;
         const audio = new Audio(
           `data:audio/mp3;base64,${data.audioContent}`,
         );
-        await audio.play().catch(() => {});
+        await new Promise((resolve) => {
+          audio.onended = resolve;
+          audio.onerror = resolve;
+          void audio.play().catch(() => resolve());
+        });
+      } catch {
+        /* subtitle-only */
       }
-    } catch {
-      // staff TTS optional
-    }
-  }, [voiceGender]);
+    },
+    [genderTts],
+  );
 
-  const playStaffRef = useRef(playStaffEndingVoice);
-  playStaffRef.current = playStaffEndingVoice;
+  /** Legacy name — kept for callers; 실제 종료 안내 텍스트는 idolScripts 기준 */
+  const playStaffEndingVoice = useCallback(async () => {
+    await playTtsAndWait(idolScripts.staff_closing);
+  }, [playTtsAndWait]);
 
   useEffect(() => {
     if (timeRemaining !== 0 || introStep !== 'started') return;
     if (endSequenceRef.current) return;
     endSequenceRef.current = true;
 
-    void playStaffRef.current();
+    cleanupMicPipeline();
 
-    setCurrentSubtitle((prev) => ({
-      ...prev,
-      korean: '다음에 또 봐요~',
-      roman: 'Daeume tto bawayo~',
-      translation: 'See you next time~',
-      visible: true,
-    }));
+    setMicState('idol_speaking');
 
-    const t1 = window.setTimeout(() => {
-      setIntroStep('completed');
+    const run = async () => {
+      const staffText = idolScripts.staff_closing;
+      const closePick = getRandomLine('closing');
+      const closingText =
+        closePick?.text ||
+        '다음에 또 봐요~';
+
+      setLineHint('');
+      setCurrentSubtitle((prev) => ({
+        ...prev,
+        korean: staffText,
+        roman: '',
+        translation: '',
+        visible: true,
+      }));
+      await playTtsAndWait(staffText);
+
+      setCurrentSubtitle((prev) => ({
+        ...prev,
+        korean: closingText,
+        roman: '',
+        translation: '',
+        visible: true,
+      }));
+      await playTtsAndWait(closingText);
+
       window.setTimeout(() => {
-        if (scenarioId) {
-          router.push(
-            `/my-90-seconds/review?scenario=${encodeURIComponent(scenarioId)}`,
-          );
-        }
-      }, 1000);
-    }, 2500);
+        setIntroStep('completed');
+        window.setTimeout(() => {
+          const sid = scenarioIdRef.current;
+          if (sid) {
+            router.push(
+              `/my-90-seconds/review?scenario=${encodeURIComponent(sid)}`,
+            );
+          }
+        }, 900);
+      }, 400);
+    };
 
-    return () => window.clearTimeout(t1);
-  }, [timeRemaining, introStep, scenarioId, router]);
+    void run();
+
+    return undefined;
+  }, [timeRemaining, introStep, router, playTtsAndWait]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -290,23 +429,373 @@ function CallPageContent() {
   }, [searchParams, router]);
 
   useEffect(() => {
-    if (!savedScript?.lines?.[0]) return;
-    const line = savedScript.lines[0];
-    setCurrentSubtitle((prev) => ({
-      ...prev,
-      korean: line.korean || prev.korean,
-      roman: line.romanization || line.roman || prev.roman,
-      translation: line.translation || '',
-      visible: true,
-    }));
-  }, [savedScript]);
+    if (!isReady || introStep !== 'started' || typeof window === 'undefined') {
+      return undefined;
+    }
+    if (!voiceGender) return undefined;
+    if (phaseAIntroStartedRef.current) return undefined;
+    phaseAIntroStartedRef.current = true;
+    let cancelled = false;
+    const tid = window.setTimeout(async () => {
+      if (cancelled || endSequenceRef.current) return;
+      const greet = getRandomLine('greeting');
+      const text = greet?.text || '안녕하세요~';
+      const opening = [{ role: 'idol', text }];
+      setMicState('idol_speaking');
+      conversationHistoryRef.current = opening;
+      setConversationHistory(opening);
+      setLineHint('');
+      setCurrentSubtitle({
+        korean: text,
+        roman: '',
+        translation: '',
+        visible: true,
+      });
+      await playTtsAndWait(text);
+      if (!cancelled && !endSequenceRef.current) {
+        setMicState('your_turn');
+      }
+    }, 1000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(tid);
+    };
+  }, [isReady, introStep, voiceGender, playTtsAndWait]);
 
-  const startSpeaking = useCallback(() => {
-    setMicState((s) => (s === 'your_turn' ? 'speaking' : s));
+  useEffect(() => {
+    window.clearTimeout(yourTurnHintTimeoutRef.current);
+    setLineHint('');
+    if (
+      micState !== 'your_turn' ||
+      introStep !== 'started' ||
+      endSequenceRef.current
+    ) {
+      return undefined;
+    }
+    const lines = savedScript?.lines;
+    if (!Array.isArray(lines) || lines.length === 0) return undefined;
+    const idx = Math.min(scriptHintIndexRef.current, lines.length - 1);
+    const line = lines[idx];
+    if (!line?.korean) return undefined;
+    yourTurnHintTimeoutRef.current = window.setTimeout(() => {
+      const hintText = `💡 ${line.korean}`;
+      setLineHint(hintText);
+      setCurrentSubtitle({
+        korean: hintText,
+        roman: line.romanization || line.roman || '',
+        translation: '',
+        visible: true,
+      });
+    }, 3000);
+    return () => window.clearTimeout(yourTurnHintTimeoutRef.current);
+  }, [micState, introStep, savedScript]);
+
+  useEffect(() => {
+    stopSpeakingInnerRef.current = async () => {
+      if (micStateRef.current !== 'speaking') return;
+
+      cleanupSpeechDetection();
+      setSilenceTimer((prev) => {
+        if (prev != null) window.clearTimeout(prev);
+        return null;
+      });
+
+      const mr = mediaRecorderRef.current;
+      if (!mr || mr.state === 'inactive') {
+        setMicState((s) => (s === 'speaking' ? 'your_turn' : s));
+        return;
+      }
+
+      let blob;
+      try {
+        blob = await new Promise((resolve, reject) => {
+          mr.onstop = () => {
+            try {
+              const mime = mr.mimeType || 'audio/webm';
+              resolve(new Blob(audioChunksRef.current, { type: mime }));
+            } catch (e) {
+              reject(e);
+            }
+          };
+          mr.onerror = () => reject(new Error('recorder'));
+          try {
+            mr.stop();
+          } catch (e) {
+            reject(e);
+          }
+        });
+      } catch {
+        cleanupMicPipeline();
+        setMicState('your_turn');
+        return;
+      }
+
+      try {
+        streamRef.current?.getTracks?.().forEach((t) => t.stop());
+      } catch {
+        /* noop */
+      }
+      streamRef.current = null;
+      mediaRecorderRef.current = null;
+      setMediaRecorder(null);
+      setMicState('processing');
+
+      let userText = '';
+      try {
+        const fd = new FormData();
+        fd.append(
+          'audio',
+          blob,
+          blob.type.includes('webm') ? 'clip.webm' : 'clip.webm',
+        );
+        const tr = await fetch('/api/transcribe', {
+          method: 'POST',
+          body: fd,
+        });
+        if (!tr.ok) throw new Error('transcribe HTTP');
+        const td = await tr.json();
+        userText =
+          typeof td.text === 'string' ? td.text.trim() : '';
+      } catch {
+        const fb = getNervousResponse();
+        const fbText =
+          fb?.text || '괜찮아요~ 천천히 해요.';
+        setConversationHistory((prev) => {
+          const next = [
+            ...prev,
+            { role: 'user', text: '(인식 실패)' },
+            { role: 'idol', text: fbText },
+          ];
+          conversationHistoryRef.current = next;
+          return next;
+        });
+        setCurrentSubtitle({
+          korean: fbText,
+          roman: '',
+          translation: '',
+          visible: true,
+        });
+        await playTtsAndWait(fbText);
+        setMicState('your_turn');
+        return;
+      }
+
+      if (!userText.trim()) {
+        const fb = getNervousResponse();
+        const fbText = fb?.text || '괜찮아요~ 천천히 해요.';
+        setConversationHistory((prev) => {
+          const next = [
+            ...prev,
+            { role: 'user', text: '(…)' },
+            { role: 'idol', text: fbText },
+          ];
+          conversationHistoryRef.current = next;
+          return next;
+        });
+        setCurrentSubtitle({
+          korean: fbText,
+          roman: '',
+          translation: '',
+          visible: true,
+        });
+        await playTtsAndWait(fbText);
+        setMicState('your_turn');
+        return;
+      }
+
+      const cap = Math.max((savedScript?.lines?.length ?? 1) - 1, 0);
+      scriptHintIndexRef.current = Math.min(
+        scriptHintIndexRef.current + 1,
+        cap,
+      );
+
+      const histBefore = [...conversationHistoryRef.current];
+      const lang = normalizeLang(uiLang || 'en');
+      const idol = idolName || 'IDOL';
+      let idolMain = '';
+      let shouldAsk = false;
+      let idolQuestionStr = '';
+
+      try {
+        const phaseNow = currentPhaseRef.current || 'PHASE_A';
+        const resChat = await fetch(FANSIGN_CHAT_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userText,
+            scenario: scenarioIdRef.current || 'compliment',
+            idolName: idol,
+            phase: phaseNow,
+            conversationHistory: histBefore,
+            lang,
+          }),
+        });
+        const chatData = await resChat.json();
+        idolMain = String(chatData.idolText || '').trim();
+        shouldAsk =
+          Boolean(chatData.shouldAskIdolQuestion) &&
+          !!chatData.idolQuestion?.trim?.();
+        idolQuestionStr =
+          typeof chatData.idolQuestion === 'string'
+            ? chatData.idolQuestion.trim()
+            : '';
+      } catch {
+        const fb =
+          getRandomLine('reaction_nervous') || getNervousResponse();
+        idolMain =
+          fb?.text || getNervousResponse()?.text || '괜찮아요~ 천천히 해요.';
+        shouldAsk = false;
+      }
+
+      if (!idolMain) {
+        const fb =
+          getRandomLine('reaction_nervous') || getNervousResponse();
+        idolMain =
+          fb?.text ||
+          getNervousResponse()?.text ||
+          '괜찮아요~ 천천히 해요.';
+      }
+
+      setConversationHistory(() => {
+        const next = [
+          ...histBefore,
+          { role: 'user', text: userText },
+          { role: 'idol', text: idolMain },
+        ];
+        if (shouldAsk && idolQuestionStr) {
+          next.push({ role: 'idol', text: idolQuestionStr });
+        }
+        conversationHistoryRef.current = next;
+        return next;
+      });
+
+      setLineHint('');
+      setMicState('idol_speaking');
+
+      setCurrentSubtitle({
+        korean: idolMain,
+        roman: '',
+        translation: '',
+        visible: true,
+      });
+      await playTtsAndWait(idolMain);
+
+      if (shouldAsk && idolQuestionStr) {
+        setIdolQuestionCount((q) => q + 1);
+        await new Promise((r) => {
+          window.setTimeout(r, 2000);
+        });
+        setCurrentSubtitle({
+          korean: idolQuestionStr,
+          roman: '',
+          translation: '',
+          visible: true,
+        });
+        await playTtsAndWait(idolQuestionStr);
+      }
+
+      setMicState('your_turn');
+    };
+  }, [playTtsAndWait, uiLang, savedScript, idolName]);
+
+  const startSpeaking = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    if (
+      introStepRef.current !== 'started' ||
+      endSequenceRef.current
+    )
+      return;
+    if (micStateRef.current !== 'your_turn') return;
+    if (timeRemainingRef.current <= 0) return;
+
+    cleanupMicPipeline();
+    setLineHint('');
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      alert('마이크 권한이 필요합니다');
+      setMicState('your_turn');
+      return;
+    }
+
+    streamRef.current = stream;
+    audioChunksRef.current = [];
+
+    const mimeCandidate = MediaRecorder.isTypeSupported(
+      'audio/webm;codecs=opus',
+    )
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : '';
+    const recorder = mimeCandidate
+      ? new MediaRecorder(stream, { mimeType: mimeCandidate })
+      : new MediaRecorder(stream);
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunksRef.current.push(e.data);
+    };
+
+    try {
+      recorder.start(250);
+    } catch {
+      alert('마이크 권한이 필요합니다');
+      cleanupMicPipeline();
+      setMicState('your_turn');
+      return;
+    }
+
+    mediaRecorderRef.current = recorder;
+    setMediaRecorder(recorder);
+
+    recordingStartMsRef.current = Date.now();
+    lastSpeechTsRef.current = recordingStartMsRef.current;
+    setMicState('speaking');
+
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AC();
+      silenceAudioCtxRef.current = ctx;
+      const srcN = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      srcN.connect(analyser);
+      const buffer = new Uint8Array(analyser.fftSize);
+
+      const tick = () => {
+        if (micStateRef.current !== 'speaking') return;
+        analyser.getByteTimeDomainData(buffer);
+        let sum = 0;
+        for (let i = 0; i < buffer.length; i += 1) {
+          sum += Math.abs(buffer[i] - 128);
+        }
+        const lvl = sum / buffer.length;
+        const now = Date.now();
+        if (lvl > 5.5) lastSpeechTsRef.current = now;
+        if (
+          now - lastSpeechTsRef.current >= 5000 &&
+          now - recordingStartMsRef.current > 450
+        ) {
+          void stopSpeakingInnerRef.current?.();
+          return;
+        }
+        silenceRafRef.current = window.requestAnimationFrame(tick);
+      };
+      silenceRafRef.current = window.requestAnimationFrame(tick);
+    } catch {
+      /* silence-only fallback handled by tap-to-stop */
+    }
+
+    const maxId = window.setTimeout(() => {
+      void stopSpeakingInnerRef.current?.();
+    }, 28000);
+    setSilenceTimer(maxId);
   }, []);
 
   const stopSpeaking = useCallback(() => {
-    setMicState((s) => (s === 'speaking' ? 'processing' : s));
+    void stopSpeakingInnerRef.current?.();
   }, []);
 
   const handleEmergencyCard = useCallback((card) => {
@@ -1149,6 +1638,7 @@ function CallPageContent() {
           />
         </div>
 
+        {introStep === 'started' && timeRemaining > 0 && (
         <div
           style={{
             position: 'absolute',
@@ -1165,6 +1655,26 @@ function CallPageContent() {
             padding: '0 24px',
           }}
         >
+          {micState === 'idle' && (
+            <div
+              style={{
+                width: '220px',
+                height: '88px',
+                margin: '0 auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'rgba(255,255,255,0.35)',
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                fontFamily: 'Manrope, sans-serif',
+              }}
+            >
+              Preparing mic…
+            </div>
+          )}
           {micState === 'idol_speaking' && (
             <div
               style={{
@@ -1294,6 +1804,7 @@ function CallPageContent() {
             </div>
           )}
         </div>
+        )}
 
         {introStep === 'completed' && (
           <div

@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
 
-console.log("TTS API Key exists:", !!process.env.GOOGLE_TTS_API_KEY);
-console.log("TTS API Key value:", process.env.GOOGLE_TTS_API_KEY?.substring(0, 10));
-
 /**
  * Google TTS용: 이모지·이모티콘 설명·괄호 안 이모티콘 표기 제거
  */
@@ -94,8 +91,11 @@ export async function POST(request) {
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error("Google TTS HTTP error — status:", res.status, res.statusText);
-      console.error("Google TTS HTTP error — response body (text):", errText);
+      console.error(
+        "Google TTS HTTP error",
+        res.status,
+        res.statusText || "",
+      );
       return NextResponse.json({ error: errText }, { status: 500 });
     }
 
@@ -106,7 +106,10 @@ export async function POST(request) {
 
     return NextResponse.json({ audioContent: data.audioContent });
   } catch (error) {
-    console.error("Google TTS full error:", JSON.stringify(error));
+    console.error(
+      "Google TTS error",
+      error instanceof Error ? error.message : "unknown",
+    );
     return NextResponse.json({ error: "TTS failed" }, { status: 500 });
   }
 }
