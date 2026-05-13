@@ -4,9 +4,11 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { getSessionsRemaining } from "@/lib/freeLimit";
 import { getSupabase } from "@/lib/supabase";
+import { calculateDday, formatDday } from "@/src/lib/dday";
 
 const LANG_KEY = "ogu_lang";
 const VOICE_KEY = "kkobi_voice_gender";
+const FANSIGN_DATE_KEY = "kkobi_m90s_fansign_date";
 
 const COPY = {
   en: {
@@ -27,6 +29,12 @@ const COPY = {
     voice_desc: "Your idol will speak during the 90-second simulation",
     voice_female: "Female",
     voice_male: "Male",
+    fansign_date_label: "Fansign date",
+    fansign_date_optional: "Optional",
+    fansign_date_hint:
+      "Stronger coaching when we know your date",
+    fansign_date_placeholder: "YYYY-MM-DD",
+    dday_label_format: "D-{n}",
   },
   ko: {
     eyebrow: "영통 팬싸인회 준비 서비스",
@@ -46,6 +54,12 @@ const COPY = {
     voice_desc: "90초 시뮬레이션에서 아이돌이 이 목소리로 말해요",
     voice_female: "여성",
     voice_male: "남성",
+    fansign_date_label: "팬싸 날짜",
+    fansign_date_optional: "선택",
+    fansign_date_hint:
+      "날짜를 알려주면 더 강력한 코칭을 받을 수 있어요",
+    fansign_date_placeholder: "YYYY-MM-DD",
+    dday_label_format: "D-{n}",
   },
   id: {
     eyebrow: "Persiapan Video Call Fansign",
@@ -65,6 +79,12 @@ const COPY = {
     voice_desc: "Idolmu akan berbicara dengan suara ini saat simulasi",
     voice_female: "Perempuan",
     voice_male: "Laki-laki",
+    fansign_date_label: "Tanggal fansign",
+    fansign_date_optional: "Opsional",
+    fansign_date_hint:
+      "Coaching-nya makin mantap kalau kami tahu tanggalnya",
+    fansign_date_placeholder: "YYYY-MM-DD",
+    dday_label_format: "D-{n}",
   },
   pt: {
     eyebrow: "Preparação para Fansign",
@@ -84,6 +104,12 @@ const COPY = {
     voice_desc: "Seu idol vai falar durante a simulação de 90 segundos",
     voice_female: "Feminino",
     voice_male: "Masculino",
+    fansign_date_label: "Data do fansign",
+    fansign_date_optional: "Opcional",
+    fansign_date_hint:
+      "O coaching fica mais forte quando a gente sabe a data",
+    fansign_date_placeholder: "YYYY-MM-DD",
+    dday_label_format: "D-{n}",
   },
   fr: {
     eyebrow: "Préparation Appel Vidéo Fansign",
@@ -103,6 +129,12 @@ const COPY = {
     voice_desc: "Votre idol parlera pendant la simulation de 90 secondes",
     voice_female: "Féminin",
     voice_male: "Masculin",
+    fansign_date_label: "Date du fansign",
+    fansign_date_optional: "Optionnel",
+    fansign_date_hint:
+      "Un coaching encore plus solide si on connaît ta date",
+    fansign_date_placeholder: "YYYY-MM-DD",
+    dday_label_format: "D-{n}",
   },
 };
 
@@ -125,6 +157,7 @@ function ScenarioPageInner() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [voiceGender, setVoiceGender] = useState("FEMALE");
   const [idolName, setIdolName] = useState("");
+  const [fansignDate, setFansignDate] = useState("");
 
   useEffect(() => {
     const savedLang = localStorage.getItem(LANG_KEY) || "en";
@@ -134,6 +167,10 @@ function ScenarioPageInner() {
     const savedIdol = localStorage.getItem("kkobi_idol_name");
     if (savedIdol && savedIdol !== "IDOL") {
       setIdolName(savedIdol);
+    }
+    const savedFansign = localStorage.getItem(FANSIGN_DATE_KEY);
+    if (savedFansign && /^\d{4}-\d{2}-\d{2}$/.test(savedFansign.trim())) {
+      setFansignDate(savedFansign.trim());
     }
 
     const supabase = getSupabase();
@@ -560,6 +597,125 @@ function ScenarioPageInner() {
             outline: "none",
           }}
         />
+      </div>
+
+      <div
+        style={{
+          background: "rgba(255,216,77,0.05)",
+          border: "1px dashed rgba(255,216,77,0.25)",
+          borderRadius: "14px",
+          padding: "14px 12px",
+          marginBottom: "10px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "8px",
+            marginBottom: "8px",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#FFD84D",
+              fontFamily: "'Manrope', sans-serif",
+              letterSpacing: "0.04em",
+            }}
+          >
+            <span aria-hidden="true">🎟 </span>
+            {t.fansign_date_label.toUpperCase()}
+          </span>
+          <span
+            style={{
+              fontSize: "10px",
+              fontWeight: 600,
+              color: "rgba(255,255,255,0.38)",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+            }}
+          >
+            {t.fansign_date_optional}
+          </span>
+        </div>
+        <p
+          style={{
+            fontSize: "11px",
+            color: "rgba(255,255,255,0.52)",
+            margin: "0 0 12px",
+            lineHeight: 1.55,
+          }}
+        >
+          {t.fansign_date_hint}
+        </p>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+          }}
+        >
+          <input
+            type="date"
+            value={fansignDate}
+            aria-label={t.fansign_date_label}
+            onChange={(e) => {
+              const v = e.target.value;
+              setFansignDate(v);
+              if (typeof window === "undefined") return;
+              if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+                localStorage.setItem(FANSIGN_DATE_KEY, v);
+              } else {
+                localStorage.removeItem(FANSIGN_DATE_KEY);
+              }
+            }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,216,77,0.2)",
+              borderRadius: "10px",
+              padding: "10px 12px",
+              fontSize: "13px",
+              color: "#fff",
+              boxSizing: "border-box",
+              fontFamily: "'Inter', sans-serif",
+              outline: "none",
+              colorScheme: "dark",
+            }}
+          />
+          {fansignDate && /^\d{4}-\d{2}-\d{2}$/.test(fansignDate) ? (
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "#FFD84D",
+                whiteSpace: "nowrap",
+                fontFamily: "'Manrope', sans-serif",
+              }}
+            >
+              {(() => {
+                const n = calculateDday(fansignDate);
+                if (n === null) return "";
+                if (n > 0)
+                  return t.dday_label_format.replace("{n}", String(n));
+                return formatDday(n);
+              })()}
+            </span>
+          ) : null}
+        </div>
+        <p
+          style={{
+            fontSize: "10px",
+            color: "rgba(255,255,255,0.28)",
+            margin: "10px 0 0",
+          }}
+        >
+          {t.fansign_date_placeholder}
+        </p>
       </div>
 
       {/* CTA 영역 */}

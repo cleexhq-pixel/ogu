@@ -87,6 +87,52 @@ function normalizeScores(scoresRaw) {
   };
 }
 
+/** When model omits or invalid `real_talk`; tone matches scores.total bands */
+function realTalkFallbackForTotal(total, lang) {
+  const L = normalizeLang(lang);
+  const n = Number(total);
+  const t = Number.isFinite(n) ? n : 3;
+  const pack = {
+    en: {
+      hi: "Almost perfect—just one last check and you're set.",
+      mid: 'At a real fansign this might have left a slightly awkward vibe. Your bias remembers every fan who shows up.',
+      low: 'At this pace those 90 seconds will slip by awkwardly. Your bias remembers everyone—show up ready.',
+      bad: "If you jump in like this, you'll regret not rehearsing more. One more round, okay?",
+    },
+    ko: {
+      hi: '거의 완벽해요. 마지막 점검만 하면 돼요.',
+      mid: '실제 팬싸였다면 살짝 “어색했다”는 인상이 남았을 수 있어요. 우리 오빠는 팬 한 명 한 명 다 기억하거든요.',
+      low: '이대로면 90초가 어색하게 훅 지나가요. 오빠는 모든 팬을 다 기억해요.',
+      bad: '지금 그대로 가면 나중에 후회할지도 몰라요. 한 번만 더 연습해봐요.',
+    },
+    id: {
+      hi: 'Hampir sempurna—tinggal sentuhan terakhir aja.',
+      mid: 'Kalau ini fansign beneran, mungkin kesan “agak canggung” ikut kebawa. Ingat, dia ingat semua fans kok.',
+      low: 'Kalau begini, 90 detiknya bisa kerasa canggung dan cepat lewat. Dia ingat semua fans—ayo datang dengan persiapan.',
+      bad: 'Kalau langsung gas tanpa latihan lagi, nanti bisa nyesel. Sekali lagi latihan, ya?',
+    },
+    pt: {
+      hi: 'Quase perfeito—só falta aquele retoque final.',
+      mid: 'Num fansign de verdade, talvez ficasse uma leve sensação de “um pouco estranho”. Ele lembra de todo mundo que vai ver ele.',
+      low: 'Assim, os 90 segundos passam meio estranhos no automático. Ele lembra de cada fã — chega preparada/o.',
+      bad: 'Se for assim mesmo, vai bater arrependimento. Mais uma rodada de treino, vai?',
+    },
+    fr: {
+      hi: "Presque parfait — il ne reste qu'un dernier petit coup de polish.",
+      mid:
+        'Dans un vrai fansign, ça aurait peut‑être laissé une impression un peu gênante ; ton bias retient absolument toutes les fans devant lui.',
+      low:
+        "À ce rythme les 90 secondes peuvent filer sans impact. Ton bias enregistre tout le monde — viens préparée.",
+      bad: 'Si tu y vas comme ça, tu risques le regret sans séance solo de plus.',
+    },
+  };
+  const p = pack[L] || pack.en;
+  if (t >= 4.5) return p.hi;
+  if (t >= 3.5) return p.mid;
+  if (t >= 2.5) return p.low;
+  return p.bad;
+}
+
 function sparseFallbackReview(lang) {
   const isKo = lang === 'ko';
   return {
@@ -98,6 +144,7 @@ function sparseFallbackReview(lang) {
       total: 1,
     }),
     encouragement: isKo ? '다음엔 더 길게 대화해봐요' : 'Next time, try having a longer conversation.',
+    real_talk: realTalkFallbackForTotal(1, lang),
     best_moment: null,
     missed_moment: {
       korean: '마이크 버튼을 눌러 한국어로 말해보세요',
@@ -125,6 +172,7 @@ function errorFallbackReview(lang) {
       time_used: 3,
       total: 3,
     }),
+    real_talk: realTalkFallbackForTotal(3, lang),
     encouragement:
       lang === 'ko'
         ? '리뷰를 불러오지 못했어요. 잠시 후 다시 시도해 보세요.'
@@ -153,11 +201,17 @@ export async function POST(req) {
       totalLines,
       idolName: idolNameRaw,
       lang: langRaw,
+      fansignDate: fansignDateRaw,
       conversationHistory: conversationHistoryRaw,
       phaseLog: phaseLogRaw,
     } = body || {};
 
     lang = normalizeLang(typeof langRaw === 'string' ? langRaw : 'en');
+    const fansignRaw =
+      typeof fansignDateRaw === 'string' ? fansignDateRaw.trim() : '';
+    const fansignDateNormalized = /^\d{4}-\d{2}-\d{2}$/.test(fansignRaw)
+      ? fansignRaw
+      : null;
     const conversationHistory = parseConversationHistory(conversationHistoryRaw);
     const phaseLog = parsePhaseLog(phaseLogRaw);
 
@@ -185,16 +239,23 @@ export async function POST(req) {
       });
     }
 
-    const uiLangInstructions =
-      `사용자 인터페이스 언어: ${lang}\n` +
-      `encouragement, missed_moment.translation, missed_moment.tip 등 사용자에게 보이는 설명은 반드시 ${lang} 로 작성하세요.\n` +
-      `(best_moment 필드의 한국어 대사 you_said_korean, idol_replied_korean 등은 실제 한국어로 유지)\n\n`;
+    const fansignLine =
+      fansignDateNormalized != null
+        ? `Fansign date (YYYY-MM-DD, optional): ${fansignDateNormalized} — use this only to calibrate urgency and pacing in coaching if the date is soon.`
+        : 'Fansign date: not provided.';
 
-    const prompt = `${uiLangInstructions}You are an expert coach for international K-pop fans practicing a fansign videocall (90 seconds).
+    const prompt = `OUTPUT LANGUAGE: ${lang}
+All review text — real_talk, encouragement, best_moment fields that are translations (you_said_translation, idol_replied_translation), missed_moment.translation, missed_moment.tip, share_quote_translation — MUST be written entirely in ${lang}.
+All text must be in ${lang}.
+Korean transcript fields (you_said_korean, idol_replied_korean, share_quote as Korean, missed_moment.korean) MUST stay in natural Korean.
+Do not output English explanations when ${lang} is not en.
+
+You are an expert coach for international K-pop fans practicing a fansign videocall (90 seconds).
 
 ## Session context
 Scenario: ${scenarioLine}
 Idol name: ${displayIdolName}
+${fansignLine}
 Prepared lines checkpoint (legacy UI): ${completedLines ?? '?'}/${totalLines ?? '?'}
 Positive/emotional cues from app (moment_type hints): ${JSON.stringify(positiveMoments ?? [])}
 
@@ -240,20 +301,27 @@ ${JSON.stringify(conversationHistory)}
 
 Then set scores.total = round the average of the four scores to 1 decimal (e.g. 4.25 → 4.3).
 
-### B) best_moment
+### B) real_talk
+One short paragraph in ${lang} only (2–4 sentences), honest but kind, based on scores.total:
+- total >= 4.5: "almost perfect, last polish" tone
+- 3.5–4.4: real fansign might have felt a bit awkward; your bias remembers every fan
+- 2.5–3.4: 90 seconds could pass awkwardly at this pace; your bias remembers everyone — show up ready
+- below 2.5: risk of regretting going in unprepared; encourage one more practice round
+
+### C) best_moment
 Pick the single best REAL user–idol pair from the transcript where the user did well in Korean. Use actual lines or close paraphrases from the transcript. If there is no viable success, set best_moment to null.
 
-### C) missed_moment
-One Korean line or habit to practice, or a gap they did not try. tip: concrete, practical, in UI language (${lang}). Never mention AI, apps, or chatbots.
+### D) missed_moment
+One Korean line or habit to practice, or a gap they did not try. tip: concrete, practical, in ${lang}. Never mention AI, apps, or chatbots.
 
-### D) encouragement
-One warm sentence in UI language (${lang}), aligned with scores.total:
+### E) encouragement
+One warm sentence in ${lang}, aligned with scores.total:
 - total >= 4.0: along the lines of "팬싸 준비 완료! 자신감 가져요"
 - 3.0–3.9: "좋은 시작이에요. 한 번만 더 연습해봐요" tone
 - 2.0–2.9: "괜찮아요, 누구나 처음엔 어려워요" tone
 - below 2.0: "오늘은 워밍업이에요. 다음에 다시 도전!" tone
 
-### E) share_quote
+### F) share_quote
 Short shareable Korean phrase; include romanization in share_quote_romanization.
 
 Return ONLY valid JSON (no markdown) with this exact structure:
@@ -266,7 +334,8 @@ Return ONLY valid JSON (no markdown) with this exact structure:
     "time_used": 1,
     "total": 1.0
   },
-  "encouragement": "string in UI language",
+  "real_talk": "string in OUTPUT LANGUAGE (${lang})",
+  "encouragement": "string in OUTPUT LANGUAGE",
   "best_moment": null,
   "missed_moment": {
     "korean": "...",
@@ -309,6 +378,11 @@ Romanization: Revised Romanization (e.g. 안녕하세요 → Annyeonghaseyo). Ko
     };
 
     if (out.best_moment === undefined) out.best_moment = null;
+
+    let rt =
+      typeof out.real_talk === 'string' ? out.real_talk.trim() : '';
+    if (!rt) rt = realTalkFallbackForTotal(scores.total, lang);
+    out.real_talk = rt;
 
     return NextResponse.json({ success: true, review: out });
   } catch (error) {
