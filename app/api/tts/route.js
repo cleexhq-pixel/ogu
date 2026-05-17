@@ -53,7 +53,15 @@ export async function POST(request) {
       return NextResponse.json({ error: "TTS failed" }, { status: 400 });
     }
 
-    const { text, lang, speakingRate: rawRate, gender } = body || {};
+    const { text, lang, speakingRate: rawRate, gender, scriptId } = body || {};
+
+    // 사전 생성 mp3 캐시 히트: scriptId가 있으면 정적 파일 URL 반환
+    if (scriptId && typeof scriptId === "string" && scriptId.trim()) {
+      const genderPath = gender === "MALE" ? "male" : "female";
+      const audioUrl = `/audio/${genderPath}/${scriptId.trim()}.mp3`;
+      return NextResponse.json({ audioUrl });
+    }
+
     if (!text || typeof text !== "string" || !text.trim()) {
       return NextResponse.json({ error: "TTS failed" }, { status: 400 });
     }

@@ -10,6 +10,7 @@ import {
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { hasReachedDailyLimit, incrementSessionsUsed } from '@/lib/freeLimit';
+import { trackEvent } from '@/lib/analytics';
 import { normalizeLang } from '@/app/lib/i18n';
 import idolScripts, { getRandomLine, getNervousResponse } from '@/src/data/idol-scripts';
 
@@ -51,14 +52,24 @@ function buildParticles() {
 }
 
 const emergencyCards = [
-  { en: 'Wait, restart', ko: '잠깐, 다시 말할게요' },
-  { en: 'Change topic', ko: '다른 얘기 할게요' },
-  { en: 'I love you', ko: '너무 좋아요' },
+  { id: 'E01', en: 'Wait, restart', ko: '아 잠깐만요~ 다시 말할게요' },
+  { id: 'E02', en: 'Change topic', ko: '그거 말고, 다른 얘기 할게요!' },
+  { id: 'E03', en: 'Too happy', ko: '그냥 너무 좋아서 말이 안 나와요~' },
+  { id: 'E04', en: 'Korean is hard', ko: '한국어가 아직 서툴러요' },
+  { id: 'E05', en: 'Check notes', ko: '잠깐만요, 메모 볼게요!' },
 ];
 
 /** 대화 타임라인 항목 (localStorage kkobi_m90s_conversation) */
 function historyEntry(role, text) {
   return { role, text, timestamp: Date.now() };
+}
+
+function todayLocalKey() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function CallPageContent() {
@@ -120,6 +131,8 @@ function CallPageContent() {
   const timeRemainingRef = useRef(90);
   const phaseLogRef = useRef({});
   const prevPhaseForLogRef = useRef(null);
+  const callStartedTrackedRef = useRef(false);
+  const callCompletedTrackedRef = useRef(false);
 
   useEffect(() => {
     setParticles(buildParticles());
@@ -153,6 +166,12 @@ function CallPageContent() {
     if (introStep !== 'started' || timeRemaining !== 90) return undefined;
     phaseLogRef.current = {};
     prevPhaseForLogRef.current = 'PHASE_A';
+    if (!callStartedTrackedRef.current) {
+      callStartedTrackedRef.current = true;
+      trackEvent('m90s_call_started', {
+        scenario: scenarioIdRef.current || scenarioId,
+      });
+    }
     return undefined;
   }, [introStep, timeRemaining]);
 
@@ -258,6 +277,16 @@ function CallPageContent() {
       'kkobi_m90s_conversation',
       JSON.stringify(conversationHistoryRef.current),
     );
+    if (!callCompletedTrackedRef.current) {
+      callCompletedTrackedRef.current = true;
+      trackEvent('m90s_call_completed', {
+        scenario: scenarioId,
+        time_used: 90 - timeRemaining,
+        user_turns: conversationHistoryRef.current.filter(
+          (m) => m.role === 'user',
+        ).length,
+      });
+    }
   }, [introStep, positiveMoments, timeRemaining, scenarioId, savedScript]);
 
   const formatTime = (sec) =>
@@ -308,10 +337,28 @@ function CallPageContent() {
   }
 
   const playTtsAndWait = useCallback(
-    async (text) => {
+    async (text, scriptId) => {
       const trimmed = typeof text === 'string' ? text.trim() : '';
       if (!trimmed || typeof window === 'undefined') return;
       try {
+        // 캐시 히트: scriptId가 있으면 정적 mp3 직접 재생
+        if (scriptId && typeof scriptId === 'string') {
+          const genderPath = genderTts === 'MALE' ? 'male' : 'female';
+          const audioUrl = `/audio/${genderPath}/${scriptId}.mp3`;
+          const audio = new Audio(audioUrl);
+          await new Promise((resolve) => {
+            audio.onended = resolve;
+            audio.onerror = () => {
+              // 캐시 파일 없으면 폴백으로 TTS API 호출
+              playTtsAndWait(text, null).then(resolve);
+            };
+            void audio.play().catch((err) => {
+              console.error('Cached TTS play failed:', err);
+              resolve();
+            });
+          });
+          return;
+        }
         const res = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -322,7 +369,13 @@ function CallPageContent() {
           }),
         });
         const data = await res.json();
-        if (!data?.audioContent) return;
+        if (!data?.audioContent) {
+          trackEvent('m90s_tts_failed', {
+            scenario: scenarioIdRef.current,
+            reason: res.ok ? 'empty_audio' : `http_${res.status}`,
+          });
+          return;
+        }
         const audio = new Audio(
           `data:audio/mp3;base64,${data.audioContent}`,
         );
@@ -331,10 +384,18 @@ function CallPageContent() {
           audio.onerror = resolve;
           void audio.play().catch((err) => {
             console.error('TTS play failed:', err);
+            trackEvent('m90s_tts_failed', {
+              scenario: scenarioIdRef.current,
+              reason: 'playback',
+            });
             resolve();
           });
         });
       } catch {
+        trackEvent('m90s_tts_failed', {
+          scenario: scenarioIdRef.current,
+          reason: 'request',
+        });
         /* subtitle-only */
       }
     },
@@ -452,7 +513,7 @@ function CallPageContent() {
 
       const billing = searchParams.get('billing') || '';
       const userKey = currentUser?.id ?? 'guest';
-      const todayKey = new Date().toISOString().split('T')[0];
+      const todayKey = todayLocalKey();
       const capKey = `kkobi_m90s_charged_${userKey}_${todayKey}_${billing}_${sId}`;
 
       if (!sessionStorage.getItem(capKey)) {
@@ -464,14 +525,16 @@ function CallPageContent() {
 
       if (cancelled) return;
 
-      console.log('=== Phase B 진입 데이터 확인 ===');
-      console.log('Scenario ID:', sId);
-      console.log('Voice Gender:', vGender);
-      console.log('Last Scenario:', lastScenario);
-      console.log('Saved Script:', parsedScript);
-      console.log('Lines count:', parsedScript?.lines?.length);
-      console.log('First line:', parsedScript?.lines?.[0]);
-      console.log('==============================');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('=== Phase B 진입 데이터 확인 ===');
+        console.log('Scenario ID:', sId);
+        console.log('Voice Gender:', vGender);
+        console.log('Last Scenario:', lastScenario);
+        console.log('Saved Script:', parsedScript);
+        console.log('Lines count:', parsedScript?.lines?.length);
+        console.log('First line:', parsedScript?.lines?.[0]);
+        console.log('==============================');
+      }
 
       setScenarioId(sId);
       setVoiceGender(vGender);
@@ -608,6 +671,11 @@ function CallPageContent() {
         userText =
           typeof td.text === 'string' ? td.text.trim() : '';
       } catch {
+        trackEvent('m90s_transcribe_failed', {
+          scenario: scenarioIdRef.current,
+          phase: currentPhaseRef.current,
+          reason: 'request',
+        });
         const fb = getNervousResponse();
         const fbText =
           fb?.text || '괜찮아요~ 천천히 해요.';
@@ -633,6 +701,11 @@ function CallPageContent() {
       }
 
       if (!userText.trim()) {
+        trackEvent('m90s_transcribe_failed', {
+          scenario: scenarioIdRef.current,
+          phase: currentPhaseRef.current,
+          reason: 'empty_text',
+        });
         const fb = getNervousResponse();
         const fbText = fb?.text || '괜찮아요~ 천천히 해요.';
         const t0 = Date.now();
@@ -668,6 +741,7 @@ function CallPageContent() {
       let idolMain = '';
       let shouldAsk = false;
       let idolQuestionStr = '';
+      let idolScriptId = null;
 
       try {
         const phaseNow = currentPhaseRef.current || 'PHASE_A';
@@ -685,6 +759,10 @@ function CallPageContent() {
         });
         const chatData = await resChat.json();
         idolMain = String(chatData.idolText || '').trim();
+        idolScriptId =
+          typeof chatData.scriptId === 'string'
+            ? chatData.scriptId.trim()
+            : null;
         shouldAsk =
           Boolean(chatData.shouldAskIdolQuestion) &&
           !!chatData.idolQuestion?.trim?.();
@@ -736,7 +814,7 @@ function CallPageContent() {
         translation: '',
         visible: true,
       });
-      await playTtsAndWait(idolMain);
+      await playTtsAndWait(idolMain, idolScriptId);
 
       if (shouldAsk && idolQuestionStr) {
         setIdolQuestionCount((q) => q + 1);
@@ -749,7 +827,7 @@ function CallPageContent() {
           translation: '',
           visible: true,
         });
-        await playTtsAndWait(idolQuestionStr);
+        await playTtsAndWait(idolQuestionStr, null);
       }
 
       setMicState('your_turn');
@@ -836,6 +914,10 @@ function CallPageContent() {
           now - lastSpeechTsRef.current >= 5000 &&
           now - recordingStartMsRef.current > 450
         ) {
+          trackEvent('m90s_silence_detected', {
+            scenario: scenarioIdRef.current,
+            phase: currentPhaseRef.current,
+          });
           void stopSpeakingInnerRef.current?.();
           return;
         }
@@ -858,6 +940,11 @@ function CallPageContent() {
 
   const handleEmergencyCard = useCallback((card) => {
     setLineHint(card.ko);
+    setShowEmergencyCards(false);
+    trackEvent('m90s_emergency_card_used', {
+      scenario: scenarioIdRef.current,
+      card_id: card.id,
+    });
   }, []);
 
   const triggerEmotionalMoment = useCallback((type, context) => {
@@ -1818,10 +1905,36 @@ function CallPageContent() {
               'linear-gradient(180deg, transparent 0%, rgba(14,14,15,0.92) 24%, #0E0E0F 100%)',
           }}
         >
+          {(micState === 'your_turn' || micState === 'speaking') && (
+            <button
+              type="button"
+              onClick={() => setShowEmergencyCards((v) => !v)}
+              style={{
+                alignSelf: 'center',
+                pointerEvents: 'auto',
+                padding: '8px 14px',
+                border: 'none',
+                borderRadius: '9999px',
+                background: showEmergencyCards
+                  ? 'rgba(255,138,169,0.24)'
+                  : 'rgba(255,255,255,0.1)',
+                color: showEmergencyCards ? '#FF8AA9' : 'rgba(255,255,255,0.72)',
+                fontSize: '11px',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                fontFamily: 'Manrope, sans-serif',
+                cursor: 'pointer',
+              }}
+            >
+              Emergency phrases
+            </button>
+          )}
           {showEmergencyCards && (
             <div
               style={{
                 display: 'flex',
+                flexWrap: 'wrap',
                 justifyContent: 'center',
                 gap: '6px',
                 pointerEvents: 'auto',
@@ -1834,7 +1947,7 @@ function CallPageContent() {
                   type="button"
                   onClick={() => handleEmergencyCard(card)}
                   style={{
-                    flex: '1 1 0',
+                    flex: '1 1 104px',
                     maxWidth: '110px',
                     padding: '8px 10px',
                     background: 'rgba(255,138,169,0.18)',
