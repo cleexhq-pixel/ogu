@@ -76,7 +76,7 @@ async function classifyIntent({
     `utterance: ${JSON.stringify(trimmed.slice(0, 600))}`;
 
   const msg = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 160,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -148,6 +148,7 @@ function buildPayload(body, intent, emotion) {
       shouldAskIdolQuestion: false,
       idolQuestion: null,
       emotion,
+      scriptId: line?.id ?? null,
     };
   }
 
@@ -162,7 +163,10 @@ function buildPayload(body, intent, emotion) {
       intent === 'name_given'
         ? getRandomLine('reaction_name')
         : pickPhaseB(intent, scenarioObj);
-    idolText = line?.text || getRandomLine('reaction_compliment')?.text || '';
+    if (!line?.text) {
+      line = getRandomLine('reaction_compliment');
+    }
+    idolText = line?.text || '';
     return {
       idolText: replaceNamePlaceholder(idolText, idolName),
       shouldAskIdolQuestion,
@@ -170,6 +174,7 @@ function buildPayload(body, intent, emotion) {
         ? replaceNamePlaceholder(idolQuestion, idolName)
         : null,
       emotion,
+      scriptId: line?.id ?? null,
     };
   }
 
@@ -182,6 +187,7 @@ function buildPayload(body, intent, emotion) {
       shouldAskIdolQuestion: false,
       idolQuestion: null,
       emotion,
+      scriptId: null,
     };
   }
 
@@ -193,6 +199,7 @@ function buildPayload(body, intent, emotion) {
       shouldAskIdolQuestion: false,
       idolQuestion: null,
       emotion,
+      scriptId: line?.id ?? null,
     };
   }
 
@@ -203,6 +210,7 @@ function buildPayload(body, intent, emotion) {
     shouldAskIdolQuestion: false,
     idolQuestion: null,
     emotion,
+    scriptId: fb?.id ?? null,
   };
 }
 
@@ -229,6 +237,7 @@ export async function POST(request) {
         shouldAskIdolQuestion: false,
         idolQuestion: null,
         emotion: 'gentle',
+        scriptId: n?.id ?? null,
       });
     }
 
@@ -258,6 +267,7 @@ export async function POST(request) {
       shouldAskIdolQuestion: false,
       idolQuestion: null,
       emotion: 'gentle',
+      scriptId: n?.id ?? null,
     });
   }
 }
