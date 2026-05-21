@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { getSessionsRemaining } from "@/lib/freeLimit";
 import { getSupabase } from "@/lib/supabase";
+import { trackEvent } from "@/lib/analytics";
 import { calculateDday, formatDday } from "@/src/lib/dday";
 
 const LANG_KEY = "ogu_lang";
@@ -22,8 +23,8 @@ const COPY = {
     limit_title: "All done for today!",
     limit_desc: "Come back tomorrow for 3 more sessions 🌙",
     scenarios: [
-      "Compliment", "Birthday", "Game",
-      "Request", "Ask", "Confession"
+      "Compliment", "Birthday", "Encouragement",
+      "Game", "Request"
     ],
     voice_label: "Idol's voice",
     voice_desc: "Your idol will speak during the 90-second simulation",
@@ -47,8 +48,8 @@ const COPY = {
     limit_title: "오늘 연습을 다 했어요!",
     limit_desc: "내일 다시 3회 충전돼요 🌙",
     scenarios: [
-      "칭찬하기", "생일 축하", "게임하기",
-      "멘트 요청", "질문하기", "사랑 고백"
+      "칭찬하기", "생일 축하", "응원하기",
+      "게임하기", "멘트 요청"
     ],
     voice_label: "아이돌 목소리",
     voice_desc: "90초 시뮬레이션에서 아이돌이 이 목소리로 말해요",
@@ -72,8 +73,8 @@ const COPY = {
     limit_title: "Sesi hari ini sudah habis!",
     limit_desc: "Kembali besok untuk 3 sesi lagi 🌙",
     scenarios: [
-      "Pujian", "Ulang Tahun", "Game",
-      "Permintaan", "Tanya", "Pengakuan"
+      "Pujian", "Ulang Tahun", "Dukungan",
+      "Game", "Permintaan"
     ],
     voice_label: "Suara idol",
     voice_desc: "Idolmu akan berbicara dengan suara ini saat simulasi",
@@ -97,8 +98,8 @@ const COPY = {
     limit_title: "Sessões de hoje esgotadas!",
     limit_desc: "Volte amanhã para mais 3 sessões 🌙",
     scenarios: [
-      "Elogio", "Aniversário", "Jogo",
-      "Pedido", "Pergunta", "Confissão"
+      "Elogio", "Aniversário", "Apoio",
+      "Jogo", "Pedido"
     ],
     voice_label: "Voz do idol",
     voice_desc: "Seu idol vai falar durante a simulação de 90 segundos",
@@ -122,8 +123,8 @@ const COPY = {
     limit_title: "Sessions du jour épuisées!",
     limit_desc: "Revenez demain pour 3 nouvelles sessions 🌙",
     scenarios: [
-      "Compliment", "Anniversaire", "Jeu",
-      "Demande", "Question", "Confession"
+      "Compliment", "Anniversaire", "Encouragement",
+      "Jeu", "Demande"
     ],
     voice_label: "Voix de l'idol",
     voice_desc: "Votre idol parlera pendant la simulation de 90 secondes",
@@ -139,11 +140,11 @@ const COPY = {
 };
 
 const SCENARIO_IDS = [
-  "compliment", "birthday", "game",
-  "request", "question", "confession"
+  "compliment", "birthday", "encouragement",
+  "game", "request"
 ];
 
-const EMOJIS = ["💝", "🎂", "🎮", "🎤", "💬", "💗"];
+const EMOJIS = ["💝", "🎂", "💪", "🎮", "🎤"];
 
 function ScenarioPageInner() {
   const searchParams = useSearchParams();
@@ -284,6 +285,11 @@ function ScenarioPageInner() {
       const finalIdolName = idolName.trim().toUpperCase() || "IDOL";
       localStorage.setItem("kkobi_idol_name", finalIdolName);
     }
+    trackEvent("m90s_scenario_selected", {
+      scenario: selected,
+      user_type: user ? "member" : "guest",
+      is_paid: isPaid,
+    });
     window.location.href = `/my-90-seconds/prep?scenario=${selected}`;
   }
 
@@ -658,20 +664,30 @@ function ScenarioPageInner() {
             gap: "10px",
           }}
         >
-          <input
-            type="date"
-            value={fansignDate}
-            aria-label={t.fansign_date_label}
-            onChange={(e) => {
-              const v = e.target.value;
-              setFansignDate(v);
-              if (typeof window === "undefined") return;
-              if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
-                localStorage.setItem(FANSIGN_DATE_KEY, v);
-              } else {
-                localStorage.removeItem(FANSIGN_DATE_KEY);
-              }
-            }}
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="YYYY-MM-DD"
+              value={fansignDate}
+              aria-label={t.fansign_date_label}
+              onChange={(e) => {
+                let v = e.target.value;
+                // 숫자와 하이픈만 허용, 자동 하이픈 삽입
+                v = v.replace(/[^\d-]/g, '');
+                if (v.length === 4 && !v.includes('-')) v = v + '-';
+                if (v.length === 7 && v.split('-').length === 2) v = v + '-';
+                if (v.length > 10) v = v.slice(0, 10);
+                setFansignDate(v);
+                if (typeof window === "undefined") return;
+                if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+                  localStorage.setItem(FANSIGN_DATE_KEY, v);
+                  trackEvent("m90s_fansign_date_entered", {
+                    dday: calculateDday(v),
+                  });
+                } else {
+                  localStorage.removeItem(FANSIGN_DATE_KEY);
+                }
+              }}
             style={{
               flex: 1,
               minWidth: 0,

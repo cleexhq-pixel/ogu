@@ -7,6 +7,20 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
+function sanitizeText(raw) {
+  let s = String(raw);
+  try {
+    s = s.replace(/\p{Extended_Pictographic}/gu, '');
+  } catch {
+    s = s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}]/gu, '');
+  }
+  s = s.replace(/[\uFE0F\u200D]/g, '');
+  // 물결표·특수기호 제거 (TTS가 읽는 것들)
+  s = s.replace(/[~〜∼～]/g, '');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
 // ── 설정 ──────────────────────────────────────────────
 const GOOGLE_TTS_API_KEY = process.env.GOOGLE_TTS_API_KEY;
 const OUTPUT_DIR = path.join(process.cwd(), 'public', 'audio');
@@ -101,7 +115,7 @@ function extractLines(scripts) {
         console.log('  [SKIP] id 또는 text 없음:', item);
         continue;
       }
-      lines.push({ id: item.id, text: item.text, category });
+      lines.push({ id: item.id, text: sanitizeText(item.text), category });
     }
   }
   return lines;
@@ -277,7 +291,7 @@ async function generateFillers() {
     }
 
     try {
-      const audioBuffer = await callGoogleTTS(filler.text, VOICE_CONFIG[filler.gender]);
+      const audioBuffer = await callGoogleTTS(sanitizeText(filler.text), VOICE_CONFIG[filler.gender]);
       fs.writeFileSync(outputPath, audioBuffer);
       console.log('  [OK] fillers/' + filler.gender + '/' + filler.id + '.mp3 — "' + filler.text + '"');
       generated++;
