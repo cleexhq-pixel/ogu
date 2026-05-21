@@ -117,6 +117,7 @@ function CallPageContent() {
   const [uiLang, setUiLang] = useState('en');
   const [lineHint, setLineHint] = useState('');
   const [aiThinking, setAiThinking] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
 
   const emotionalClearRef = useRef(null);
   const endSequenceRef = useRef(false);
@@ -141,6 +142,8 @@ function CallPageContent() {
   const prevPhaseForLogRef = useRef(null);
   const callStartedTrackedRef = useRef(false);
   const callCompletedTrackedRef = useRef(false);
+  const speechRecognitionRef = useRef(null);
+  const interimTranscriptRef = useRef('');
 
   useEffect(() => {
     setParticles(buildParticles());
@@ -343,6 +346,11 @@ function CallPageContent() {
       return null;
     });
   }
+
+  const isWebSpeechSupported = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  }, []);
 
   const playTtsAndWait = useCallback(
     async (text, scriptId) => {
@@ -628,6 +636,14 @@ function CallPageContent() {
         return;
       }
 
+      // Web Speech 정리
+      if (speechRecognitionRef.current) {
+        try { speechRecognitionRef.current.stop(); } catch {}
+        speechRecognitionRef.current = null;
+      }
+      setLiveTranscript('');
+      interimTranscriptRef.current = '';
+
       let blob;
       try {
         blob = await new Promise((resolve, reject) => {
@@ -902,6 +918,39 @@ function CallPageContent() {
     lastSpeechTsRef.current = recordingStartMsRef.current;
     setMicState('speaking');
 
+    // Web Speech API 실시간 자막 (지원 환경만)
+    if (isWebSpeechSupported()) {
+      try {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SR();
+        recognition.lang = 'ko-KR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.onresult = (event) => {
+          let interim = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+              interimTranscriptRef.current += event.results[i][0].transcript;
+            } else {
+              interim += event.results[i][0].transcript;
+            }
+          }
+          setLiveTranscript(interimTranscriptRef.current + interim);
+        };
+        recognition.onerror = () => {
+          // 오류 시 조용히 무시 (Whisper가 백업)
+        };
+        recognition.onend = () => {
+          speechRecognitionRef.current = null;
+        };
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+        interimTranscriptRef.current = '';
+      } catch {
+        // Web Speech 실패 시 Whisper만 사용
+      }
+    }
+
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
@@ -944,7 +993,7 @@ function CallPageContent() {
       void stopSpeakingInnerRef.current?.();
     }, 28000);
     setSilenceTimer(maxId);
-  }, []);
+  }, [isWebSpeechSupported]);
 
   const stopSpeaking = useCallback(() => {
     void stopSpeakingInnerRef.current?.();
@@ -2061,6 +2110,24 @@ function CallPageContent() {
               }}
             >
               {`${String(idolName).toUpperCase()} is speaking`}
+            </div>
+          )}
+          {micState === 'speaking' && liveTranscript && (
+            <div style={{
+              padding: '10px 16px',
+              marginBottom: 8,
+              borderRadius: 12,
+              background: 'rgba(0, 227, 253, 0.08)',
+              border: '1px solid rgba(0, 227, 253, 0.2)',
+              color: '#00E3FD',
+              fontSize: 13,
+              fontFamily: 'Inter, sans-serif',
+              lineHeight: 1.5,
+              textAlign: 'center',
+              maxWidth: '100%',
+              wordBreak: 'break-all',
+            }}>
+              {liveTranscript}
             </div>
           )}
           {micState === 'your_turn' && (
