@@ -51,6 +51,13 @@ function buildParticles() {
   }));
 }
 
+const pulseKeyframes = `
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+`;
+
 const emergencyCards = [
   { id: 'E01', en: 'Wait, restart', ko: '아 잠깐만요~ 다시 말할게요' },
   { id: 'E02', en: 'Change topic', ko: '그거 말고, 다른 얘기 할게요!' },
@@ -109,6 +116,7 @@ function CallPageContent() {
   const [silenceTimer, setSilenceTimer] = useState(null);
   const [uiLang, setUiLang] = useState('en');
   const [lineHint, setLineHint] = useState('');
+  const [aiThinking, setAiThinking] = useState(false);
 
   const emotionalClearRef = useRef(null);
   const endSequenceRef = useRef(false);
@@ -743,6 +751,9 @@ function CallPageContent() {
       let idolQuestionStr = '';
       let idolScriptId = null;
 
+      setAiThinking(true);
+      setCurrentSubtitle((prev) => ({ ...prev, visible: false }));
+
       try {
         const phaseNow = currentPhaseRef.current || 'PHASE_A';
         const resChat = await fetch(FANSIGN_CHAT_API, {
@@ -806,6 +817,7 @@ function CallPageContent() {
       });
 
       setLineHint('');
+      setAiThinking(false);
       setMicState('idol_speaking');
 
       setCurrentSubtitle({
@@ -998,6 +1010,7 @@ function CallPageContent() {
         boxSizing: 'border-box',
       }}
     >
+      <style>{pulseKeyframes}</style>
       <div
         style={{
           flex: 1,
@@ -1791,6 +1804,29 @@ function CallPageContent() {
                   ? currentSubtitle.korean
                   : '\u00a0'}
               </div>
+              {aiThinking && !currentSubtitle.visible && (
+                <div style={{
+                  display: 'flex',
+                  gap: 6,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '12px 0',
+                }}>
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+                        display: 'inline-block',
+                        animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
               {showRomanization &&
                 currentSubtitle.visible &&
                 currentSubtitle.roman?.trim?.() ? (

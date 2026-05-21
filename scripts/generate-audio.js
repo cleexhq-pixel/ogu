@@ -233,7 +233,63 @@ async function main() {
     process.exit(1);
   }
 
+  await generateFillers();
+
   console.log('\n모든 파일 생성 성공!');
+}
+
+async function generateFillers() {
+  console.log('\n=== 필러 사운드 생성 시작 ===\n');
+
+  const FILLER_DIR = path.join(process.cwd(), 'public', 'audio', 'fillers');
+  if (!fs.existsSync(FILLER_DIR)) {
+    fs.mkdirSync(FILLER_DIR, { recursive: true });
+    console.log('폴더 생성: ' + FILLER_DIR);
+  }
+
+  const fillers = [
+    { id: 'filler_01', text: '음~', gender: 'male' },
+    { id: 'filler_02', text: '어...', gender: 'male' },
+    { id: 'filler_03', text: '아~', gender: 'male' },
+    { id: 'filler_04', text: '오~', gender: 'male' },
+    { id: 'filler_05', text: '하하', gender: 'male' },
+    { id: 'filler_01', text: '음~', gender: 'female' },
+    { id: 'filler_02', text: '어...', gender: 'female' },
+    { id: 'filler_03', text: '아~', gender: 'female' },
+    { id: 'filler_04', text: '오~', gender: 'female' },
+    { id: 'filler_05', text: '하하', gender: 'female' },
+  ];
+
+  let generated = 0;
+  let skipped = 0;
+
+  for (const filler of fillers) {
+    const genderDir = path.join(FILLER_DIR, filler.gender);
+    if (!fs.existsSync(genderDir)) {
+      fs.mkdirSync(genderDir, { recursive: true });
+    }
+    const outputPath = path.join(genderDir, filler.id + '.mp3');
+
+    if (fs.existsSync(outputPath)) {
+      console.log('  [SKIP] fillers/' + filler.gender + '/' + filler.id + '.mp3 이미 존재');
+      skipped++;
+      continue;
+    }
+
+    try {
+      const audioBuffer = await callGoogleTTS(filler.text, VOICE_CONFIG[filler.gender]);
+      fs.writeFileSync(outputPath, audioBuffer);
+      console.log('  [OK] fillers/' + filler.gender + '/' + filler.id + '.mp3 — "' + filler.text + '"');
+      generated++;
+    } catch (err) {
+      console.error('  [FAIL] fillers/' + filler.gender + '/' + filler.id + '.mp3 — ' + err.message);
+    }
+
+    await sleep(300);
+  }
+
+  console.log('\n필러 생성됨: ' + generated + '개');
+  console.log('필러 스킵됨: ' + skipped + '개');
 }
 
 main().catch((err) => {

@@ -6,3 +6,4 @@ node_modules
 # 사전 생성 TTS 오디오 (용량 큼, git 제외)
 /public/audio/male/
 /public/audio/female/
+/public/audio/fillers/
