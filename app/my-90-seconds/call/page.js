@@ -13,6 +13,7 @@ import { hasReachedDailyLimit, incrementSessionsUsed } from '@/lib/freeLimit';
 import { trackEvent } from '@/lib/analytics';
 import { normalizeLang } from '@/app/lib/i18n';
 import idolScripts, { getRandomLine, getNervousResponse } from '@/src/data/idol-scripts';
+import { toRoman } from '@/lib/romanize';
 
 /** 팬싱 분류 전용 채팅 라우트 (기존 /api/chat 학습 기능과 분리) */
 const FANSIGN_CHAT_API = '/api/chat/fansign';
@@ -59,13 +60,12 @@ function CallPageContent() {
   const [timeRemaining, setTimeRemaining] = useState(90);
   const [currentSubtitle, setCurrentSubtitle] = useState({
     korean: '안녕~',
-    roman: 'annyeong',
+    roman: toRoman('안녕~'),
     translation: '',
     visible: true,
   });
   const [micState, setMicState] = useState('idle');
   const [showEmergencyCards, setShowEmergencyCards] = useState(false);
-  const [showRomanization, setShowRomanization] = useState(true);
 
   const [introStep, setIntroStep] = useState('await_start');
   const [emotionalMoment, setEmotionalMoment] = useState(null);
@@ -403,7 +403,7 @@ function CallPageContent() {
       setCurrentSubtitle((prev) => ({
         ...prev,
         korean: staffText,
-        roman: '',
+        roman: toRoman(staffText),
         translation: '',
         visible: true,
       }));
@@ -412,7 +412,7 @@ function CallPageContent() {
       setCurrentSubtitle((prev) => ({
         ...prev,
         korean: closingText,
-        roman: '',
+        roman: toRoman(closingText),
         translation: '',
         visible: true,
       }));
@@ -543,7 +543,7 @@ function CallPageContent() {
       setLineHint('');
       setCurrentSubtitle({
         korean: text,
-        roman: '',
+        roman: toRoman(text),
         translation: '',
         visible: true,
       });
@@ -675,7 +675,7 @@ function CallPageContent() {
         });
         setCurrentSubtitle({
           korean: fbText,
-          roman: '',
+          roman: toRoman(fbText),
           translation: '',
           visible: true,
         });
@@ -704,7 +704,7 @@ function CallPageContent() {
         });
         setCurrentSubtitle({
           korean: fbText,
-          roman: '',
+          roman: toRoman(fbText),
           translation: '',
           visible: true,
         });
@@ -778,7 +778,7 @@ function CallPageContent() {
         const t0 = Date.now();
         const next = [
           ...histBefore,
-          { role: 'user', text: userText, timestamp: t0 },
+          { role: 'user', text: userText, roman: toRoman(userText), timestamp: t0 },
           { role: 'idol', text: idolMain, timestamp: t0 + 1 },
         ];
         if (shouldAsk && idolQuestionStr) {
@@ -798,7 +798,7 @@ function CallPageContent() {
 
       setCurrentSubtitle({
         korean: idolMain,
-        roman: '',
+        roman: toRoman(idolMain),
         translation: '',
         visible: true,
       });
@@ -811,7 +811,7 @@ function CallPageContent() {
         });
         setCurrentSubtitle({
           korean: idolQuestionStr,
-          roman: '',
+          roman: toRoman(idolQuestionStr),
           translation: '',
           visible: true,
         });
@@ -1747,8 +1747,7 @@ function CallPageContent() {
                   ))}
                 </div>
               )}
-              {showRomanization &&
-                currentSubtitle.visible &&
+              {currentSubtitle.visible &&
                 currentSubtitle.roman?.trim?.() ? (
                   <div
                     style={{
@@ -1756,7 +1755,7 @@ function CallPageContent() {
                       fontSize: '11px',
                       lineHeight: 1.35,
                       fontStyle: 'italic',
-                      color: 'rgba(255,255,255,0.5)',
+                      color: 'rgba(255,255,255,0.45)',
                       fontFamily: 'Inter, sans-serif',
                     }}
                   >
@@ -1777,26 +1776,6 @@ function CallPageContent() {
                   {currentSubtitle.translation}
                 </div>
               ) : null}
-              <button
-                type="button"
-                onClick={() => setShowRomanization(!showRomanization)}
-                style={{
-                  fontSize: '9px',
-                  color: 'rgba(255,255,255,0.4)',
-                  background: 'transparent',
-                  border: 'none',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                  marginTop: '8px',
-                  cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
-                  padding: 0,
-                }}
-              >
-                {showRomanization
-                  ? 'Hide pronunciation'
-                  : 'Show pronunciation'}
-              </button>
             </div>
 
             {micState === 'your_turn' ? (
@@ -1840,7 +1819,56 @@ function CallPageContent() {
               </div>
             ) : null}
 
-            <div style={{ flex: 1, minHeight: 0 }} />
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: 'auto',
+                pointerEvents: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                paddingTop: '4px',
+              }}
+            >
+              {conversationHistory
+                .filter((item) => item.role === 'user')
+                .map((item, i) => (
+                  <div
+                    key={`${item.timestamp}-${i}`}
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      borderRadius: '10px',
+                      padding: '8px 10px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        lineHeight: 1.4,
+                        color: 'rgba(255,255,255,0.85)',
+                        fontFamily: 'Manrope, sans-serif',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {item.text}
+                    </div>
+                    {item.roman?.trim?.() ? (
+                      <div
+                        style={{
+                          fontSize: '10px',
+                          color: 'rgba(255,255,255,0.35)',
+                          fontStyle: 'italic',
+                          marginTop: '2px',
+                          fontFamily: 'Inter, sans-serif',
+                        }}
+                      >
+                        {item.roman}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+            </div>
           </div>
         )}
 
