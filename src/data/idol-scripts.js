@@ -86,10 +86,10 @@ const idolScripts = {
   reaction_name: [
     { id: "NAME01", text: "기억할게요." },
     { id: "NAME02", text: "기억하겠습니다. 예쁜 이름이에요." },
-    { id: "NAME03", text: "[이름]~ 예쁜 이름이다!" },
-    { id: "NAME04", text: "[이름]이에요? 잘 어울려요~" },
-    { id: "NAME05", text: "[이름], 오늘 와줘서 고마워요." },
-    { id: "NAME06", text: "이름 외웠어요~ [이름]!" },
+    { id: "NAME03", text: "예쁜 이름이다!" },
+    { id: "NAME04", text: "잘 어울리는 이름이에요~" },
+    { id: "NAME05", text: "오늘 와줘서 고마워요." },
+    { id: "NAME06", text: "이름 외웠어요!" },
   ],
 
   time_pressure: [

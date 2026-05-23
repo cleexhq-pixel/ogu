@@ -17,40 +17,6 @@ import idolScripts, { getRandomLine, getNervousResponse } from '@/src/data/idol-
 /** 팬싱 분류 전용 채팅 라우트 (기존 /api/chat 학습 기능과 분리) */
 const FANSIGN_CHAT_API = '/api/chat/fansign';
 
-const phaseGradients = {
-  intro:
-    'radial-gradient(ellipse at 50% 30%, rgba(255,138,169,0.42), transparent 70%), #0E0E0F',
-  A:
-    'radial-gradient(ellipse at 50% 40%, rgba(255,138,169,0.52), transparent 65%), #0E0E0F',
-  B:
-    'radial-gradient(ellipse at 30% 50%, rgba(255,138,169,0.42), transparent 60%), radial-gradient(ellipse at 70% 50%, rgba(0,227,253,0.38), transparent 60%), #0E0E0F',
-  C:
-    'radial-gradient(ellipse at 30% 60%, rgba(0,227,253,0.48), transparent 60%), radial-gradient(ellipse at 70% 40%, rgba(255,216,77,0.32), transparent 60%), #0E0E0F',
-  D:
-    'radial-gradient(ellipse at 50% 50%, rgba(158,143,253,0.38), transparent 70%), #0E0E0F',
-  ending: '#050505',
-};
-
-const PARTICLE_COLORS = [
-  'rgba(255,138,169,0.65)',
-  'rgba(0,227,253,0.55)',
-  'rgba(255,216,77,0.45)',
-  'rgba(158,143,253,0.55)',
-  'rgba(255,255,255,0.35)',
-];
-
-function buildParticles() {
-  return Array.from({ length: 25 }, (_, i) => ({
-    top: `${Math.random() * 80 + 10}%`,
-    left: `${Math.random() * 90 + 5}%`,
-    size:
-      Math.random() > 0.52 ? Math.random() * 2 + 4 : Math.random() * 3 + 1,
-    color: PARTICLE_COLORS[i % 5],
-    delay: `${Math.random() * 5}s`,
-    duration: `${Math.random() * 4 + 6}s`,
-  }));
-}
-
 const pulseKeyframes = `
   @keyframes pulse {
     0%, 100% { opacity: 0.3; transform: scale(0.8); }
@@ -88,8 +54,6 @@ function CallPageContent() {
   const [idolName, setIdolName] = useState('IDOL');
   const [savedScript, setSavedScript] = useState(null);
   const [isReady, setIsReady] = useState(false);
-
-  const [particles, setParticles] = useState([]);
 
   const [phase, setPhase] = useState('intro');
   const [timeRemaining, setTimeRemaining] = useState(90);
@@ -144,10 +108,6 @@ function CallPageContent() {
   const callCompletedTrackedRef = useRef(false);
   const speechRecognitionRef = useRef(null);
   const interimTranscriptRef = useRef('');
-
-  useEffect(() => {
-    setParticles(buildParticles());
-  }, []);
 
   useEffect(() => {
     conversationHistoryRef.current = conversationHistory;
@@ -614,7 +574,7 @@ function CallPageContent() {
     const line = lines[idx];
     if (!line?.korean) return undefined;
     yourTurnHintTimeoutRef.current = window.setTimeout(() => {
-      const hintText = `💡 ${line.korean}`;
+      const hintText = line.korean;
       setLineHint(hintText);
     }, 3000);
     return () => window.clearTimeout(yourTurnHintTimeoutRef.current);
@@ -1021,9 +981,6 @@ function CallPageContent() {
     }, 1500);
   }, [timeRemaining]);
 
-  const bgLayer =
-    phaseGradients[phase] || phaseGradients.A;
-
   if (!isReady) {
     return (
       <div
@@ -1340,8 +1297,7 @@ function CallPageContent() {
             left: 0,
             right: 0,
             bottom: 0,
-            background: bgLayer,
-            transition: 'background 1.5s ease-in-out',
+            background: '#0E0E0F',
             overflow: 'hidden',
           }}
         >
@@ -1355,70 +1311,6 @@ function CallPageContent() {
               pointerEvents: 'none',
             }}
           />
-
-          <div
-            style={{
-              position: 'absolute',
-              top: '20%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '120px',
-              height: '120px',
-              background:
-                'radial-gradient(circle, rgba(255,255,255,0.06), transparent 60%)',
-              pointerEvents: 'none',
-              zIndex: 2,
-            }}
-          />
-
-          {particles.map((p, i) => (
-            <div
-              key={i}
-              style={{
-                position: 'absolute',
-                top: p.top,
-                left: p.left,
-                width: `${p.size}px`,
-                height: `${p.size}px`,
-                borderRadius: '50%',
-                background: p.color,
-                boxShadow: `0 0 ${Math.round(p.size * 2)}px ${p.color}`,
-                animation: `twinkle ${p.duration} ease-in-out ${p.delay} infinite`,
-                pointerEvents: 'none',
-                zIndex: 3,
-              }}
-            />
-          ))}
-
-          {micState === 'idol_speaking' && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '30%',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 4,
-                display: 'flex',
-                alignItems: 'flex-end',
-                gap: '4px',
-                height: '60px',
-              }}
-            >
-              {[12, 24, 36, 48, 30, 42, 18, 36, 24].map((h, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: '5px',
-                    height: `${h}px`,
-                    background:
-                      'linear-gradient(180deg, rgba(0,227,253,0.95), rgba(0,227,253,0.35))',
-                    borderRadius: '2px',
-                    animation: `wave 1.4s ease-in-out ${i * 0.07}s infinite`,
-                  }}
-                />
-              ))}
-            </div>
-          )}
 
           <div
             style={{
@@ -1610,7 +1502,7 @@ function CallPageContent() {
                 width: '6px',
                 height: '6px',
                 borderRadius: '50%',
-                background: '#FF4444',
+                background: '#FFD84D',
                 animation: 'liveDot 1.5s ease-in-out infinite',
               }}
             />
@@ -1619,7 +1511,7 @@ function CallPageContent() {
                 fontFamily: 'Manrope, sans-serif',
                 fontSize: '11px',
                 fontWeight: 700,
-                color: '#FF4444',
+                color: '#FFD84D',
                 letterSpacing: '0.12em',
               }}
             >
@@ -1736,9 +1628,9 @@ function CallPageContent() {
             right: '24px',
             width: '76px',
             height: '100px',
-            background:
-              'linear-gradient(135deg, rgba(40,40,44,0.9) 0%, rgba(20,20,22,0.95) 100%)',
-            borderRadius: '14px',
+            background: 'rgba(255,255,255,0.06)',
+            border: '0.5px solid rgba(255,255,255,0.12)',
+            borderRadius: '12px',
             zIndex: 5,
             display: 'flex',
             flexDirection: 'column',
@@ -1749,33 +1641,11 @@ function CallPageContent() {
         >
           <div
             style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage:
-                'repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 3px)',
-              pointerEvents: 'none',
-            }}
-          />
-          <div
-            style={{
-              fontSize: '20px',
-              opacity: 0.3,
-              marginBottom: '8px',
-              position: 'relative',
-              zIndex: 1,
-            }}
-          >
-            📷
-          </div>
-          <div
-            style={{
               fontSize: '10px',
               fontWeight: 700,
               color: 'rgba(255,255,255,0.5)',
               letterSpacing: '0.15em',
               fontFamily: 'Manrope, sans-serif',
-              position: 'relative',
-              zIndex: 1,
             }}
           >
             YOU
@@ -1816,9 +1686,10 @@ function CallPageContent() {
               style={{
                 pointerEvents: 'auto',
                 flexShrink: 0,
-                background: 'rgba(255,138,169,0.08)',
-                borderRadius: '14px',
-                padding: '14px 12px',
+                background: 'transparent',
+                borderLeft: '2px solid rgba(255,216,77,0.6)',
+                borderRadius: 0,
+                padding: '4px 12px',
                 minHeight: '110px',
                 boxSizing: 'border-box',
               }}
@@ -1828,8 +1699,8 @@ function CallPageContent() {
                   fontSize: '9px',
                   color:
                     micState === 'idol_speaking'
-                      ? '#FF8AA9'
-                      : 'rgba(255,255,255,0.35)',
+                      ? '#FFD84D'
+                      : 'rgba(255,216,77,0.4)',
                   letterSpacing: '1px',
                   fontWeight: 700,
                   fontFamily: 'Manrope, sans-serif',
@@ -1868,7 +1739,7 @@ function CallPageContent() {
                         width: 8,
                         height: 8,
                         borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+                        background: '#FFD84D',
                         display: 'inline-block',
                         animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
                       }}
@@ -1933,8 +1804,10 @@ function CallPageContent() {
                 style={{
                   pointerEvents: 'auto',
                   flexShrink: 0,
-                  background: 'rgba(0,227,253,0.06)',
-                  borderRadius: '14px',
+                  background: 'transparent',
+                  borderTop: '0.5px solid rgba(255,216,77,0.15)',
+                  borderBottom: '0.5px solid rgba(255,216,77,0.15)',
+                  borderRadius: 0,
                   padding: '12px',
                   minHeight: '56px',
                   boxSizing: 'border-box',
@@ -1943,7 +1816,7 @@ function CallPageContent() {
                 <div
                   style={{
                     fontSize: '9px',
-                    color: '#00E3FD',
+                    color: '#FFD84D',
                     letterSpacing: '1px',
                     fontWeight: 700,
                     fontFamily: 'Manrope, sans-serif',
@@ -2001,13 +1874,12 @@ function CallPageContent() {
                 border: 'none',
                 borderRadius: '9999px',
                 background: showEmergencyCards
-                  ? 'rgba(255,138,169,0.24)'
+                  ? 'rgba(255,216,77,0.24)'
                   : 'rgba(255,255,255,0.1)',
-                color: showEmergencyCards ? '#FF8AA9' : 'rgba(255,255,255,0.72)',
+                color: showEmergencyCards ? '#FFD84D' : 'rgba(255,255,255,0.72)',
                 fontSize: '11px',
                 fontWeight: 800,
                 letterSpacing: '0.08em',
-                textTransform: 'uppercase',
                 fontFamily: 'Manrope, sans-serif',
                 cursor: 'pointer',
               }}
@@ -2035,9 +1907,9 @@ function CallPageContent() {
                     flex: '1 1 104px',
                     maxWidth: '110px',
                     padding: '8px 10px',
-                    background: 'rgba(255,138,169,0.18)',
+                    background: 'rgba(255,216,77,0.08)',
+                    border: '1px solid rgba(255,216,77,0.25)',
                     backdropFilter: 'blur(12px)',
-                    border: 'none',
                     borderRadius: '12px',
                     cursor: 'pointer',
                     textAlign: 'center',
@@ -2048,9 +1920,8 @@ function CallPageContent() {
                     style={{
                       fontSize: '9px',
                       fontWeight: 700,
-                      color: '#FF8AA9',
+                      color: '#FFD84D',
                       letterSpacing: '0.05em',
-                      textTransform: 'uppercase',
                       marginBottom: '2px',
                     }}
                   >
@@ -2082,7 +1953,6 @@ function CallPageContent() {
                 fontSize: '12px',
                 fontWeight: 700,
                 letterSpacing: '0.14em',
-                textTransform: 'uppercase',
                 fontFamily: 'Manrope, sans-serif',
                 background: 'rgba(255,138,169,0.12)',
               }}
@@ -2094,22 +1964,29 @@ function CallPageContent() {
             <div
               style={{
                 width: '100%',
-                pointerEvents: 'auto',
-                borderRadius: '28px',
-                padding: '16px',
-                textAlign: 'center',
-                color: 'rgba(255,255,255,0.85)',
-                fontSize: '12px',
-                fontWeight: 800,
+                borderRadius: '100px',
+                padding: '14px',
+                border: '1.5px solid rgba(255,216,77,0.5)',
+                background: 'transparent',
+                color: 'rgba(255,216,77,0.6)',
+                fontSize: '11px',
+                fontWeight: 700,
                 letterSpacing: '0.14em',
-                textTransform: 'uppercase',
                 fontFamily: 'Manrope, sans-serif',
-                background:
-                  'linear-gradient(135deg, #FF8AA9, #FF719B)',
-                boxShadow: '0 0 24px rgba(255,138,169,0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxSizing: 'border-box',
+                pointerEvents: 'none',
               }}
             >
-              {`${String(idolName).toUpperCase()} is speaking`}
+              {`${String(idolName)} is speaking`}
+              <span style={{ display: 'inline-flex', gap: '3px', marginLeft: '2px' }}>
+                {[0.35, 0.6, 0.9].map((op, i) => (
+                  <span key={i} style={{ width: 4, height: 4, background: `rgba(255,216,77,${op})`, borderRadius: '50%', display: 'inline-block' }} />
+                ))}
+              </span>
             </div>
           )}
           {micState === 'speaking' && liveTranscript && (
@@ -2117,9 +1994,9 @@ function CallPageContent() {
               padding: '10px 16px',
               marginBottom: 8,
               borderRadius: 12,
-              background: 'rgba(0, 227, 253, 0.08)',
-              border: '1px solid rgba(0, 227, 253, 0.2)',
-              color: '#00E3FD',
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              color: '#FFFFFF',
               fontSize: 13,
               fontFamily: 'Inter, sans-serif',
               lineHeight: 1.5,
@@ -2137,19 +2014,18 @@ function CallPageContent() {
               style={{
                 width: '100%',
                 pointerEvents: 'auto',
-                borderRadius: '28px',
-                padding: '16px',
+                borderRadius: '100px',
+                padding: '14px',
                 border: 'none',
                 cursor: 'pointer',
-                color: '#fff',
-                fontSize: '13px',
-                fontWeight: 800,
+                color: '#0E0E0F',
+                fontSize: '11px',
+                fontWeight: 700,
                 letterSpacing: '0.14em',
-                textTransform: 'uppercase',
                 fontFamily: 'Manrope, sans-serif',
-                background:
-                  'linear-gradient(135deg, #FF8AA9, #FF719B)',
-                boxShadow: '0 0 24px rgba(255,138,169,0.45)',
+                background: '#FFD84D',
+                boxShadow: 'none',
+                boxSizing: 'border-box',
               }}
             >
               Tap to speak
@@ -2162,76 +2038,49 @@ function CallPageContent() {
               style={{
                 width: '100%',
                 pointerEvents: 'auto',
-                borderRadius: '28px',
-                padding: '16px',
-                border: '2px solid rgba(255, 68, 68, 0.55)',
-                cursor: 'pointer',
-                background: 'rgba(255, 68, 68, 0.12)',
-                color: '#FF6B7A',
-                fontSize: '13px',
-                fontWeight: 800,
+                borderRadius: '100px',
+                padding: '14px',
+                border: 'none',
+                background: '#FFD84D',
+                color: '#0E0E0F',
+                fontSize: '11px',
+                fontWeight: 700,
                 letterSpacing: '0.14em',
-                textTransform: 'uppercase',
                 fontFamily: 'Manrope, sans-serif',
+                cursor: 'pointer',
+                boxSizing: 'border-box',
               }}
             >
-              Speaking…
+              Tap to stop
             </button>
           )}
           {micState === 'processing' && (
             <div
               style={{
                 width: '100%',
-                pointerEvents: 'auto',
-                borderRadius: '28px',
-                padding: '16px',
-                border: '1px solid rgba(0,227,253,0.35)',
-                background: 'rgba(0,227,253,0.08)',
+                borderRadius: '100px',
+                padding: '14px',
+                border: '1.5px solid rgba(255,216,77,0.3)',
+                background: 'transparent',
+                color: 'rgba(255,216,77,0.4)',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.14em',
+                fontFamily: 'Manrope, sans-serif',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '10px',
-                color: '#00E3FD',
-                fontSize: '13px',
-                fontWeight: 800,
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-                fontFamily: 'Manrope, sans-serif',
+                gap: '8px',
+                boxSizing: 'border-box',
+                pointerEvents: 'none',
               }}
             >
-              <span>Processing…</span>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <span
-                  style={{
-                    width: '4px',
-                    height: '4px',
-                    borderRadius: '50%',
-                    background: '#00E3FD',
-                    animation: 'dot-bounce 1.4s infinite',
-                    animationDelay: '0s',
-                  }}
-                />
-                <span
-                  style={{
-                    width: '4px',
-                    height: '4px',
-                    borderRadius: '50%',
-                    background: '#00E3FD',
-                    animation: 'dot-bounce 1.4s infinite',
-                    animationDelay: '0.2s',
-                  }}
-                />
-                <span
-                  style={{
-                    width: '4px',
-                    height: '4px',
-                    borderRadius: '50%',
-                    background: '#00E3FD',
-                    animation: 'dot-bounce 1.4s infinite',
-                    animationDelay: '0.4s',
-                  }}
-                />
-              </div>
+              Processing
+              <span style={{ display: 'inline-flex', gap: '3px', marginLeft: '2px' }}>
+                {[0.2, 0.45, 0.7].map((op, i) => (
+                  <span key={i} style={{ width: 4, height: 4, background: `rgba(255,216,77,${op})`, borderRadius: '50%', display: 'inline-block' }} />
+                ))}
+              </span>
             </div>
           )}
         </div>
