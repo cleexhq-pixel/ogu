@@ -23,6 +23,10 @@ const pulseKeyframes = `
     0%, 100% { opacity: 0.3; transform: scale(0.8); }
     50% { opacity: 1; transform: scale(1.2); }
   }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 `;
 
 const emergencyCards = [
@@ -80,6 +84,7 @@ function CallPageContent() {
   const [silenceTimer, setSilenceTimer] = useState(null);
   const [uiLang, setUiLang] = useState('en');
   const [lineHint, setLineHint] = useState('');
+  const [showHint, setShowHint] = useState(false);
   const [aiThinking, setAiThinking] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
 
@@ -98,6 +103,7 @@ function CallPageContent() {
   const phaseAIntroStartedRef = useRef(false);
   const scriptHintIndexRef = useRef(0);
   const yourTurnHintTimeoutRef = useRef(null);
+  const hintTimerRef = useRef(null);
   const stopSpeakingInnerRef = useRef(() => {});
   const scenarioIdRef = useRef(null);
   const currentPhaseRef = useRef('PHASE_A');
@@ -115,6 +121,27 @@ function CallPageContent() {
 
   useEffect(() => {
     micStateRef.current = micState;
+  }, [micState]);
+
+  useEffect(() => {
+    // your_turn 상태 진입 시 3초 후 힌트 표시
+    if (micState === 'your_turn') {
+      setShowHint(false);
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+      hintTimerRef.current = window.setTimeout(() => {
+        setShowHint(true);
+      }, 3000);
+    } else {
+      // 다른 상태로 전환 시 힌트 즉시 숨김
+      setShowHint(false);
+      if (hintTimerRef.current) {
+        clearTimeout(hintTimerRef.current);
+        hintTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    };
   }, [micState]);
 
   useEffect(() => {
@@ -1778,18 +1805,17 @@ function CallPageContent() {
               ) : null}
             </div>
 
-            {micState === 'your_turn' ? (
+            {micState === 'your_turn' && showHint && lineHint ? (
               <div
                 style={{
                   pointerEvents: 'auto',
                   flexShrink: 0,
-                  background: 'transparent',
                   borderTop: '0.5px solid rgba(255,216,77,0.15)',
                   borderBottom: '0.5px solid rgba(255,216,77,0.15)',
                   borderRadius: 0,
-                  padding: '12px',
-                  minHeight: '56px',
+                  padding: '10px 12px',
                   boxSizing: 'border-box',
+                  animation: 'fadeIn 0.4s ease-in-out',
                 }}
               >
                 <div
@@ -1801,20 +1827,21 @@ function CallPageContent() {
                     fontFamily: 'Manrope, sans-serif',
                     textTransform: 'uppercase',
                     marginBottom: '6px',
+                    opacity: 0.7,
                   }}
                 >
-                  Your turn · Hint
+                  YOUR TURN · HINT
                 </div>
                 <div
                   style={{
                     fontSize: '13px',
                     lineHeight: 1.4,
-                    color: 'rgba(255,255,255,0.85)',
+                    color: 'rgba(255,255,255,0.75)',
                     fontFamily: 'Manrope, sans-serif',
                     wordBreak: 'break-word',
                   }}
                 >
-                  {lineHint || '\u00a0'}
+                  {lineHint}
                 </div>
               </div>
             ) : null}
