@@ -31,7 +31,7 @@ const COPY = {
     hero_title_1: "Those 90 seconds.",
     hero_title_2: "Don't freeze.",
     hero_sub: "One memorized line changes everything.\nNow is the time to get ready.",
-    cta: "Make 90 Seconds Worth It",
+    cta: "Make 90 seconds worth it",
     free_note: "Free · 3 times a day · No account needed",
     free_badge: (n) => `Free · ${n} sessions left today`,
     section_scenario: "What would you like to practice",
@@ -307,20 +307,6 @@ export default function HomePage() {
     }}>
       <style>{pulseStyle}</style>
 
-      {/* Spotlight 배경 */}
-      <div style={{
-        position: "absolute", width: 320, height: 320,
-        borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(158,143,253,0.14) 0%, transparent 70%)",
-        top: -80, right: -80, pointerEvents: "none",
-      }} />
-      <div style={{
-        position: "absolute", width: 240, height: 240,
-        borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(255,138,169,0.08) 0%, transparent 70%)",
-        top: 200, left: -60, pointerEvents: "none",
-      }} />
-
       {/* 헤더 */}
       <div style={{
         display: "flex", alignItems: "center",
@@ -333,11 +319,7 @@ export default function HomePage() {
           fontSize: 15, fontWeight: 800,
           letterSpacing: "-0.02em", color: "#F2F0F4",
         }}>
-          My<span style={{
-            background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}>90</span>Seconds
+          My<span style={{ color: "#F2F0F4" }}>90</span>Seconds
         </span>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -346,18 +328,18 @@ export default function HomePage() {
             <button
               onClick={() => setShowLangMenu(!showLangMenu)}
               style={{
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 9999,
-                padding: "6px 10px",
-                color: "#F2F0F4",
+                background: "transparent",
+                border: "0.5px solid rgba(255,255,255,0.15)",
+                borderRadius: "100px",
+                padding: "5px 10px",
+                color: "#B0AEB8",
                 fontSize: 11, fontWeight: 600,
                 cursor: "pointer",
                 display: "flex", alignItems: "center", gap: 4,
                 fontFamily: "'Inter', sans-serif",
               }}
             >
-              {currentLang.flag} {currentLang.label}
+              {currentLang.label}
             </button>
 
             {/* 언어 드롭다운 */}
@@ -378,15 +360,14 @@ export default function HomePage() {
                       width: "100%", padding: "8px 10px",
                       borderRadius: 8, border: "none",
                       background: lang === l.code
-                        ? "rgba(255,138,169,0.15)"
+                        ? "rgba(255,216,77,0.15)"
                         : "transparent",
-                      color: lang === l.code ? "#FF8AA9" : "#9E9BA4",
+                      color: lang === l.code ? "#FFD84D" : "#9E9BA4",
                       fontSize: 12, fontWeight: lang === l.code ? 600 : 400,
                       cursor: "pointer", textAlign: "left",
                       fontFamily: "'Inter', sans-serif",
                     }}
                   >
-                    <span style={{ fontSize: 14 }}>{l.flag}</span>
                     {l.label}
                   </button>
                 ))}
@@ -400,13 +381,14 @@ export default function HomePage() {
                 width: "28px",
                 height: "28px",
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
+                background: "rgba(255,216,77,0.15)",
+                border: "0.5px solid rgba(255,216,77,0.3)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: "11px",
                 fontWeight: 700,
-                color: "#fff",
+                color: "#FFD84D",
               }}
             >
               {user.email?.[0]?.toUpperCase() ?? "U"}
@@ -421,19 +403,19 @@ export default function HomePage() {
         {/* 서비스 태그 */}
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 7,
-          background: "rgba(255,138,169,0.08)",
+          background: "rgba(255,216,77,0.08)",
           borderRadius: 9999, padding: "6px 14px",
           marginBottom: 24,
         }}>
           <div style={{
             width: 5, height: 5, borderRadius: "50%",
-            background: "#FF8AA9",
+            background: "#FFD84D",
             flexShrink: 0,
           }} />
           <span style={{
             fontSize: 11, fontWeight: 600,
-            color: "#FF8AA9",
-            letterSpacing: "0.01em",
+            color: "#FFD84D",
+            letterSpacing: "0.16em",
           }}>
             {t.service_tag}
           </span>
@@ -447,10 +429,7 @@ export default function HomePage() {
           lineHeight: 1.1, marginBottom: 16, color: "#F2F0F4",
         }}>
           {t.hero_title_1}<br />
-          <span style={{
-            background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          }}>
+          <span style={{ color: "#FFD84D" }}>
             {t.hero_title_2}
           </span>
         </h1>
@@ -469,40 +448,30 @@ export default function HomePage() {
         <Link href="/my-90-seconds" style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          padding: "14px 14px 14px 24px",
+          justifyContent: "center",
+          padding: "14px 24px",
           borderRadius: 9999,
-          background: "#FF8AA9",
+          background: "#FFD84D",
+          boxShadow: "none",
           textDecoration: "none",
           marginBottom: 12,
         }}>
-          <div style={{ width: 32 }} />
           <span style={{
             fontFamily: "'Manrope', sans-serif",
             fontSize: 15, fontWeight: 700,
-            color: "#fff",
+            color: "#0E0E0F",
             letterSpacing: "0.01em",
           }}>
             {t.cta}
           </span>
-          <div style={{
-            width: 32, height: 32, borderRadius: "50%",
-            background: "rgba(255,255,255,0.25)",
-            display: "flex", alignItems: "center",
-            justifyContent: "center", flexShrink: 0,
-          }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M3 7h8M7 3l4 4-4 4"
-                stroke="#fff" strokeWidth="1.5"
-                strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
         </Link>
 
         <p
           style={{
-            fontSize: "12px",
-            color: "rgba(255,255,255,0.3)",
+            fontSize: "10px",
+            color: "#7A7882",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
             textAlign: "center",
             marginTop: "8px",
             marginBottom: 48,
@@ -511,7 +480,7 @@ export default function HomePage() {
           {user ? (
             <>
               Free ·{" "}
-              <span style={{ color: "#FF8AA9" }}>
+              <span>
                 {isPaid
                   ? "Unlimited"
                   : sessionsLeft === null
@@ -539,11 +508,14 @@ export default function HomePage() {
                   background: "none",
                   border: "none",
                   padding: 0,
-                  fontSize: "12px",
+                  fontSize: "10px",
                   fontWeight: 700,
-                  color: "#FF8AA9",
+                  color: "rgba(255,255,255,0.45)",
                   cursor: "pointer",
                   textDecoration: "underline",
+                  textDecorationColor: "rgba(255,255,255,0.2)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
                 }}
               >
                 Sign in for 3/day
@@ -559,7 +531,7 @@ export default function HomePage() {
         <p style={{
           fontSize: 10, fontWeight: 600,
           letterSpacing: "0.12em", textTransform: "uppercase",
-          color: "#5C5A62", marginBottom: 6,
+          color: "#FFD84D", marginBottom: 6,
         }}>
           {t.section_why}
         </p>
@@ -576,10 +548,11 @@ export default function HomePage() {
             <div
               key={i}
               style={{
-                background: "#1A191B",
-                borderRadius: 14,
-                padding: "18px 18px 18px 20px",
-                borderLeft: "2px solid rgba(255,138,169,0.6)",
+                background: "transparent",
+                border: "none",
+                borderLeft: "2px solid #FFD84D",
+                borderRadius: 0,
+                padding: "18px 12px 18px 12px",
                 position: i === storyIndex ? "relative" : "absolute",
                 top: 0, left: 0, right: 0,
                 opacity: i === storyIndex ? 1 : 0,
@@ -596,7 +569,7 @@ export default function HomePage() {
                 "{item.title}"
               </p>
               <p style={{
-                fontSize: 12, color: "#9E9BA4",
+                fontSize: 12, color: "#7A7882",
                 lineHeight: 1.6,
               }}>
                 {item.desc}
@@ -616,11 +589,12 @@ export default function HomePage() {
               key={i}
               onClick={() => setStoryIndex(i)}
               style={{
-                width: i === storyIndex ? 18 : 5,
-                height: 5, borderRadius: 9999,
+                width: i === storyIndex ? 16 : 6,
+                height: 3,
+                borderRadius: "100px",
                 background: i === storyIndex
-                  ? "#FF8AA9"
-                  : "rgba(255,255,255,0.12)",
+                  ? "#FFD84D"
+                  : "rgba(255,255,255,0.2)",
                 border: "none", cursor: "pointer",
                 padding: 0,
                 transition: "all 0.3s ease",
@@ -634,7 +608,9 @@ export default function HomePage() {
       <div style={{ padding: "0 22px 48px", position: "relative", zIndex: 1 }}>
         {user && (
         <div style={{
-          background: "#131314", borderRadius: 14,
+          background: "rgba(255,216,77,0.06)",
+          border: "0.5px solid rgba(255,216,77,0.2)",
+          borderRadius: 14,
           padding: "14px 16px",
           display: "flex", alignItems: "center",
           justifyContent: "space-between",
@@ -643,17 +619,18 @@ export default function HomePage() {
             <p style={{
               fontFamily: "'Manrope', sans-serif",
               fontSize: 12, fontWeight: 700,
-              color: "#9E9BA4", marginBottom: 2,
+              color: "#FFD84D", marginBottom: 2,
             }}>
               {t.learn_title}
             </p>
-            <p style={{ fontSize: 11, color: "#5C5A62" }}>{t.learn_desc}</p>
+            <p style={{ fontSize: 11, color: "#7A7882" }}>{t.learn_desc}</p>
           </div>
           <Link href="/first-line" style={{
-            fontSize: 11, fontWeight: 600, color: "#9E9BA4",
+            fontSize: 11, fontWeight: 600,
+            color: "#0E0E0F",
             textDecoration: "none",
             padding: "6px 12px",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "#FFD84D",
             borderRadius: 9999, whiteSpace: "nowrap",
           }}>
             {t.learn_btn}
@@ -674,7 +651,7 @@ export default function HomePage() {
             <div style={{
               width: 6, height: 6,
               borderRadius: "50%",
-              background: "#00E3FD",
+              background: "#FFD84D",
               animation: "pulse 2s infinite",
             }} />
             <span style={{
