@@ -18,7 +18,7 @@ const COPY = {
     hero_2: "want to say?",
     sub: "Pick the moment that matters.\nWe'll prepare every word with you.",
     cta_placeholder: "Choose a moment first",
-    cta_ready: (s) => `Prepare for ${s}`,
+    cta_ready: (s) => `Prepare for ${s} →`,
     free_badge: (n) => `Free · ${n} sessions left today`,
     limit_title: "All done for today!",
     limit_desc: "Come back tomorrow for 3 more sessions 🌙",
@@ -306,16 +306,6 @@ function ScenarioPageInner() {
       overflow: "hidden",
     }}>
 
-      {/* Spotlight */}
-      <div style={{
-        position: "absolute",
-        width: 280, height: 280,
-        borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(158,143,253,0.12) 0%, transparent 70%)",
-        top: -60, right: -60,
-        pointerEvents: "none",
-      }} />
-
       {/* 상단 로고 — 홈과 동일 */}
       <div style={{
         display: "flex", alignItems: "center",
@@ -326,34 +316,26 @@ function ScenarioPageInner() {
           fontSize: 15, fontWeight: 800,
           letterSpacing: "-0.02em", color: "#F2F0F4",
         }}>
-          My<span style={{
-            background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}>90</span>Seconds
+          My90Seconds
         </span>
       </div>
 
       {/* 메인 카피 */}
       <h1 style={{
         fontFamily: "'Manrope', sans-serif",
-        fontSize: 32, fontWeight: 800,
-        letterSpacing: "-0.03em",
+        fontSize: 22, fontWeight: 800,
+        letterSpacing: "-0.01em",
         lineHeight: 1.1, marginBottom: 12,
       }}>
         {t.hero_1}<br />
-        <span style={{
-          background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-        }}>
+        <span style={{ color: "#FFD84D" }}>
           {t.hero_2}
         </span>
       </h1>
 
       {/* 서브 카피 */}
       <p style={{
-        fontSize: 14, color: "#9E9BA4",
+        fontSize: 13, fontWeight: 500, color: "#B0AEB8",
         lineHeight: 1.65, marginBottom: 28,
         whiteSpace: "pre-line",
       }}>
@@ -378,22 +360,21 @@ function ScenarioPageInner() {
               setSelected(id);
             }}
             style={{
-              background: selected === id ? "#221e23" : "#1A191B",
-              borderRadius: 14, padding: "14px 12px",
-              border: "none", cursor: "pointer",
+              background: selected === id
+                ? "rgba(255,216,77,0.06)"
+                : "rgba(255,255,255,0.03)",
+              borderRadius: 14,
+              padding: "14px 12px",
+              border: selected === id
+                ? "1px solid #FFD84D"
+                : "0.5px solid rgba(255,255,255,0.08)",
+              cursor: "pointer",
               textAlign: "center", position: "relative",
               overflow: "hidden", transition: "background 0.15s",
-              opacity: isLocked(i) ? 0.38 : 1,
+              opacity: isLocked(i) ? 0.45 : 1,
+              boxSizing: "border-box",
             }}
           >
-            {selected === id && (
-              <div style={{
-                position: "absolute", inset: 0,
-                borderRadius: 14,
-                border: "1.5px solid rgba(255,138,169,0.6)",
-                pointerEvents: "none",
-              }} />
-            )}
             <span style={{
               fontSize: 20, marginBottom: 8,
               display: "block",
@@ -402,7 +383,7 @@ function ScenarioPageInner() {
             </span>
             <p style={{
               fontFamily: "'Manrope', sans-serif",
-              fontSize: 12, fontWeight: 700,
+              fontSize: 11, fontWeight: 600,
               color: "#F2F0F4", margin: 0,
             }}>
               {t.scenarios[i]}
@@ -413,15 +394,17 @@ function ScenarioPageInner() {
                   position: "absolute",
                   top: "6px",
                   right: "6px",
-                  fontSize: "9px",
+                  fontSize: "8px",
                   fontWeight: 700,
-                  background: "rgba(255,138,169,0.18)",
-                  color: "#FF8AA9",
+                  background: "rgba(255,216,77,0.18)",
+                  color: "#FFD84D",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
                   padding: "2px 6px",
                   borderRadius: "99px",
                 }}
               >
-                Free
+                FREE
               </span>
             )}
             {isLocked(i) && (
@@ -455,7 +438,7 @@ function ScenarioPageInner() {
             gap: "8px",
           }}
         >
-          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.32)" }}>
+          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.45)" }}>
             Sign in to unlock all scenarios — free
           </span>
           <button
@@ -464,7 +447,7 @@ function ScenarioPageInner() {
             style={{
               fontSize: "11px",
               fontWeight: 700,
-              color: "#FF8AA9",
+              color: "#FFD84D",
               background: "none",
               border: "none",
               whiteSpace: "nowrap",
@@ -484,28 +467,28 @@ function ScenarioPageInner() {
       }} />
 
       <div style={{
-        background: "rgba(255,255,255,0.04)",
-        border: "0.5px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,255,255,0.03)",
+        border: "0.5px solid rgba(255,255,255,0.1)",
         borderRadius: "14px",
-        padding: "16px",
+        padding: "14px",
         marginBottom: "10px",
       }}>
         <p style={{
-          fontSize: "13px",
-          fontWeight: 600,
-          color: "#fff",
-          margin: "0 0 4px",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
+          fontSize: "9px",
+          color: "#FFD84D",
+          fontWeight: 700,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          margin: "0 0 6px",
+          fontFamily: "'Manrope', sans-serif",
         }}>
-          <span aria-hidden="true">🎧</span>
-          <span>{t.voice_label}</span>
+          Idol&apos;s voice
         </p>
         <p style={{
-          fontSize: "11px",
-          color: "rgba(255,255,255,0.3)",
-          margin: "0 0 12px",
+          fontSize: "10px",
+          fontWeight: 500,
+          color: "#7A7882",
+          margin: "0 0 10px",
           lineHeight: 1.5,
         }}>
           {t.voice_desc}
@@ -526,15 +509,15 @@ function ScenarioPageInner() {
                 }
               }}
               style={{
-                background: voiceGender === g
-                  ? "linear-gradient(135deg, #FF8AA9, #FF719B)"
-                  : "rgba(255,255,255,0.07)",
-                border: "none",
+                background: voiceGender === g ? "#FFD84D" : "transparent",
+                border: voiceGender === g
+                  ? "none"
+                  : "0.5px solid rgba(255,255,255,0.15)",
                 borderRadius: "99px",
                 padding: "10px",
-                fontSize: "13px",
-                fontWeight: 600,
-                color: voiceGender === g ? "#fff" : "rgba(255,255,255,0.5)",
+                fontSize: "11px",
+                fontWeight: 700,
+                color: voiceGender === g ? "#0E0E0F" : "rgba(255,255,255,0.5)",
                 cursor: "pointer",
                 fontFamily: "'Inter', sans-serif",
               }}
@@ -546,36 +529,40 @@ function ScenarioPageInner() {
       </div>
 
       <div style={{
-        background: "rgba(255,255,255,0.04)",
-        border: "0.5px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,255,255,0.03)",
+        border: "0.5px solid rgba(255,255,255,0.1)",
         borderRadius: "14px",
-        padding: "16px",
+        padding: "14px",
         marginBottom: "10px",
       }}>
         <p style={{
-          fontSize: "13px",
-          fontWeight: 600,
-          color: "#fff",
-          margin: "0 0 4px",
+          fontSize: "9px",
+          color: "#FFD84D",
+          fontWeight: 700,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          margin: "0 0 6px",
+          fontFamily: "'Manrope', sans-serif",
           display: "flex",
-          alignItems: "center",
-          gap: "6px",
+          alignItems: "baseline",
+          gap: "4px",
           flexWrap: "wrap",
         }}>
-          <span aria-hidden="true">✨</span>
           <span>Idol&apos;s name</span>
           <span style={{
-            fontSize: "11px",
-            fontWeight: 400,
-            color: "rgba(255,255,255,0.3)",
+            fontSize: "8px",
+            color: "#7A7882",
+            fontWeight: 500,
+            letterSpacing: "0.08em",
           }}>
-            optional
+            · optional
           </span>
         </p>
         <p style={{
-          fontSize: "11px",
-          color: "rgba(255,255,255,0.3)",
-          margin: "0 0 12px",
+          fontSize: "10px",
+          fontWeight: 500,
+          color: "#7A7882",
+          margin: "0 0 10px",
           lineHeight: 1.5,
         }}>
           Your fansign call will use this name throughout
@@ -592,11 +579,11 @@ function ScenarioPageInner() {
           maxLength={20}
           style={{
             width: "100%",
-            background: "rgba(255,255,255,0.06)",
-            border: "none",
-            borderRadius: "10px",
-            padding: "12px 14px",
-            fontSize: "13px",
+            background: "rgba(255,255,255,0.05)",
+            border: "0.5px solid rgba(255,255,255,0.1)",
+            borderRadius: "8px",
+            padding: "10px 12px",
+            fontSize: "12px",
             color: "#fff",
             boxSizing: "border-box",
             fontFamily: "'Inter', sans-serif",
@@ -607,51 +594,44 @@ function ScenarioPageInner() {
 
       <div
         style={{
-          background: "rgba(255,216,77,0.05)",
-          border: "1px dashed rgba(255,216,77,0.25)",
+          background: "rgba(255,255,255,0.03)",
+          border: "0.5px solid rgba(255,255,255,0.1)",
           borderRadius: "14px",
-          padding: "14px 12px",
+          padding: "14px",
           marginBottom: "10px",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "8px",
-            marginBottom: "8px",
-          }}
-        >
-          <span
-            style={{
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#FFD84D",
-              fontFamily: "'Manrope', sans-serif",
-              letterSpacing: "0.04em",
-            }}
-          >
-            <span aria-hidden="true">🎟 </span>
-            {t.fansign_date_label.toUpperCase()}
-          </span>
-          <span
-            style={{
-              fontSize: "10px",
-              fontWeight: 600,
-              color: "rgba(255,255,255,0.38)",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-            }}
-          >
-            {t.fansign_date_optional}
-          </span>
-        </div>
         <p
           style={{
-            fontSize: "11px",
-            color: "rgba(255,255,255,0.52)",
-            margin: "0 0 12px",
+            fontSize: "9px",
+            color: "#FFD84D",
+            fontWeight: 700,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            margin: "0 0 6px",
+            fontFamily: "'Manrope', sans-serif",
+            display: "flex",
+            alignItems: "baseline",
+            gap: "4px",
+            flexWrap: "wrap",
+          }}
+        >
+          <span>Fansign date</span>
+          <span style={{
+            fontSize: "8px",
+            color: "#7A7882",
+            fontWeight: 500,
+            letterSpacing: "0.08em",
+          }}>
+            · optional
+          </span>
+        </p>
+        <p
+          style={{
+            fontSize: "10px",
+            fontWeight: 500,
+            color: "#7A7882",
+            margin: "0 0 10px",
             lineHeight: 1.55,
           }}
         >
@@ -664,38 +644,31 @@ function ScenarioPageInner() {
             gap: "10px",
           }}
         >
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="YYYY-MM-DD"
-              value={fansignDate}
-              aria-label={t.fansign_date_label}
-              onChange={(e) => {
-                let v = e.target.value;
-                // 숫자와 하이픈만 허용, 자동 하이픈 삽입
-                v = v.replace(/[^\d-]/g, '');
-                if (v.length === 4 && !v.includes('-')) v = v + '-';
-                if (v.length === 7 && v.split('-').length === 2) v = v + '-';
-                if (v.length > 10) v = v.slice(0, 10);
-                setFansignDate(v);
-                if (typeof window === "undefined") return;
-                if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
-                  localStorage.setItem(FANSIGN_DATE_KEY, v);
-                  trackEvent("m90s_fansign_date_entered", {
-                    dday: calculateDday(v),
-                  });
-                } else {
-                  localStorage.removeItem(FANSIGN_DATE_KEY);
-                }
-              }}
+          <input
+            type="date"
+            value={fansignDate}
+            aria-label={t.fansign_date_label}
+            onChange={(e) => {
+              const v = e.target.value;
+              setFansignDate(v);
+              if (typeof window === "undefined") return;
+              if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+                localStorage.setItem(FANSIGN_DATE_KEY, v);
+                trackEvent("m90s_fansign_date_entered", {
+                  dday: calculateDday(v),
+                });
+              } else {
+                localStorage.removeItem(FANSIGN_DATE_KEY);
+              }
+            }}
             style={{
               flex: 1,
               minWidth: 0,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,216,77,0.2)",
-              borderRadius: "10px",
+              background: "rgba(255,255,255,0.05)",
+              border: "0.5px solid rgba(255,255,255,0.1)",
+              borderRadius: "8px",
               padding: "10px 12px",
-              fontSize: "13px",
+              fontSize: "12px",
               color: "#fff",
               boxSizing: "border-box",
               fontFamily: "'Inter', sans-serif",
@@ -723,32 +696,24 @@ function ScenarioPageInner() {
             </span>
           ) : null}
         </div>
-        <p
-          style={{
-            fontSize: "10px",
-            color: "rgba(255,255,255,0.28)",
-            margin: "10px 0 0",
-          }}
-        >
-          {t.fansign_date_placeholder}
-        </p>
       </div>
 
       {/* CTA 영역 */}
       {!isPaid && sessionsLeft !== null && sessionsLeft <= 0 ? (
         <div style={{
-          background: "#1A191B",
+          background: "rgba(255,216,77,0.06)",
+          border: "0.5px solid rgba(255,216,77,0.2)",
           borderRadius: 14, padding: "18px 16px",
           textAlign: "center",
         }}>
           <p style={{
             fontFamily: "'Manrope', sans-serif",
             fontSize: 14, fontWeight: 700,
-            color: "#F2F0F4", marginBottom: 4,
+            color: "#FFD84D", marginBottom: 4,
           }}>
             {t.limit_title}
           </p>
-          <p style={{ fontSize: 12, color: "#9E9BA4" }}>
+          <p style={{ fontSize: 12, color: "#7A7882" }}>
             {t.limit_desc}
           </p>
         </div>
@@ -762,50 +727,41 @@ function ScenarioPageInner() {
               width: "100%",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              padding: "14px 14px 14px 24px",
+              justifyContent: "center",
+              padding: "14px 24px",
               borderRadius: 9999,
-              background: selected ? "#FF8AA9" : "#2C2C2D",
+              background: selected ? "#FFD84D" : "rgba(255,255,255,0.06)",
               border: "none", cursor: selected ? "pointer" : "default",
               marginBottom: 10,
               transition: "background 0.2s",
             }}
           >
-            <div style={{ width: 32 }} />
             <span style={{
               fontFamily: "'Manrope', sans-serif",
-              fontSize: 14, fontWeight: 700,
-              color: selected ? "#fff" : "#5C5A62",
-              letterSpacing: "0.01em",
+              fontSize: 11, fontWeight: 700,
+              color: selected ? "#0E0E0F" : "rgba(255,255,255,0.3)",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
             }}>
               {selected && selectedLabel
                 ? t.cta_ready(selectedLabel)
                 : t.cta_placeholder}
             </span>
-            <div style={{
-              width: 32, height: 32,
-              borderRadius: "50%",
-              background: selected
-                ? "rgba(255,255,255,0.25)"
-                : "rgba(255,255,255,0.06)",
-              display: "flex", alignItems: "center",
-              justifyContent: "center", flexShrink: 0,
-            }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M3 7h8M7 3l4 4-4 4"
-                  stroke={selected ? "#fff" : "#5C5A62"}
-                  strokeWidth="1.5"
-                  strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
           </button>
 
           {/* 횟수 표시 */}
-          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", textAlign: "center", marginTop: "8px" }}>
+          <p style={{
+            fontSize: "10px",
+            fontWeight: 500,
+            color: "rgba(255,255,255,0.25)",
+            letterSpacing: "0.08em",
+            textAlign: "center",
+            marginTop: "8px",
+          }}>
             {user ? (
               <>
                 Free ·{" "}
-                <span style={{ color: "#FF8AA9" }}>
+                <span style={{ color: "#FFD84D" }}>
                   {isPaid
                     ? "Unlimited"
                     : sessionsLeft === null
@@ -814,7 +770,10 @@ function ScenarioPageInner() {
                 </span>
               </>
             ) : (
-              "Free · 1 session today"
+              <>
+                Free ·{" "}
+                <span style={{ color: "#FFD84D" }}>1 session today</span>
+              </>
             )}
           </p>
         </>
@@ -849,7 +808,7 @@ function ScenarioPageInner() {
             <p
               style={{
                 fontSize: "18px",
-                fontWeight: 700,
+                fontWeight: 800,
                 color: "#fff",
                 margin: "0 0 8px",
               }}
@@ -859,7 +818,8 @@ function ScenarioPageInner() {
             <p
               style={{
                 fontSize: "13px",
-                color: "rgba(255,255,255,0.4)",
+                fontWeight: 500,
+                color: "#B0AEB8",
                 margin: "0 0 20px",
                 lineHeight: 1.6,
               }}
@@ -879,8 +839,9 @@ function ScenarioPageInner() {
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
-                  fontSize: "13px",
-                  color: "rgba(255,255,255,0.6)",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  color: "#F2F0F4",
                   textAlign: "left",
                   marginBottom: "8px",
                 }}
@@ -890,7 +851,7 @@ function ScenarioPageInner() {
                     width: "6px",
                     height: "6px",
                     borderRadius: "50%",
-                    background: "#FF8AA9",
+                    background: "#FFD84D",
                     flexShrink: 0,
                   }}
                 />
@@ -903,13 +864,15 @@ function ScenarioPageInner() {
               onClick={() => void continueWithGoogle()}
               style={{
                 width: "100%",
-                background: "linear-gradient(135deg, #FF8AA9, #FF719B)",
+                background: "#FFD84D",
                 border: "none",
                 borderRadius: "99px",
                 padding: "14px",
-                fontSize: "14px",
+                fontSize: "11px",
                 fontWeight: 700,
-                color: "#fff",
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "#0E0E0F",
                 cursor: "pointer",
                 marginTop: "8px",
               }}
@@ -925,7 +888,8 @@ function ScenarioPageInner() {
                 border: "0.5px solid rgba(255,255,255,0.15)",
                 borderRadius: "99px",
                 padding: "12px",
-                fontSize: "13px",
+                fontSize: "11px",
+                fontWeight: 500,
                 color: "rgba(255,255,255,0.4)",
                 cursor: "pointer",
                 marginTop: "8px",

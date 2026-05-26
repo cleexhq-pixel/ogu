@@ -31,7 +31,7 @@ const COPY = {
     hero_title_1: "Those 90 seconds.",
     hero_title_2: "Don't freeze.",
     hero_sub: "One memorized line changes everything.\nNow is the time to get ready.",
-    cta: "Make 90 seconds worth it",
+    cta: "Make 90 seconds worth it →",
     free_note: "Free · 3 times a day · No account needed",
     free_badge: (n) => `Free · ${n} sessions left today`,
     section_scenario: "What would you like to practice",
@@ -424,8 +424,8 @@ export default function HomePage() {
         {/* 메인 카피 */}
         <h1 style={{
           fontFamily: "'Manrope', sans-serif",
-          fontSize: 34, fontWeight: 800,
-          letterSpacing: "-0.03em",
+          fontSize: 28, fontWeight: 800,
+          letterSpacing: "-0.01em",
           lineHeight: 1.1, marginBottom: 16, color: "#F2F0F4",
         }}>
           {t.hero_title_1}<br />
@@ -436,9 +436,9 @@ export default function HomePage() {
 
         {/* 서브 카피 */}
         <p style={{
-          fontSize: 15, color: "#9E9BA4",
+          fontSize: 13, fontWeight: 500,
+          color: "#9E9BA4",
           lineHeight: 1.65, marginBottom: 36,
-          letterSpacing: "-0.01em",
           whiteSpace: "pre-line",
         }}>
           {t.hero_sub}
@@ -458,9 +458,10 @@ export default function HomePage() {
         }}>
           <span style={{
             fontFamily: "'Manrope', sans-serif",
-            fontSize: 15, fontWeight: 700,
+            fontSize: 11, fontWeight: 700,
             color: "#0E0E0F",
-            letterSpacing: "0.01em",
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
           }}>
             {t.cta}
           </span>
@@ -469,9 +470,9 @@ export default function HomePage() {
         <p
           style={{
             fontSize: "10px",
+            fontWeight: 500,
             color: "#7A7882",
             letterSpacing: "0.08em",
-            textTransform: "uppercase",
             textAlign: "center",
             marginTop: "8px",
             marginBottom: 48,
@@ -529,7 +530,7 @@ export default function HomePage() {
       <div style={{ padding: "0 22px", position: "relative", zIndex: 1, marginBottom: 40 }}>
         {/* 섹션 헤더 */}
         <p style={{
-          fontSize: 10, fontWeight: 600,
+          fontSize: 9, fontWeight: 700,
           letterSpacing: "0.12em", textTransform: "uppercase",
           color: "#FFD84D", marginBottom: 6,
         }}>
@@ -562,14 +563,14 @@ export default function HomePage() {
             >
               <p style={{
                 fontFamily: "'Manrope', sans-serif",
-                fontSize: 15, fontWeight: 700,
+                fontSize: 13, fontWeight: 600,
                 color: "#F2F0F4", marginBottom: 8,
                 lineHeight: 1.3,
               }}>
                 "{item.title}"
               </p>
               <p style={{
-                fontSize: 12, color: "#7A7882",
+                fontSize: 10, fontWeight: 500, color: "#7A7882",
                 lineHeight: 1.6,
               }}>
                 {item.desc}
