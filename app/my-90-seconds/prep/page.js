@@ -17,6 +17,7 @@ const PREP_COPY = {
     listening: "Listening...",
     processing: "Processing...",
     tap_to_speak: "Say it",
+    say_again: "Say it again",
     done: "Done",
     retry_msg: "Didn't catch that. Tap and try again!",
     voice_label: "Idol voice",
@@ -36,6 +37,7 @@ const PREP_COPY = {
     listening: "듣는 중...",
     processing: "인식 중...",
     tap_to_speak: "말하기",
+    say_again: "다시 말하기",
     done: "완료",
     retry_msg: "인식하지 못했어요. 다시 탭해서 말해봐요!",
     voice_label: "아이돌 목소리",
@@ -55,6 +57,7 @@ const PREP_COPY = {
     listening: "Mendengar...",
     processing: "Memproses...",
     tap_to_speak: "Ucapkan",
+    say_again: "Ulangi lagi",
     done: "Selesai",
     retry_msg: "Tidak terdengar. Ketuk dan coba lagi!",
     voice_label: "Suara idol",
@@ -74,6 +77,7 @@ const PREP_COPY = {
     listening: "Ouvindo...",
     processing: "Processando...",
     tap_to_speak: "Falar",
+    say_again: "Falar de novo",
     done: "Concluído",
     retry_msg: "Não ouvi. Toque e tente novamente!",
     voice_label: "Voz do idol",
@@ -93,6 +97,7 @@ const PREP_COPY = {
     listening: "En écoute...",
     processing: "Traitement...",
     tap_to_speak: "Parler",
+    say_again: "Reparler",
     done: "Terminé",
     retry_msg: "Pas entendu. Appuyez et réessayez!",
     voice_label: "Voix de l'idol",
@@ -124,69 +129,50 @@ const loadingTexts = {
   },
 };
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { trackEvent } from "@/lib/analytics";
 import scenarios from "../../../src/data/scenarios";
 import { generateScript } from "../../../src/lib/generateScript";
 import { useSpeechRecognition } from "../../../src/hooks/useSpeechRecognition";
 import { normalizeLang } from "../../lib/i18n";
 
 // 고정 템플릿 (API 호출 불필요)
-const LINE1 = {
-  korean: "안녕하세요! 저는 [이름]이에요.",
-  romanization: "Annyeonghaseyo! Jeoneun [name]-ieyo.",
-  translation: "Hello! I'm [name].",
-  isTemplate: true,
+const LINE1_TRANSLATIONS = {
+  en: "Hello!",
+  ko: "안녕하세요!",
+  id: "Halo!",
+  pt: "Olá!",
+  fr: "Bonjour !",
 };
 
-const LINE4 = {
-  korean: "오늘 만나서 정말 행복해요!",
-  romanization: "Oneul mannaseo jeongmal haengbokhaeyo!",
-  translation: "I'm so happy to meet you today!",
-  isTemplate: true,
+const LINE4_TRANSLATIONS = {
+  en: "So happy to meet you!",
+  ko: "만나서 행복해요!",
+  id: "Senang ketemu!",
+  pt: "Feliz em te ver!",
+  fr: "Content de te voir !",
 };
 
-const IconSpeaker = ({ color = "#9E9BA4" }) => (
-  <svg width="14" height="14" viewBox="0 0 14 14"
-    fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M2 5h2.5L8 2v10L4.5 9H2V5z"
-      stroke={color} strokeWidth="1.3"
-      strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M10 4.5c1 .8 1 4.2 0 5"
-      stroke={color} strokeWidth="1.3"
-      strokeLinecap="round"/>
-  </svg>
-);
+function buildLine1(uiLang) {
+  const lang = normalizeLang(uiLang);
+  return {
+    korean: "안녕하세요!",
+    romanization: "Annyeonghaseyo!",
+    translation: LINE1_TRANSLATIONS[lang] || LINE1_TRANSLATIONS.en,
+    isTemplate: true,
+  };
+}
 
-const IconMic = ({ color = "#fff" }) => (
-  <svg width="14" height="14" viewBox="0 0 14 14"
-    fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="5" y="1" width="4" height="7" rx="2"
-      stroke={color} strokeWidth="1.3"/>
-    <path d="M2.5 7.5A4.5 4.5 0 0 0 11.5 7.5"
-      stroke={color} strokeWidth="1.3"
-      strokeLinecap="round"/>
-    <line x1="7" y1="12" x2="7" y2="10"
-      stroke={color} strokeWidth="1.3"
-      strokeLinecap="round"/>
-  </svg>
-);
-
-const IconWave = ({ color = "#fff" }) => (
-  <svg width="16" height="14" viewBox="0 0 16 14"
-    fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="0" y="4" width="2" height="6"
-      rx="1" fill={color} opacity="0.6"/>
-    <rect x="3.5" y="2" width="2" height="10"
-      rx="1" fill={color}/>
-    <rect x="7" y="4" width="2" height="6"
-      rx="1" fill={color} opacity="0.8"/>
-    <rect x="10.5" y="1" width="2" height="12"
-      rx="1" fill={color}/>
-    <rect x="14" y="4" width="2" height="6"
-      rx="1" fill={color} opacity="0.6"/>
-  </svg>
-);
+function buildLine4(uiLang) {
+  const lang = normalizeLang(uiLang);
+  return {
+    korean: "만나서 행복해요!",
+    romanization: "Mannaseo haengbokhaeyo!",
+    translation: LINE4_TRANSLATIONS[lang] || LINE4_TRANSLATIONS.en,
+    isTemplate: true,
+  };
+}
 
 function PrepPageInner() {
   const searchParams = useSearchParams();
@@ -214,6 +200,8 @@ function PrepPageInner() {
   const lastCompletionKeyRef = useRef("");
   const audioRef = useRef(null);
   const [holdLineIndex, setHoldLineIndex] = useState(null);
+  const [expandedLines, setExpandedLines] = useState(new Set());
+  const [completingLines, setCompletingLines] = useState(new Set());
   const {
     transcript,
     isListening,
@@ -242,7 +230,7 @@ function PrepPageInner() {
           ? localStorage.getItem(LANG_KEY) || "en"
           : "en",
       );
-      const cacheKey = `kkobi_m90s_v4_${scenarioId}_${uiLang}`;
+      const cacheKey = `kkobi_m90s_v5_${scenarioId}_${uiLang}`;
 
       try {
         const cached = localStorage.getItem(cacheKey);
@@ -257,10 +245,10 @@ function PrepPageInner() {
         setLoading(true);
         const generated = await generateScript(scenario);
         const newLines = [
-          LINE1,
+          buildLine1(uiLang),
           { ...generated.line2, isTemplate: false },
           { ...generated.line3, isTemplate: false },
-          LINE4,
+          buildLine4(uiLang),
         ];
         setLines(newLines);
         try {
@@ -270,32 +258,36 @@ function PrepPageInner() {
         console.error(e);
         const fallbacks = {
           compliment: [
-            { korean: "오빠 노래가 진짜 좋아요!", romanization: "Oppa noraega jinjja johayo!", translation: "I really love your music!", isTemplate: false },
-            { korean: "항상 응원하고 있어요!", romanization: "Hangsang eungwonhago isseoyo!", translation: "I'm always cheering for you!", isTemplate: false },
+            { korean: "노래 진짜 좋아요!", romanization: "Norae jinjja joayo!", translation: "Your music is amazing!", isTemplate: false },
+            { korean: "항상 응원해요!", romanization: "Hangsang eungwonhaeyo!", translation: "Always cheering for you!", isTemplate: false },
           ],
           birthday: [
-            { korean: "오빠 생일 진심으로 축하해요!", romanization: "Oppa saengil jinsimeuro chukahaeyo!", translation: "Happy birthday from the bottom of my heart!", isTemplate: false },
-            { korean: "항상 건강하고 행복하세요!", romanization: "Hangsang geonganghago haengbokhaseyo!", translation: "Always stay healthy and happy!", isTemplate: false },
+            { korean: "생일 축하해요!", romanization: "Saengil chukahaeyo!", translation: "Happy birthday!", isTemplate: false },
+            { korean: "건강하게 지내요!", romanization: "Geonganghage jinaeyo!", translation: "Stay healthy!", isTemplate: false },
+          ],
+          encouragement: [
+            { korean: "노래가 힘이 됐어요!", romanization: "Noraega himi dwaesseoyo!", translation: "Your music helped me!", isTemplate: false },
+            { korean: "계속 응원할게요!", romanization: "Gyesok eungwonhalgeyo!", translation: "I'll keep cheering!", isTemplate: false },
           ],
           game: [
-            { korean: "오빠랑 게임 해보고 싶었어요!", romanization: "Opparang geim haebogo sipeoisseoyo!", translation: "I've always wanted to play a game with you!", isTemplate: false },
-            { korean: "당연하지 게임 알아요?", romanization: "Dangyeonhaji geim arayo?", translation: "Do you know the 'of course' game?", isTemplate: false },
+            { korean: "게임 같이 해요!", romanization: "Geim gachi haeyo!", translation: "Let's play a game!", isTemplate: false },
+            { korean: "저 잘해요!", romanization: "Jeo jalhaeyo!", translation: "I'm good at it!", isTemplate: false },
           ],
           request: [
-            { korean: "오빠한테 부탁이 있어요!", romanization: "Oppahante butagi isseoyo!", translation: "I have a request for you!", isTemplate: false },
-            { korean: "제 이름 한 번 불러줄 수 있어요?", romanization: "Je ireum han beon bulleojul su isseoyo?", translation: "Can you call my name once?", isTemplate: false },
+            { korean: "볼하트 해줄 수 있어요?", romanization: "Bolhateu haejul su isseoyo?", translation: "Can you do a finger heart?", isTemplate: false },
+            { korean: "부탁드려요!", romanization: "Butakdeuryeoyo!", translation: "Please!", isTemplate: false },
           ],
           question: [
-            { korean: "요즘 제일 좋아하는 노래가 뭐예요?", romanization: "Yojeum jeil joahaneun noraega mwoyeyo?", translation: "What's your favorite song lately?", isTemplate: false },
-            { korean: "오빠 대답이 진짜 궁금해요!", romanization: "Oppa daedabi jinjja gunggeumhaeyo!", translation: "I'm so curious about your answer!", isTemplate: false },
+            { korean: "요즘 뭐가 좋아요?", romanization: "Yojeum mwoga joayo?", translation: "What do you like lately?", isTemplate: false },
+            { korean: "정말 궁금해요!", romanization: "Jeongmal gunggeumhaeyo!", translation: "I'm so curious!", isTemplate: false },
           ],
           confession: [
-            { korean: "오빠를 오래 좋아했어요!", romanization: "Oppareul orae johahaesseoyo!", translation: "I've liked you for a long time!", isTemplate: false },
-            { korean: "드디어 만나서 너무 행복해요!", romanization: "Deudieo mannaseo neomu haengbokhaeyo!", translation: "I'm so happy to finally meet you!", isTemplate: false },
+            { korean: "오래 좋아했어요!", romanization: "Orae joahaesseoyo!", translation: "I've liked you for so long!", isTemplate: false },
+            { korean: "만나서 행복해요!", romanization: "Mannaseo haengbokhaeyo!", translation: "Happy to meet you!", isTemplate: false },
           ],
         };
         const fb = fallbacks[scenarioId] || fallbacks.compliment;
-        setLines([LINE1, fb[0], fb[1], LINE4]);
+        setLines([buildLine1(uiLang), fb[0], fb[1], buildLine4(uiLang)]);
       } finally {
         setLoading(false);
       }
@@ -367,6 +359,48 @@ function PrepPageInner() {
     }
   }
 
+  function handleHear(index) {
+    if (!lines?.[index]) return;
+    playTTS(lines[index].korean, index);
+  }
+
+  function handleSay(index) {
+    if (!lines) return;
+
+    if (isListening && currentLine === index) {
+      stopListening();
+      return;
+    }
+
+    if (micBusy) return;
+
+    if (isListening && currentLine !== index) {
+      stopListening();
+      reset();
+    }
+
+    setCurrentLine(index);
+    setRetryIndex(null);
+    setHoldLineIndex(null);
+    listenPhaseRef.current = "waiting";
+
+    setTimeout(() => {
+      startListening();
+    }, 300);
+  }
+
+  const toggleExpandLine = useCallback((index) => {
+    setExpandedLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     if (!hasResult || !transcript.trim()) {
       lastCompletionKeyRef.current = "";
@@ -391,6 +425,7 @@ function PrepPageInner() {
     lastCompletionKeyRef.current = key;
 
     listenPhaseRef.current = "idle";
+    setCompletingLines((prev) => new Set([...prev, line]));
     setHoldLineIndex(line);
 
     const id = setTimeout(() => {
@@ -402,6 +437,12 @@ function PrepPageInner() {
         if (prev[line]) return prev;
         const next = [...prev];
         next[line] = true;
+        return next;
+      });
+
+      setCompletingLines((prev) => {
+        const next = new Set(prev);
+        next.delete(line);
         return next;
       });
 
@@ -474,6 +515,11 @@ function PrepPageInner() {
       JSON.stringify({ lines: payloadLines })
     );
     localStorage.setItem("kkobi_m90s_last_scenario", scenarioId);
+    trackEvent("m90s_prep_completed", {
+      scenario: scenarioId,
+      completed_lines: completed.filter(Boolean).length,
+      total_lines: lines.length,
+    });
 
     const billing = `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
     window.location.href = `/my-90-seconds/call?scenario=${scenarioId}&billing=${encodeURIComponent(
@@ -482,9 +528,17 @@ function PrepPageInner() {
   }
 
   const allDone = completed.every(Boolean);
-  const labels = ["인사", "핵심 메시지", "대화 이어가기", "마무리"];
+  const activeLineIndex = completed.findIndex((c) => !c);
   const t = PREP_COPY[lang] || PREP_COPY.en;
   const loadT = loadingTexts[lang] || loadingTexts.en;
+
+  function getLineLabel(i) {
+    const raw = t.line_labels?.[i];
+    if (typeof raw === "string" && raw.includes(" · ")) {
+      return raw.split(" · ")[1]?.trim() ?? "";
+    }
+    return "";
+  }
 
   if (loading) {
     return (
@@ -501,9 +555,9 @@ function PrepPageInner() {
       >
         <div
           style={{
-            fontSize: "20px",
+            fontSize: "16px",
             fontWeight: 700,
-            color: "#fff",
+            color: "#F2F0F4",
             marginBottom: "8px",
             letterSpacing: "-0.01em",
           }}
@@ -513,8 +567,8 @@ function PrepPageInner() {
 
         <div
           style={{
-            fontSize: "12px",
-            color: "rgba(255,255,255,0.5)",
+            fontSize: "11px",
+            color: "#7A7882",
             marginBottom: "32px",
           }}
         >
@@ -527,14 +581,15 @@ function PrepPageInner() {
             gap: "6px",
           }}
         >
-          {[0, 1, 2].map((i) => (
+          {[0.3, 0.65, 1].map((op, i) => (
             <span
               key={i}
               style={{
                 width: "6px",
                 height: "6px",
                 borderRadius: "50%",
-                background: "#FF8AA9",
+                background: "#FFD84D",
+                opacity: op,
                 animation: `dot-bounce 1.4s ${i * 0.2}s infinite`,
                 display: "inline-block",
               }}
@@ -557,8 +612,8 @@ function PrepPageInner() {
           <div key={i} style={{
             height: 3, flex: 1, borderRadius: 99,
             background: completed[i]
-              ? "linear-gradient(90deg, #FF8AA9, #FF719B)"
-              : "var(--m-surface-bright)",
+              ? "#FFD84D"
+              : "rgba(255,255,255,0.1)",
             transition: "background 0.3s",
           }} />
         ))}
@@ -566,241 +621,315 @@ function PrepPageInner() {
 
       {/* Header */}
       <div style={{ position: "relative", zIndex: 1, marginBottom: 24 }}>
-        <div className="m-eyebrow" style={{ marginBottom: 8 }}>
+        <div
+          className="m-eyebrow"
+          style={{ marginBottom: 8, color: "#FFD84D" }}
+        >
           {scenario.emoji} {t.eyebrow(scenarioId)}
         </div>
-        <h1 className="m-display">
+        <h1 style={{
+          fontFamily: "'Manrope', sans-serif",
+          fontSize: 22,
+          fontWeight: 800,
+          letterSpacing: "-0.02em",
+          color: "#F2F0F4",
+          lineHeight: 1.15,
+          margin: 0,
+        }}>
           {t.title_1}<br />
-          <span className="m-gradient-text">{t.title_2}</span>
+          <span style={{ color: "#FFD84D" }}>{t.title_2}</span>
         </h1>
       </div>
 
       {/* Lines */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, position: "relative", zIndex: 1 }}>
         {lines && lines.map((line, i) => {
-          const isDoneThis = completed[i];
+          const isDone = completed[i];
+          const isActive = i === activeLineIndex;
+          const isExpanded = expandedLines.has(i);
+          const lineLabel = getLineLabel(i);
           const isListeningThis = isListening && currentLine === i;
           const isProcessingThis =
             currentLine === i &&
             !completed[i] &&
             !isListeningThis &&
-            (isTranscribing || holdLineIndex === i);
+            (isTranscribing ||
+              holdLineIndex === i ||
+              micBusy ||
+              completingLines.has(i));
           const isPlayingThis = isPlaying && playingLine === i;
-          const heardThis = heard[i];
-          return (
-          <div
-            key={i}
-            style={{
-              background: "#1A191B",
-              borderRadius: 14,
-              padding: "16px",
-              position: "relative",
-              opacity: isDoneThis ? 0.7 : 1,
-              transition: "opacity 0.3s",
-            }}
-          >
-            {/* 완료 체크 뱃지 — 우상단 */}
-            {isDoneThis && (
-              <div style={{
-                position: "absolute",
-                top: 12, right: 12,
-                width: 22, height: 22,
-                borderRadius: "50%",
-                background: "#00E3FD",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6l3 3 5-5"
-                    stroke="#0E0E0F"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"/>
-                </svg>
-              </div>
-            )}
 
-            {/* 라인 레이블 */}
-            <p style={{
-              fontSize: 10, fontWeight: 600,
-              color: "#5C5A62", margin: "0 0 10px",
-              letterSpacing: "0.05em",
-            }}>
-              {t.line_labels[i]}
-            </p>
-
-            {/* 한국어 텍스트 */}
-            <p style={{
-              fontSize: 15, fontWeight: 700,
-              color: "#F2F0F4", margin: "0 0 3px",
-            }}>
-              {line.korean}
-            </p>
-            <p style={{
-              fontSize: 11, color: "#00E3FD",
-              margin: "0 0 2px",
-            }}>
-              {line.romanization}
-            </p>
-            <p style={{
-              fontSize: 11, color: "#5C5A62",
-              margin: "0 0 14px",
-            }}>
-              {line.translation}
-            </p>
-
-            {/* 버튼 영역 */}
-            <div style={{ display: "flex", gap: 8 }}>
-
-              {/* Hear it 버튼 */}
-              <button
-                onClick={() => playTTS(line.korean, i)}
+          if (isDone) {
+            return (
+              <div
+                key={i}
+                onClick={() => toggleExpandLine(i)}
                 style={{
-                  flex: 1, padding: "10px",
-                  borderRadius: 9999,
-                  cursor: isDoneThis ? "default" : "pointer",
-                  background: isPlayingThis
-                    ? "#2C2C2D"
-                    : "transparent",
-                  border: isPlayingThis
-                    ? "none"
-                    : heardThis || isDoneThis
-                    ? "1px solid rgba(255,255,255,0.08)"
-                    : "1.5px solid #FF8AA9",
-                  color: isPlayingThis
-                    ? "#00E3FD"
-                    : heardThis || isDoneThis
-                    ? "#5C5A62"
-                    : "#FF8AA9",
-                  fontFamily: "'Inter', sans-serif",
-                  fontSize: 12, fontWeight: 600,
-                  display: "flex", alignItems: "center",
-                  justifyContent: "center", gap: 6,
-                  transition: "all 0.2s",
+                  background: "rgba(255,255,255,0.03)",
+                  border: "0.5px solid rgba(255,255,255,0.08)",
+                  borderRadius: 12,
+                  padding: isExpanded ? "14px" : "10px 14px",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
                 }}
               >
-                <IconSpeaker
-                  color={
-                    isPlayingThis ? "#00E3FD"
-                    : heardThis || isDoneThis ? "#5C5A62"
-                    : "#FF8AA9"
-                  }
-                />
-                {isPlayingThis ? t.playing : t.listen}
-              </button>
-
-              {/* Say it 버튼 */}
-              <button
-                onClick={() => {
-                  if (completed[i] || micBusy) return;
-
-                  if (isListening && currentLine === i) {
-                    stopListening();
-                    return;
-                  }
-
-                  if (isListening && currentLine !== i) {
-                    stopListening();
-                    reset();
-                  }
-
-                  setCurrentLine(i);
-                  setRetryIndex(null);
-                  setHoldLineIndex(null);
-                  listenPhaseRef.current = "waiting";
-
-                  setTimeout(() => {
-                    startListening();
-                  }, 300);
-                }}
-                disabled={isDoneThis}
-                style={{
-                  flex: 1, padding: "10px",
-                  borderRadius: 9999, border: "none",
-                  cursor:
-                    isDoneThis || isProcessingThis
-                      ? "default"
-                      : "pointer",
-                  background: isListeningThis || isProcessingThis
-                    ? "#2C2C2D"
-                    : isDoneThis
-                    ? "#2C2C2D"
-                    : heardThis
-                    ? "#FF8AA9"
-                    : "#2C2C2D",
-                  color:
-                    isDoneThis
-                      ? "#3A3A3A"
-                      : isListeningThis || isProcessingThis
-                      ? "#00E3FD"
-                      : heardThis
-                      ? "#fff"
-                      : "#5C5A62",
-                  opacity: isProcessingThis ? 0.85 : 1,
-                  fontFamily: "'Inter', sans-serif",
-                  fontSize: 12, fontWeight: 700,
-                  display: "flex", alignItems: "center",
-                  justifyContent: "center", gap: 6,
-                  transition: "all 0.2s",
-                }}
-              >
-                {isProcessingThis ? (
-                  <>
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                      <circle cx="6.5" cy="6.5" r="5.5"
-                        stroke="currentColor" strokeWidth="1.3"
-                        strokeDasharray="3 2"
-                        opacity={0.9}/>
-                    </svg>
-                    <span style={{ opacity: 0.7 }}>{t.processing}</span>
-                  </>
-                ) : isListeningThis ? (
-                  <>
-                    <IconWave color="#00E3FD" />
-                    <span>{t.listening}</span>
-                  </>
-                ) : (
-                  <>
-                    <IconMic
-                      color={
-                        isDoneThis ? "#3A3A3A"
-                        : heardThis ? "#fff"
-                        : "#5C5A62"
-                      }
-                    />
-                    {t.tap_to_speak}
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Retry 메시지 */}
-            {retryIndex === i && !completed[i] && (
-              <div style={{
-                marginTop: 8,
-                background: "rgba(226,75,74,0.12)",
-                borderRadius: 8,
-                padding: "7px 12px",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}>
                 <div style={{
-                  width: 5, height: 5,
-                  borderRadius: "50%",
-                  background: "#E24B4A",
-                  flexShrink: 0,
-                }} />
-                <p style={{
-                  fontSize: 11, color: "#E24B4A",
-                  margin: 0, fontWeight: 500,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}>
-                  {t.retry_msg}
-                </p>
+                  <p style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: "rgba(255,216,77,0.6)",
+                    margin: 0,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    fontFamily: "Manrope, sans-serif",
+                  }}>
+                    {`LINE ${i + 1} · ${lineLabel}`}
+                  </p>
+                  <span style={{
+                    fontSize: 11,
+                    color: isExpanded ? "rgba(255,216,77,0.4)" : "#FFD84D",
+                  }}>
+                    {isExpanded ? "∧" : "✓"}
+                  </span>
+                </div>
+
+                {isExpanded && (
+                  <div style={{ marginTop: 10 }}>
+                    <p style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: "#F2F0F4",
+                      margin: 0,
+                      lineHeight: 1.4,
+                      fontFamily: "Manrope, sans-serif",
+                    }}>
+                      {line.korean}
+                    </p>
+                    {line.romanization && (
+                      <p style={{
+                        fontSize: 10,
+                        color: "#7A7882",
+                        margin: "4px 0 0",
+                        fontStyle: "italic",
+                        fontFamily: "Inter, sans-serif",
+                      }}>
+                        {line.romanization}
+                      </p>
+                    )}
+                    {line.translation && (
+                      <p style={{
+                        fontSize: 10,
+                        color: "#B0AEB8",
+                        margin: "3px 0 0",
+                        fontFamily: "Inter, sans-serif",
+                      }}>
+                        {line.translation}
+                      </p>
+                    )}
+                    <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleHear(i); }}
+                        style={{
+                          flex: 1,
+                          background: "transparent",
+                          border: "0.5px solid rgba(255,216,77,0.5)",
+                          borderRadius: 100,
+                          padding: "9px",
+                          color: "rgba(255,216,77,0.7)",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase",
+                          fontFamily: "Manrope, sans-serif",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {isPlayingThis ? t.playing : t.listen}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleSay(i); }}
+                        style={{
+                          flex: 1,
+                          background: "rgba(255,216,77,0.15)",
+                          border: "0.5px solid rgba(255,216,77,0.3)",
+                          borderRadius: 100,
+                          padding: "9px",
+                          color: "#FFD84D",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase",
+                          fontFamily: "Manrope, sans-serif",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t.say_again}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          }
+
+          if (isActive) {
+            return (
+              <div
+                key={i}
+                style={{
+                  background: "rgba(255,216,77,0.05)",
+                  border: "1px solid #FFD84D",
+                  borderRadius: 14,
+                  padding: "14px",
+                }}
+              >
+                <p style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  color: "#FFD84D",
+                  margin: "0 0 8px",
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  fontFamily: "Manrope, sans-serif",
+                }}>
+                  {`LINE ${i + 1} · ${lineLabel}`}
+                </p>
+                <p style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#F2F0F4",
+                  margin: 0,
+                  lineHeight: 1.4,
+                  fontFamily: "Manrope, sans-serif",
+                }}>
+                  {line.korean}
+                </p>
+                {line.romanization && (
+                  <p style={{
+                    fontSize: 10,
+                    color: "#7A7882",
+                    margin: "4px 0 0",
+                    fontStyle: "italic",
+                    fontFamily: "Inter, sans-serif",
+                  }}>
+                    {line.romanization}
+                  </p>
+                )}
+                {line.translation && (
+                  <p style={{
+                    fontSize: 10,
+                    color: "#B0AEB8",
+                    margin: "3px 0 0",
+                    fontFamily: "Inter, sans-serif",
+                  }}>
+                    {line.translation}
+                  </p>
+                )}
+                <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleHear(i)}
+                    style={{
+                      flex: 1,
+                      background: "transparent",
+                      border: "0.5px solid #FFD84D",
+                      borderRadius: 100,
+                      padding: "9px",
+                      color: "#FFD84D",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      fontFamily: "Manrope, sans-serif",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {isPlayingThis ? t.playing : t.listen}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSay(i)}
+                    style={{
+                      flex: 1,
+                      background: isListeningThis || isProcessingThis
+                        ? "rgba(255,216,77,0.15)"
+                        : "#FFD84D",
+                      border: isListeningThis || isProcessingThis
+                        ? "0.5px solid rgba(255,216,77,0.3)"
+                        : "none",
+                      borderRadius: 100,
+                      padding: "9px",
+                      color: isListeningThis || isProcessingThis
+                        ? "#FFD84D"
+                        : "#0E0E0F",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      fontFamily: "Manrope, sans-serif",
+                      cursor: "pointer",
+                      opacity: isProcessingThis ? 0.85 : 1,
+                    }}
+                  >
+                    {isProcessingThis
+                      ? t.processing
+                      : isListeningThis
+                        ? t.listening
+                        : t.tap_to_speak}
+                  </button>
+                </div>
+
+                {retryIndex === i && (
+                  <div style={{
+                    marginTop: 8,
+                    background: "rgba(255,216,77,0.08)",
+                    border: "0.5px solid rgba(255,216,77,0.3)",
+                    borderRadius: 8,
+                    padding: "7px 12px",
+                  }}>
+                    <p style={{
+                      fontSize: 11,
+                      color: "#FFD84D",
+                      margin: 0,
+                      fontWeight: 500,
+                    }}>
+                      {t.retry_msg}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={i}
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "0.5px solid rgba(255,255,255,0.08)",
+                borderRadius: 10,
+                padding: "10px 14px",
+                opacity: 0.3,
+              }}
+            >
+              <p style={{
+                fontSize: 9,
+                fontWeight: 700,
+                color: "#F2F0F4",
+                margin: 0,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                fontFamily: "Manrope, sans-serif",
+              }}>
+                {`LINE ${i + 1} · ${lineLabel}`}
+              </p>
+            </div>
           );
         })}
       </div>
@@ -814,42 +943,35 @@ function PrepPageInner() {
             width: "100%",
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
-            padding: "14px 14px 14px 24px",
+            justifyContent: "center",
+            padding: "14px 24px",
             borderRadius: 9999,
-            background: allDone ? "#FF8AA9" : "#2C2C2D",
+            background: allDone ? "#FFD84D" : "rgba(255,255,255,0.05)",
             border: "none",
-            cursor: allDone ? "pointer" : "default",
+            cursor: allDone ? "pointer" : "not-allowed",
             transition: "background 0.2s",
           }}
         >
-          <div style={{ width: 32 }} />
           <span style={{
             fontFamily: "'Manrope', sans-serif",
-            fontSize: 15, fontWeight: 700,
-            color: allDone ? "#fff" : "#5C5A62",
-            letterSpacing: "0.01em",
+            fontSize: 10,
+            fontWeight: 700,
+            color: allDone ? "#0E0E0F" : "rgba(255,255,255,0.2)",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
           }}>
-            {t.next}
+            {allDone ? `${t.next} →` : t.next}
           </span>
-          <div style={{
-            width: 32, height: 32, borderRadius: "50%",
-            background: allDone
-              ? "rgba(255,255,255,0.25)"
-              : "rgba(255,255,255,0.06)",
-            display: "flex", alignItems: "center",
-            justifyContent: "center", flexShrink: 0,
-          }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M3 7h8M7 3l4 4-4 4"
-                stroke={allDone ? "#fff" : "#5C5A62"}
-                strokeWidth="1.5"
-                strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
         </button>
         {!allDone && (
-          <p style={{ textAlign: "center", fontSize: 11, color: "var(--m-text-dim)", marginTop: 10 }}>
+          <p style={{
+            textAlign: "center",
+            fontSize: 9,
+            color: "#7A7882",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            marginTop: 10,
+          }}>
             {t.hint}
           </p>
         )}
@@ -901,7 +1023,7 @@ export default function PrepPage() {
         alignItems: "center",
         justifyContent: "center",
       }}>
-        <p style={{ color: "#5C5A62", fontSize: 13 }}>
+        <p style={{ color: "#7A7882", fontSize: 13 }}>
           Loading...
         </p>
       </div>

@@ -10,6 +10,7 @@ const client = new Anthropic({
 const scenarioContext = {
   compliment: '아이돌의 노래와 무대를 칭찬하고 싶은 팬',
   birthday: '아이돌 생일을 축하하고 싶은 팬',
+  encouragement: '아이돌에게 진심 어린 응원과 감사의 마음을 전하고 싶은 팬',
   game: '아이돌과 가벼운 게임을 하고 싶은 팬',
   request: '아이돌에게 볼하트나 이름 불러주기를 요청하고 싶은 팬',
   question: '아이돌에게 궁금한 것을 물어보고 싶은 팬',
@@ -65,17 +66,27 @@ export async function POST(request) {
       `아래 상황에 맞는 한국어 대화 스크립트 4문장을 생성해주세요.\n\n` +
       `상황: ${context}\n\n` +
       `규칙:\n` +
-      `- 모든 문장에 주어 포함\n` +
-      `- 한 문장은 10음절 이내\n` +
-      `- 지시대명사 사용 금지\n` +
-      `- 실제 팬이 쓰는 구어체 사용\n` +
+      `- 반드시 한국어 초급 학습자도 발음할 수 있는 짧고 단순한 문장\n` +
+      `- 한 문장은 최대 8음절. 절대 초과 금지\n` +
+      `- 단어 수 5개 이하\n` +
+      `- 어렵거나 생소한 단어 사용 금지\n` +
+      `- 주어 생략 가능 (구어체이므로)\n` +
+      `- 실제 팬이 쓰는 자연스러운 구어체\n` +
       `- 외모, 사생활, 연애 관련 질문 금지\n` +
-      `- LINE 1: 인사 (안녕하세요로 시작)\n` +
-      `- LINE 2: 핵심 메시지\n` +
-      `- LINE 3: 대화 이어가기\n` +
-      `- LINE 4: 마무리 (다음에 또 봐요로 끝)\n` +
+      `- LINE 1: 인사 (안녕하세요로 시작, 5음절 이하)\n` +
+      `- LINE 2: 핵심 메시지 (가장 하고 싶은 말 하나만, 짧게)\n` +
+      `- LINE 3: 대화 이어가기 (LINE 2와 자연스럽게 연결, 짧게)\n` +
+      `- LINE 4: 마무리 (감사 또는 재회 약속, 짧게)\n` +
       `- romanization 필드는 개정 로마자 표기\n` +
-      `- translation 필드만 UI 언어(${lang})로 작성하고, 한국어 대사(korean 필드)는 한국어만\n\n` +
+      `- translation 필드만 UI 언어(${lang})로 작성, 한국어 대사(korean 필드)는 한국어만\n\n` +
+      `좋은 예시 (이 수준으로):\n` +
+      `- "안녕하세요!" (5음절)\n` +
+      `- "노래 진짜 좋아요!" (7음절)\n` +
+      `- "항상 응원해요!" (6음절)\n` +
+      `- "또 봬요!" (4음절)\n\n` +
+      `나쁜 예시 (이런 문장 생성 금지):\n` +
+      `- "오빠 무대가 너무 멋있어서 눈물 날 뻔했어요!" (너무 길고 복잡)\n` +
+      `- "저는 오빠 팬이 된 지 3년이 됐어요!" (길고 숫자 포함)\n\n` +
       `JSON만 응답하세요:\n` +
       '{"lines":[{"label":"GREETING","korean":"","romanization":"","translation":""},{"label":"MAIN","korean":"","romanization":"","translation":""},{"label":"FOLLOW","korean":"","romanization":"","translation":""},{"label":"CLOSING","korean":"","romanization":"","translation":""}]}';
 
