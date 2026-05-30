@@ -1008,6 +1008,41 @@ function CallPageContent() {
     }, 1500);
   }, [timeRemaining]);
 
+  const devSkipToReview = useCallback(() => {
+    const sid = scenarioIdRef.current || scenarioId;
+    if (!sid) return;
+
+    const now = new Date().toISOString();
+    localStorage.setItem('kkobi_m90s_last_completed', now);
+    localStorage.setItem(
+      'kkobi_m90s_last_stats',
+      JSON.stringify({
+        completedLines: 4,
+        totalLines: 4,
+        timeUsed: 45,
+        scenario: sid,
+      }),
+    );
+    localStorage.setItem(
+      'kkobi_m90s_positive_moments',
+      JSON.stringify([
+        { type: 'first_korean', line: '안녕하세요!', timestamp: 10 },
+        { type: 'core_message', line: '노래 진짜 좋아요!', timestamp: 30 },
+      ]),
+    );
+    localStorage.setItem(
+      'kkobi_m90s_conversation',
+      JSON.stringify([
+        { role: 'idol', text: '어, 안녕! 왔구나~', timestamp: 5 },
+        { role: 'user', text: '안녕하세요!', timestamp: 10 },
+        { role: 'idol', text: '오늘 많이 떨려?', timestamp: 20 },
+        { role: 'user', text: '노래 진짜 좋아요!', timestamp: 30 },
+      ]),
+    );
+
+    router.push(`/my-90-seconds/review?scenario=${encodeURIComponent(sid)}`);
+  }, [scenarioId, router]);
+
   if (!isReady) {
     return (
       <div
@@ -2359,6 +2394,32 @@ function CallPageContent() {
               }}
             >
               Name
+            </button>
+            <div
+              style={{
+                width: '100%',
+                height: '0.5px',
+                background: 'rgba(255,255,255,0.15)',
+                margin: '4px 0',
+              }}
+            />
+            <button
+              type="button"
+              onClick={devSkipToReview}
+              style={{
+                background: '#FFD84D',
+                color: '#0E0E0F',
+                border: 'none',
+                borderRadius: '100px',
+                padding: '6px 14px',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                fontFamily: 'Manrope, sans-serif',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ⚡ → REVIEW
             </button>
           </div>
         )}
