@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
+import { trackEvent } from '@/lib/analytics';
 import { normalizeLang } from '@/app/lib/i18n';
 
 const GUMROAD_URL = 'https://cleexhq.gumroad.com/l/fansign-prep-pass';
@@ -157,6 +158,13 @@ function PaywallContent() {
     setUiLang(normalizeLang(localStorage.getItem('ogu_lang') || 'en'));
   }, []);
 
+  useEffect(() => {
+    trackEvent('m90s_paywall_shown', {
+      scenario,
+      source: 'paywall',
+    });
+  }, [scenario]);
+
   const t = useMemo(() => {
     const k = normalizeLang(uiLang);
     return PAYWALL_COPY[k] || PAYWALL_COPY.en;
@@ -173,6 +181,14 @@ function PaywallContent() {
     };
     void run();
   }, []);
+
+  const openGumroad = () => {
+    trackEvent('m90s_purchase_started', {
+      scenario,
+      user_type: user ? 'member' : 'guest',
+    });
+    window.open(gumroadWithContext, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div
@@ -209,16 +225,28 @@ function PaywallContent() {
           width: '64px',
           height: '64px',
           borderRadius: '50%',
-          background:
-            'linear-gradient(135deg, rgba(255,216,77,0.3), rgba(255,138,169,0.2))',
+          background: 'rgba(255,216,77,0.12)',
+          border: '1px solid rgba(255,216,77,0.25)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '28px',
           margin: '0 auto 24px',
         }}
       >
-        🔒
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#FFD84D"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
       </div>
 
       <div
@@ -317,22 +345,20 @@ function PaywallContent() {
       <div
         role="button"
         tabIndex={0}
-        onClick={() =>
-          window.open(gumroadWithContext, '_blank', 'noopener,noreferrer')
-        }
+        onClick={openGumroad}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            window.open(gumroadWithContext, '_blank', 'noopener,noreferrer');
+            openGumroad();
           }
         }}
         style={{
-          background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+          background: '#FFD84D',
           borderRadius: '20px',
           padding: '24px 20px',
           marginBottom: '12px',
           position: 'relative',
-          boxShadow: '0 8px 32px rgba(255,138,169,0.4)',
+          boxShadow: '0 8px 32px rgba(255,216,77,0.25)',
           cursor: 'pointer',
         }}
       >
@@ -342,8 +368,8 @@ function PaywallContent() {
             top: '-10px',
             right: '16px',
             padding: '4px 12px',
-            background: '#FFD84D',
-            color: '#0E0E0F',
+            background: '#0E0E0F',
+            color: '#FFD84D',
             fontSize: '9px',
             fontWeight: 700,
             letterSpacing: '0.15em',
@@ -358,7 +384,7 @@ function PaywallContent() {
           style={{
             fontSize: '11px',
             fontWeight: 700,
-            color: 'rgba(255,255,255,0.85)',
+            color: 'rgba(0,0,0,0.45)',
             letterSpacing: '0.15em',
             textTransform: 'uppercase',
             marginBottom: '8px',
@@ -371,7 +397,7 @@ function PaywallContent() {
           style={{
             fontSize: '40px',
             fontWeight: 700,
-            color: '#fff',
+            color: '#0E0E0F',
             letterSpacing: '-0.02em',
             marginBottom: '4px',
           }}
@@ -382,7 +408,7 @@ function PaywallContent() {
         <div
           style={{
             fontSize: '12px',
-            color: 'rgba(255,255,255,0.85)',
+            color: 'rgba(0,0,0,0.5)',
             marginBottom: '20px',
           }}
         >
@@ -395,7 +421,7 @@ function PaywallContent() {
               key={i}
               style={{
                 fontSize: '12px',
-                color: '#fff',
+                color: 'rgba(0,0,0,0.7)',
                 marginBottom: '8px',
                 paddingLeft: '18px',
                 position: 'relative',
@@ -405,7 +431,7 @@ function PaywallContent() {
                 style={{
                   position: 'absolute',
                   left: 0,
-                  color: '#fff',
+                  color: 'rgba(0,0,0,0.5)',
                   fontWeight: 700,
                 }}
               >
@@ -420,15 +446,15 @@ function PaywallContent() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            window.open(gumroadWithContext, '_blank', 'noopener,noreferrer');
+            openGumroad();
           }}
           style={{
             width: '100%',
             padding: '14px',
-            background: '#fff',
+            background: '#0E0E0F',
             border: 'none',
             borderRadius: '9999px',
-            color: '#FF719B',
+            color: '#FFD84D',
             fontSize: '13px',
             fontWeight: 700,
             letterSpacing: '0.1em',
@@ -499,7 +525,7 @@ export default function PaywallPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'rgba(255,255,255,0.5)',
+            color: '#7A7882',
           }}
         >
           Loading...
