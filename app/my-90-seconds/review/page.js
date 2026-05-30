@@ -4,12 +4,84 @@ import { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { hasReachedDailyLimit, getSessionsRemaining } from '@/lib/freeLimit';
+import { trackEvent } from '@/lib/analytics';
 import { normalizeLang } from '@/app/lib/i18n';
 import { calculateDday, formatDday } from '@/src/lib/dday';
 
 import { REVIEW_COPY } from './review-copy';
 
 const FANSIGN_DATE_KEY = 'kkobi_m90s_fansign_date';
+
+const PREP_PASS_UI = {
+  en: {
+    label: '7-DAY PREP PASS',
+    price: '$9.99',
+    sub: 'Unlimited practice · 7 days',
+    cta: 'Get Prep Pass →',
+    perks: [
+      'Unlimited sessions for 7 days',
+      'All 5 scenarios unlocked',
+      'Full review after every session',
+      "When the day is close, we'll be here",
+    ],
+  },
+  ko: {
+    label: '7일 프렙 패스',
+    price: '$9.99',
+    sub: '7일 무제한 연습',
+    cta: '패스 받기 →',
+    perks: [
+      '7일 무제한 세션',
+      '시나리오 5종 전부 오픈',
+      '통화 후마다 풀 리뷰',
+      '팬싸 날이 다가오면 함께할게요',
+    ],
+  },
+  id: {
+    label: 'PREP PASS 7 HARI',
+    price: '$9.99',
+    sub: 'Latihan tanpa batas · 7 hari',
+    cta: 'Ambil Prep Pass →',
+    perks: [
+      'Sesi tanpa batas 7 hari',
+      'Semua 5 skenario terbuka',
+      'Review lengkap tiap panggilan',
+      'Saat hari-H dekat, kami siap bantu',
+    ],
+  },
+  pt: {
+    label: 'PREP PASS 7 DIAS',
+    price: '$9.99',
+    sub: 'Prática ilimitada · 7 dias',
+    cta: 'Pegar Prep Pass →',
+    perks: [
+      'Sessões ilimitadas por 7 dias',
+      'Todos os 5 cenários liberados',
+      'Review completo após cada call',
+      'Quando o dia chegar, estamos aqui',
+    ],
+  },
+  fr: {
+    label: 'PREP PASS 7 JOURS',
+    price: '$9.99',
+    sub: 'Entraînement illimité · 7 jours',
+    cta: 'Prendre le Prep Pass →',
+    perks: [
+      'Sessions illimitées pendant 7 jours',
+      'Les 5 scénarios débloqués',
+      'Review complète après chaque appel',
+      'Quand le jour approche, on est là',
+    ],
+  },
+};
+
+const TRY_AGAIN_CTA = {
+  en: 'Practice Again →',
+  ko: '다시 연습하기 →',
+  id: 'Latihan lagi →',
+  pt: 'Praticar de novo →',
+  fr: 'Recommencer →',
+};
 
 /** Same score shape when review API/network fails — copy is localized by UI lang */
 function getFallbackReview(lang) {
@@ -165,6 +237,15 @@ function pickLocalizedRealTalk(total, apiText, strings) {
   return strings.real_talk_critical;
 }
 
+function realTalkTierForScore(total) {
+  const n = Number(total);
+  const t = Number.isFinite(n) ? n : 0;
+  if (t >= 4.5) return 'perfect';
+  if (t >= 3.5) return 'okay';
+  if (t >= 2.5) return 'warning';
+  return 'critical';
+}
+
 function StarRow({ value }) {
   const v = Math.min(5, Math.max(0, Math.round(Number(value))));
   return (
@@ -173,7 +254,7 @@ function StarRow({ value }) {
         <span
           key={i}
           style={{
-            color: i <= v ? '#FF8AA9' : 'rgba(255,255,255,0.15)',
+            color: i <= v ? '#FFD84D' : 'rgba(255,255,255,0.15)',
           }}
           aria-hidden
         >
@@ -183,23 +264,6 @@ function StarRow({ value }) {
     </span>
   );
 }
-
-const pinkHeroNumber = {
-  background:
-    'linear-gradient(135deg, #FF8AA9 0%, #FF6B95 42%, #FF4D6D 100%)',
-  WebkitBackgroundClip: 'text',
-  backgroundClip: 'text',
-  color: 'transparent',
-  WebkitTextFillColor: 'transparent',
-};
-
-const pinkHeroSmall = {
-  ...pinkHeroNumber,
-  fontSize: '42px',
-  lineHeight: 1,
-  fontWeight: 800,
-  letterSpacing: '-0.03em',
-};
 
 function ReviewContent() {
   const router = useRouter();
@@ -224,6 +288,10 @@ function ReviewContent() {
   );
 
   const t = REVIEW_COPY[normalizeLang(uiLang)] ?? REVIEW_COPY.en;
+  const prepPassUi =
+    PREP_PASS_UI[normalizeLang(uiLang)] ?? PREP_PASS_UI.en;
+  const tryAgainCta =
+    TRY_AGAIN_CTA[normalizeLang(uiLang)] ?? TRY_AGAIN_CTA.en;
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -299,14 +367,34 @@ function ReviewContent() {
           }),
         });
         const data = await res.json();
-        if (data?.review) {
-          setReviewData(data.review);
-        } else {
-          setReviewData(getFallbackReview(lang));
-        }
+        const nextReview = data?.review || getFallbackReview(lang);
+        setReviewData(nextReview);
+        trackEvent('m90s_score_received', {
+          scenario,
+          total: nextReview?.scores?.total,
+          communication: nextReview?.scores?.communication,
+          korean_attempts: nextReview?.scores?.korean_attempts,
+          conversation_flow: nextReview?.scores?.conversation_flow,
+          time_used: nextReview?.scores?.time_used,
+        });
+        trackEvent('m90s_real_talk_tier', {
+          scenario,
+          tier: realTalkTierForScore(nextReview?.scores?.total),
+        });
       } catch (e) {
         console.error('Review fetch error:', e);
-        setReviewData(getFallbackReview(lang));
+        const fallback = getFallbackReview(lang);
+        setReviewData(fallback);
+        trackEvent('m90s_score_received', {
+          scenario,
+          total: fallback.scores.total,
+          fallback: true,
+        });
+        trackEvent('m90s_real_talk_tier', {
+          scenario,
+          tier: realTalkTierForScore(fallback.scores.total),
+          fallback: true,
+        });
       }
       window.setTimeout(() => setStage('main'), 500);
     },
@@ -369,6 +457,10 @@ function ReviewContent() {
 
   const handleTryAgain = () => {
     if (typeof window === 'undefined') return;
+    trackEvent('m90s_retry_clicked', {
+      scenario,
+      sessions_remaining: sessionsRemaining,
+    });
     void (async () => {
       const supabase = getSupabase();
       const sess = supabase
@@ -396,11 +488,19 @@ function ReviewContent() {
   };
 
   const handlePrepPass = () => {
+    trackEvent('m90s_paywall_shown', {
+      scenario,
+      source: 'review',
+    });
     router.push(`/my-90-seconds/paywall?scenario=${encodeURIComponent(scenario)}`);
   };
 
   const handleShare = () => {
     if (!reviewData?.share_quote) return;
+    trackEvent('m90s_result_shared', {
+      scenario,
+      score: reviewData?.scores?.total,
+    });
 
     const shareLang = REVIEW_COPY[normalizeLang(uiLang)] ?? REVIEW_COPY.en;
     const shareText = `${shareLang.share_text_template}\n"${reviewData.share_quote}"\n\ntalk.kkobi.app`;
@@ -439,9 +539,9 @@ function ReviewContent() {
       >
         <div
           style={{
-            fontSize: '20px',
+            fontSize: '16px',
             fontWeight: 700,
-            color: '#fff',
+            color: '#F2F0F4',
             marginBottom: '8px',
             letterSpacing: '-0.01em',
             fontFamily: 'Manrope, sans-serif',
@@ -451,8 +551,8 @@ function ReviewContent() {
         </div>
         <div
           style={{
-            fontSize: '12px',
-            color: 'rgba(255,255,255,0.5)',
+            fontSize: '11px',
+            color: '#7A7882',
             marginBottom: '32px',
             fontFamily: 'Manrope, sans-serif',
             textAlign: 'center',
@@ -469,15 +569,17 @@ function ReviewContent() {
             gap: '6px',
           }}
         >
-          {[0, 1, 2].map((i) => (
+          {[0.3, 0.65, 1].map((op, i) => (
             <span
               key={i}
               style={{
                 width: '6px',
                 height: '6px',
                 borderRadius: '50%',
-                background: '#FF8AA9',
+                background: '#FFD84D',
+                opacity: op,
                 animation: `dot-bounce 1.4s ${i * 0.2}s infinite`,
+                display: 'inline-block',
               }}
             />
           ))}
@@ -497,8 +599,7 @@ function ReviewContent() {
     <div
       style={{
         minHeight: '100vh',
-        background:
-          'radial-gradient(ellipse at 50% -10%, rgba(255,138,169,0.18), transparent 55%), #0E0E0F',
+        background: '#0E0E0F',
         padding:
           'max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(36px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left))',
         maxWidth: '390px',
@@ -512,11 +613,11 @@ function ReviewContent() {
       <header style={{ marginBottom: '20px', textAlign: 'center' }}>
         <div
           style={{
-            fontSize: '10px',
+            fontSize: '9px',
             fontWeight: 700,
-            letterSpacing: '0.28em',
+            letterSpacing: '0.12em',
             textTransform: 'uppercase',
-            color: 'rgba(255,138,169,0.85)',
+            color: 'rgba(255,216,77,0.7)',
             marginBottom: '6px',
           }}
         >
@@ -534,13 +635,22 @@ function ReviewContent() {
       </header>
 
       {/* Total score */}
-      <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+      <div
+        style={{
+          textAlign: 'center',
+          marginBottom: '22px',
+          background: 'rgba(255,255,255,0.03)',
+          border: '0.5px solid rgba(255,255,255,0.08)',
+          borderRadius: '14px',
+          padding: '18px 16px',
+        }}
+      >
         <div
           style={{
-            fontSize: '10px',
+            fontSize: '9px',
             fontWeight: 700,
             color: 'rgba(255,255,255,0.35)',
-            letterSpacing: '0.22em',
+            letterSpacing: '0.12em',
             textTransform: 'uppercase',
             marginBottom: '6px',
           }}
@@ -557,11 +667,11 @@ function ReviewContent() {
         >
           <span
             style={{
-              ...pinkHeroNumber,
               fontSize: '56px',
               fontWeight: 800,
               lineHeight: 1,
               letterSpacing: '-0.03em',
+              color: '#FFD84D',
             }}
           >
             {Number(totalScore).toFixed(1)}
@@ -570,7 +680,7 @@ function ReviewContent() {
             style={{
               fontSize: '20px',
               fontWeight: 600,
-              color: 'rgba(255,255,255,0.45)',
+              color: 'rgba(255,255,255,0.3)',
               letterSpacing: '0.04em',
             }}
           >
@@ -582,20 +692,21 @@ function ReviewContent() {
       {/* Real talk */}
       <div
         style={{
-          borderLeft: '3px solid #FF4D6D',
-          background: 'rgba(255,77,109,0.08)',
-          borderRadius: '12px',
+          borderLeft: '2px solid #FFD84D',
+          background: 'rgba(255,216,77,0.05)',
+          borderRadius: '0 10px 10px 0',
           padding: '14px 14px 14px 16px',
           marginBottom: '18px',
         }}
       >
         <div
           style={{
-            fontSize: '11px',
+            fontSize: '9px',
             fontWeight: 700,
-            color: '#FF8AA9',
+            color: '#FFD84D',
             marginBottom: '8px',
-            letterSpacing: '0.08em',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
           }}
         >
           {t.real_talk_label}
@@ -604,6 +715,7 @@ function ReviewContent() {
           style={{
             margin: 0,
             fontSize: '13px',
+            fontWeight: 500,
             lineHeight: 1.55,
             color: 'rgba(255,255,255,0.88)',
             fontFamily: 'Inter, sans-serif',
@@ -648,7 +760,7 @@ function ReviewContent() {
       <section style={{ marginBottom: '18px' }}>
         <div
           style={{
-            fontSize: '11px',
+            fontSize: '9px',
             fontWeight: 700,
             color: '#FFD84D',
             marginBottom: '10px',
@@ -661,23 +773,24 @@ function ReviewContent() {
 
         <div
           style={{
-            background:
-              'linear-gradient(135deg, rgba(255,138,169,0.2), rgba(255,138,169,0.06) 80%)',
-            borderRadius: '18px',
+            background: 'rgba(255,216,77,0.04)',
+            borderRadius: '14px',
             padding: '18px 18px',
             position: 'relative',
             overflow: 'hidden',
-            border: '0.5px solid rgba(255,138,169,0.15)',
+            border: '0.5px solid rgba(255,216,77,0.2)',
           }}
         >
           {reviewData?.best_moment ? (
             <>
               <div
                 style={{
-                  fontSize: '10px',
-                  color: 'rgba(255,255,255,0.45)',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  color: 'rgba(255,255,255,0.35)',
                   marginBottom: '4px',
                   letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
                 }}
               >
                 {t.you_said_label}
@@ -708,7 +821,7 @@ function ReviewContent() {
               <div
                 style={{
                   textAlign: 'center',
-                  color: 'rgba(255,138,169,0.65)',
+                  color: 'rgba(255,216,77,0.4)',
                   fontSize: '16px',
                   marginBottom: '10px',
                 }}
@@ -718,10 +831,12 @@ function ReviewContent() {
 
               <div
                 style={{
-                  fontSize: '10px',
-                  color: 'rgba(255,138,169,0.75)',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  color: 'rgba(255,255,255,0.35)',
                   marginBottom: '4px',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
                 }}
               >
                 {t.idol_replied_template.replace('{idolName}', idolName)}
@@ -766,8 +881,8 @@ function ReviewContent() {
       {/* Missed moment */}
       <section
         style={{
-          background: 'rgba(255,216,77,0.08)',
-          border: '1px dashed rgba(255,216,77,0.28)',
+          background: 'rgba(255,216,77,0.05)',
+          border: '0.5px dashed rgba(255,216,77,0.3)',
           borderRadius: '16px',
           padding: '16px',
           marginBottom: '18px',
@@ -775,11 +890,12 @@ function ReviewContent() {
       >
         <div
           style={{
-            fontSize: '11px',
+            fontSize: '9px',
             fontWeight: 700,
-            color: '#FFD84D',
+            color: 'rgba(255,216,77,0.85)',
             marginBottom: '10px',
-            letterSpacing: '0.06em',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
           }}
         >
           {t.missed_moment_label}
@@ -810,11 +926,11 @@ function ReviewContent() {
           style={{
             borderTop: '1px solid rgba(255,255,255,0.08)',
             paddingTop: '12px',
-            fontSize: '11px',
+            fontSize: '9px',
             fontWeight: 700,
-            color: 'rgba(255,216,77,0.85)',
+            color: 'rgba(255,216,77,0.7)',
             marginBottom: '6px',
-            letterSpacing: '0.06em',
+            letterSpacing: '0.12em',
             textTransform: 'uppercase',
           }}
         >
@@ -823,6 +939,7 @@ function ReviewContent() {
         <div
           style={{
             fontSize: '12px',
+            fontWeight: 500,
             color: 'rgba(255,255,255,0.78)',
             lineHeight: 1.5,
             fontFamily: 'Inter, sans-serif',
@@ -835,13 +952,8 @@ function ReviewContent() {
       {/* D-day or generic */}
       <section
         style={{
-          background:
-            fansignDate && ddayStr
-              ? 'linear-gradient(145deg, rgba(255,138,169,0.16), rgba(14,14,15,0.9))'
-              : 'rgba(255,255,255,0.04)',
-          border: fansignDate
-            ? '0.5px solid rgba(255,138,169,0.25)'
-            : '0.5px solid rgba(255,255,255,0.08)',
+          background: 'rgba(255,255,255,0.03)',
+          border: '0.5px solid rgba(255,255,255,0.08)',
           borderRadius: '16px',
           padding: '18px 16px',
           marginBottom: '18px',
@@ -863,7 +975,15 @@ function ReviewContent() {
         </div>
         {fansignDate && ddayStr ? (
           <>
-            <div style={{ ...pinkHeroSmall, marginBottom: '6px' }}>
+            <div
+              style={{
+                fontSize: '32px',
+                fontWeight: 800,
+                color: '#FFD84D',
+                marginBottom: '6px',
+                letterSpacing: '-0.02em',
+              }}
+            >
               {ddayStr}
             </div>
             <div
@@ -900,7 +1020,7 @@ function ReviewContent() {
             fontSize: '12px',
             textAlign: 'center',
             lineHeight: 1.55,
-            color: 'rgba(255,216,77,0.85)',
+            color: 'rgba(255,216,77,0.8)',
           }}
         >
           {reviewData.encouragement}
@@ -909,40 +1029,96 @@ function ReviewContent() {
 
       {/* Prep pass CTA */}
       {!isPaid ? (
-        <button
-          type="button"
-          onClick={handlePrepPass}
-          style={{
-            width: '100%',
-            padding: '16px',
-            marginBottom: '8px',
-            border: 'none',
-            borderRadius: '999px',
-            cursor: 'pointer',
-            background: 'linear-gradient(120deg, #FFD84D, #FF8AA9, #FF719B)',
-            color: '#0E0E0F',
-            fontSize: '13px',
-            fontWeight: 800,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            boxShadow: '0 14px 30px rgba(255,138,169,0.35)',
-          }}
-        >
-          {t.prep_pass_cta}
-        </button>
-      ) : null}
-      {!isPaid ? (
-        <p
-          style={{
-            textAlign: 'center',
-            margin: '0 0 16px',
-            fontSize: '11px',
-            color: 'rgba(255,255,255,0.45)',
-            lineHeight: 1.5,
-          }}
-        >
-          {t.prep_pass_subtitle}
-        </p>
+        <div style={{ marginBottom: '16px' }}>
+          <div
+            style={{
+              background: '#FFD84D',
+              borderRadius: '14px',
+              padding: '16px',
+              marginBottom: '12px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '30px',
+                fontWeight: 800,
+                color: '#0E0E0F',
+                lineHeight: 1,
+                marginBottom: '4px',
+              }}
+            >
+              {prepPassUi.price}
+            </div>
+            <div
+              style={{
+                fontSize: '9px',
+                fontWeight: 700,
+                color: 'rgba(0,0,0,0.45)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                marginBottom: '4px',
+              }}
+            >
+              {prepPassUi.label}
+            </div>
+            <div
+              style={{
+                fontSize: '10px',
+                color: 'rgba(0,0,0,0.5)',
+                marginBottom: '12px',
+              }}
+            >
+              {prepPassUi.sub}
+            </div>
+            <button
+              type="button"
+              onClick={handlePrepPass}
+              style={{
+                width: '100%',
+                background: '#0E0E0F',
+                color: '#FFD84D',
+                border: 'none',
+                borderRadius: '100px',
+                padding: '11px',
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                fontFamily: 'Manrope, sans-serif',
+              }}
+            >
+              {prepPassUi.cta}
+            </button>
+          </div>
+          <ul
+            style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}
+          >
+            {prepPassUi.perks.map((perk) => (
+              <li
+                key={perk}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  fontSize: '10px',
+                  color: 'rgba(255,255,255,0.65)',
+                  lineHeight: 1.45,
+                }}
+              >
+                <span style={{ color: '#FFD84D', flexShrink: 0 }}>✓</span>
+                <span>{perk}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : (
         <p
           style={{
@@ -965,21 +1141,21 @@ function ReviewContent() {
         style={{
           width: '100%',
           padding: '18px',
-          background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+          background: 'rgba(255,255,255,0.06)',
           border: 'none',
           borderRadius: '9999px',
-          color: '#fff',
-          fontSize: '13px',
+          color: '#F2F0F4',
+          fontSize: '10px',
           fontWeight: 700,
-          letterSpacing: '0.06em',
+          letterSpacing: '0.12em',
           textTransform: 'uppercase',
           cursor: 'pointer',
           marginBottom: '10px',
-          boxShadow: '0 6px 24px rgba(255,138,169,0.28)',
+          boxShadow: 'none',
           fontFamily: 'Manrope, sans-serif',
         }}
       >
-        {t.try_again_free}
+        {tryAgainCta}
       </button>
       <p
         style={{
@@ -1000,73 +1176,94 @@ function ReviewContent() {
 
       {/* Share */}
       <div
-        role="button"
-        tabIndex={0}
-        onClick={handleShare}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') handleShare();
-        }}
         style={{
-          background:
-            'linear-gradient(135deg, rgba(0,227,253,0.12), rgba(158,143,253,0.08))',
+          background: 'rgba(255,216,77,0.04)',
+          border: '0.5px solid rgba(255,216,77,0.15)',
           borderRadius: '16px',
           padding: '16px',
           marginBottom: '18px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          cursor: 'pointer',
         }}
       >
         <div
           style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            background: 'rgba(0,227,253,0.2)',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '18px',
-            flexShrink: 0,
+            alignItems: 'flex-start',
+            gap: '12px',
+            marginBottom: '12px',
           }}
         >
-          📸
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'rgba(255,216,77,0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              flexShrink: 0,
+            }}
+          >
+            📸
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: '9px',
+                fontWeight: 700,
+                color: 'rgba(255,216,77,0.6)',
+                marginBottom: '6px',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {t.share_card_title}
+            </div>
+            <div
+              style={{
+                fontSize: '13px',
+                fontWeight: 500,
+                color: 'rgba(255,255,255,0.75)',
+                marginBottom: '2px',
+                lineHeight: 1.35,
+              }}
+            >
+              “{reviewData?.share_quote}”
+            </div>
+            <div
+              style={{
+                fontSize: '10px',
+                fontWeight: 500,
+                color: '#7A7882',
+                fontStyle: 'italic',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              {reviewData?.share_quote_translation || ''}
+            </div>
+          </div>
         </div>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: '13px',
-              fontWeight: 700,
-              color: '#fff',
-              marginBottom: '4px',
-            }}
-          >
-            {t.share_card_title}
-          </div>
-          <div
-            style={{
-              fontSize: '12px',
-              color: 'rgba(255,255,255,0.75)',
-              fontWeight: 500,
-              marginBottom: '2px',
-              lineHeight: 1.35,
-            }}
-          >
-            “{reviewData?.share_quote}”
-          </div>
-          <div
-            style={{
-              fontSize: '10px',
-              color: 'rgba(255,255,255,0.4)',
-              fontStyle: 'italic',
-              fontFamily: 'Inter, sans-serif',
-            }}
-          >
-            {reviewData?.share_quote_translation || ''}
-          </div>
-        </div>
-        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>›</div>
+        <button
+          type="button"
+          onClick={handleShare}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            border: '0.5px solid rgba(255,216,77,0.3)',
+            color: '#FFD84D',
+            borderRadius: '100px',
+            padding: '11px',
+            fontSize: '10px',
+            fontWeight: 700,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            fontFamily: 'Manrope, sans-serif',
+          }}
+        >
+          Share →
+        </button>
       </div>
 
       <button
@@ -1125,7 +1322,7 @@ function ReviewContent() {
                 border: 'none',
                 fontSize: '12px',
                 fontWeight: 700,
-                color: '#FF8AA9',
+                color: 'rgba(255,255,255,0.5)',
                 cursor: 'pointer',
               }}
             >
@@ -1188,7 +1385,7 @@ export default function ReviewPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'rgba(255,255,255,0.5)',
+            color: '#7A7882',
             fontFamily: 'Manrope, sans-serif',
           }}
         >
