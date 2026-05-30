@@ -1139,10 +1139,9 @@ function CallPageContent() {
                 letterSpacing: '0.12em',
                 textTransform: 'uppercase',
                 fontFamily: 'Manrope, sans-serif',
-                color: '#fff',
-                background:
-                  'linear-gradient(135deg, #FF8AA9, #FF719B)',
-                boxShadow: '0 0 32px rgba(255,138,169,0.45)',
+                color: '#0E0E0F',
+                background: '#FFD84D',
+                boxShadow: '0 0 32px rgba(255,216,77,0.35)',
               }}
             >
               Start call
@@ -1194,7 +1193,7 @@ function CallPageContent() {
                     height: '4px',
                     margin: '0 auto',
                     background:
-                      'linear-gradient(90deg, transparent, rgba(255,138,169,0.4), transparent)',
+                      'linear-gradient(90deg, transparent, rgba(255,216,77,0.5), transparent)',
                     animation: 'connecting-bar 1.5s infinite',
                   }}
                 />
@@ -1222,8 +1221,8 @@ function CallPageContent() {
                       position: 'absolute',
                       inset: 0,
                       borderRadius: '50%',
-                      background:
-                        'linear-gradient(135deg, rgba(255,138,169,0.3), rgba(0,227,253,0.2))',
+                      background: 'rgba(255,216,77,0.08)',
+                      border: '1.5px solid rgba(255,216,77,0.25)',
                       animation: 'incoming-pulse 1.5s infinite',
                     }}
                   />
@@ -1232,14 +1231,26 @@ function CallPageContent() {
                       position: 'absolute',
                       inset: '20px',
                       borderRadius: '50%',
-                      background: '#1a1a1c',
+                      background: 'rgba(255,216,77,0.1)',
+                      border: '1px solid rgba(255,216,77,0.2)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '48px',
                     }}
                   >
-                    📞
+                    <svg
+                      width="26"
+                      height="26"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FFD84D"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.38 2 2 0 0 1 3.9 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.07-1.07a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
                   </div>
                 </div>
 
@@ -1247,7 +1258,7 @@ function CallPageContent() {
                   style={{
                     fontSize: '11px',
                     fontWeight: 700,
-                    color: 'rgba(255,138,169,0.8)',
+                    color: 'rgba(255,216,77,0.8)',
                     letterSpacing: '0.3em',
                     textTransform: 'uppercase',
                     marginBottom: '8px',
@@ -1283,14 +1294,26 @@ function CallPageContent() {
                       width: '64px',
                       height: '64px',
                       borderRadius: '50%',
-                      background: 'rgba(255,68,68,0.15)',
-                      border: '2px solid rgba(255,68,68,0.4)',
+                      background: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.2)',
                       cursor: 'pointer',
-                      color: '#FF4444',
-                      fontSize: '24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
-                    ✗
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.4)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
                   </button>
 
                   <button
@@ -1300,16 +1323,29 @@ function CallPageContent() {
                       width: '64px',
                       height: '64px',
                       borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+                      background: '#FFD84D',
                       border: 'none',
                       cursor: 'pointer',
-                      color: '#fff',
-                      fontSize: '24px',
-                      boxShadow: '0 0 32px rgba(255,138,169,0.5)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 0 32px rgba(255,216,77,0.4)',
                       animation: 'pulse-button 1.5s infinite',
                     }}
                   >
-                    ✓
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#0E0E0F"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                   </button>
                 </div>
               </div>

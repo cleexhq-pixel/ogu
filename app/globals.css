@@ -399,10 +399,10 @@ body {
 @keyframes pulse-button {
   0%,
   100% {
-    box-shadow: 0 0 32px rgba(255, 138, 169, 0.5);
+    box-shadow: 0 0 32px rgba(255, 216, 77, 0.4);
   }
   50% {
-    box-shadow: 0 0 48px rgba(255, 138, 169, 0.8);
+    box-shadow: 0 0 48px rgba(255, 216, 77, 0.65);
   }
 }
 
