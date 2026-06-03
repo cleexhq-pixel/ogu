@@ -3,8 +3,33 @@ import OAuthCompleteTracker from "./components/OAuthCompleteTracker";
 import { ActiveSessionProvider } from "@/hooks/useActiveSession";
 
 export const metadata = {
-  title: "꼬비 (Kkobi)",
-  description: "한국어 AI 회화 학습 앱"
+  title: "My 90 Seconds — Fansign Video Call Prep",
+  description:
+    "Practice your 90 seconds before the day comes. For every fan who waited.",
+  metadataBase: new URL("https://talk.kkobi.app"),
+  openGraph: {
+    title: "For every fan who waited.",
+    description:
+      "Practice your 90 seconds before the day comes. We'll be here every time you want to try again.",
+    url: "https://talk.kkobi.app",
+    siteName: "My 90 Seconds",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "My 90 Seconds — Fansign Video Call Prep",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "For every fan who waited.",
+    description: "Practice your 90 seconds before the day comes.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({ children }) {
