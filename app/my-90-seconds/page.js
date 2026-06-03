@@ -6,6 +6,8 @@ import { getSessionsRemaining } from "@/lib/freeLimit";
 import { getSupabase } from "@/lib/supabase";
 import { trackEvent } from "@/lib/analytics";
 import { calculateDday, formatDday } from "@/src/lib/dday";
+import { isInAppBrowser, getInAppBrowserName } from "@/lib/inAppBrowser";
+import InAppBrowserModal from "@/components/InAppBrowserModal";
 
 const LANG_KEY = "ogu_lang";
 const VOICE_KEY = "kkobi_voice_gender";
@@ -156,6 +158,8 @@ function ScenarioPageInner() {
   const [isPaid, setIsPaid] = useState(false);
   const [sessionsLeft, setSessionsLeft] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showInAppModal, setShowInAppModal] = useState(false);
+  const [inAppBrowserName, setInAppBrowserName] = useState("");
   const [voiceGender, setVoiceGender] = useState("FEMALE");
   const [idolName, setIdolName] = useState("");
   const [fansignDate, setFansignDate] = useState("");
@@ -252,6 +256,11 @@ function ScenarioPageInner() {
 
   async function continueWithGoogle() {
     if (typeof window === "undefined") return;
+    if (isInAppBrowser()) {
+      setInAppBrowserName(getInAppBrowserName());
+      setShowInAppModal(true);
+      return;
+    }
     const supabase = getSupabase();
     if (!supabase) return;
     const next = encodeURIComponent("/my-90-seconds");
@@ -366,7 +375,7 @@ function ScenarioPageInner() {
               borderRadius: 14,
               padding: "14px 12px",
               border: selected === id
-                ? "1px solid #FFD84D"
+                ? "0.5px solid #FFD84D"
                 : "0.5px solid rgba(255,255,255,0.08)",
               cursor: "pointer",
               textAlign: "center", position: "relative",
@@ -900,6 +909,13 @@ function ScenarioPageInner() {
           </div>
         </div>
       )}
+
+      <InAppBrowserModal
+        isOpen={showInAppModal}
+        onClose={() => setShowInAppModal(false)}
+        browserName={inAppBrowserName}
+        lang={lang}
+      />
     </div>
   );
 }

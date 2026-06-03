@@ -9,6 +9,8 @@ import { normalizeLang } from '@/app/lib/i18n';
 import { calculateDday, formatDday } from '@/src/lib/dday';
 
 import { REVIEW_COPY } from './review-copy';
+import { isInAppBrowser, getInAppBrowserName } from '@/lib/inAppBrowser';
+import InAppBrowserModal from '@/components/InAppBrowserModal';
 
 const FANSIGN_DATE_KEY = 'kkobi_m90s_fansign_date';
 
@@ -286,6 +288,8 @@ function ReviewContent() {
   const [isPaid, setIsPaid] = useState(() =>
     typeof window !== 'undefined' ? readPaidPrepPass() : false,
   );
+  const [showInAppModal, setShowInAppModal] = useState(false);
+  const [inAppBrowserName, setInAppBrowserName] = useState('');
 
   const t = REVIEW_COPY[normalizeLang(uiLang)] ?? REVIEW_COPY.en;
   const prepPassUi =
@@ -692,7 +696,7 @@ function ReviewContent() {
       {/* Real talk */}
       <div
         style={{
-          borderLeft: '2px solid #FFD84D',
+          borderLeft: '0.5px solid #FFD84D',
           background: 'rgba(255,216,77,0.05)',
           borderRadius: '0 10px 10px 0',
           padding: '14px 14px 14px 16px',
@@ -924,7 +928,7 @@ function ReviewContent() {
         </div>
         <div
           style={{
-            borderTop: '1px solid rgba(255,255,255,0.08)',
+            borderTop: '0.5px solid rgba(255,255,255,0.08)',
             paddingTop: '12px',
             fontSize: '9px',
             fontWeight: 700,
@@ -1304,6 +1308,11 @@ function ReviewContent() {
               type="button"
               onClick={() => {
                 void (async () => {
+                  if (isInAppBrowser()) {
+                    setInAppBrowserName(getInAppBrowserName());
+                    setShowInAppModal(true);
+                    return;
+                  }
                   const supabase = getSupabase();
                   if (!supabase || typeof window === 'undefined') return;
                   const next = encodeURIComponent(
@@ -1370,6 +1379,13 @@ function ReviewContent() {
           </p>
         )}
       </div>
+
+      <InAppBrowserModal
+        isOpen={showInAppModal}
+        onClose={() => setShowInAppModal(false)}
+        browserName={inAppBrowserName}
+        lang={uiLang}
+      />
     </div>
   );
 }

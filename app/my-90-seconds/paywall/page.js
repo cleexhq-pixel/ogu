@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { trackEvent } from '@/lib/analytics';
 import { normalizeLang } from '@/app/lib/i18n';
+import { isInAppBrowser, getInAppBrowserName } from '@/lib/inAppBrowser';
+import InAppBrowserModal from '@/components/InAppBrowserModal';
 
 const GUMROAD_URL = 'https://cleexhq.gumroad.com/l/fansign-prep-pass';
 
@@ -153,6 +155,8 @@ function PaywallContent() {
 
   const [user, setUser] = useState(null);
   const [uiLang, setUiLang] = useState('en');
+  const [showInAppModal, setShowInAppModal] = useState(false);
+  const [inAppBrowserName, setInAppBrowserName] = useState('');
 
   useEffect(() => {
     setUiLang(normalizeLang(localStorage.getItem('ogu_lang') || 'en'));
@@ -226,7 +230,7 @@ function PaywallContent() {
           height: '64px',
           borderRadius: '50%',
           background: 'rgba(255,216,77,0.12)',
-          border: '1px solid rgba(255,216,77,0.25)',
+          border: '0.5px solid rgba(255,216,77,0.25)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -303,6 +307,11 @@ function PaywallContent() {
               type="button"
               onClick={() => {
                 void (async () => {
+                  if (isInAppBrowser()) {
+                    setInAppBrowserName(getInAppBrowserName());
+                    setShowInAppModal(true);
+                    return;
+                  }
                   const supabase = getSupabase();
                   if (!supabase || typeof window === 'undefined') return;
                   const next = encodeURIComponent('/my-90-seconds');
@@ -470,7 +479,7 @@ function PaywallContent() {
         style={{
           marginTop: '24px',
           paddingTop: '24px',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: '0.5px solid rgba(255,255,255,0.06)',
           textAlign: 'center',
         }}
       >
@@ -510,6 +519,13 @@ function PaywallContent() {
       >
         {user ? t.footerSignedIn : t.footerGuest}
       </p>
+
+      <InAppBrowserModal
+        isOpen={showInAppModal}
+        onClose={() => setShowInAppModal(false)}
+        browserName={inAppBrowserName}
+        lang={uiLang}
+      />
     </div>
   );
 }

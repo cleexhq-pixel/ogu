@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { getSessionsRemaining } from "@/lib/freeLimit";
+import { isInAppBrowser, getInAppBrowserName } from "@/lib/inAppBrowser";
+import InAppBrowserModal from "@/components/InAppBrowserModal";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -196,6 +198,8 @@ export default function HomePage() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
+  const [showInAppModal, setShowInAppModal] = useState(false);
+  const [inAppBrowserName, setInAppBrowserName] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem(LANG_KEY) || "en";
@@ -496,6 +500,11 @@ export default function HomePage() {
                 type="button"
                 onClick={() => {
                   void (async () => {
+                    if (isInAppBrowser()) {
+                      setInAppBrowserName(getInAppBrowserName());
+                      setShowInAppModal(true);
+                      return;
+                    }
                     const next = encodeURIComponent("/");
                     await supabase.auth.signInWithOAuth({
                       provider: "google",
@@ -668,6 +677,12 @@ export default function HomePage() {
         )}
       </div>
 
+      <InAppBrowserModal
+        isOpen={showInAppModal}
+        onClose={() => setShowInAppModal(false)}
+        browserName={inAppBrowserName}
+        lang={lang}
+      />
     </div>
   );
 }
