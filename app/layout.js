@@ -1,4 +1,6 @@
 import "./globals.css";
+import Analytics from "@/app/components/Analytics";
+import UtmCapture from "@/components/UtmCapture";
 import OAuthCompleteTracker from "./components/OAuthCompleteTracker";
 import { ActiveSessionProvider } from "@/hooks/useActiveSession";
 
@@ -60,6 +62,8 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="min-h-screen" style={{ backgroundColor: "#0E0E0F" }}>
+        <Analytics />
+        <UtmCapture />
         <OAuthCompleteTracker />
         <ActiveSessionProvider>{children}</ActiveSessionProvider>
       </body>
