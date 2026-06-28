@@ -22,6 +22,17 @@ const scenarios = [
     line3Prompt: "앞으로도 응원한다는 따뜻한 마무리 문장",
   },
   {
+    id: "encouragement",
+    emoji: "💪",
+    titleKo: "응원하기",
+    titleEn: "Encouragement",
+    descKo: "진심 어린 응원을 전하기",
+    descEn: "Share warm support with your idol",
+    primaryCats: ["reaction_compliment", "reaction_to_korean"],
+    line2Prompt: "힘이 되었던 노래나 무대에 대한 감사와 응원을 전하는 문장",
+    line3Prompt: "앞으로도 계속 응원하겠다는 따뜻한 문장",
+  },
+  {
     id: "game",
     emoji: "🎮",
     titleKo: "게임하기",

@@ -10,6 +10,7 @@ const client = new Anthropic({
 const scenarioContext = {
   compliment: 'expressing love and appreciation to their bias',
   birthday: 'celebrating idol birthday',
+  encouragement: 'sharing encouragement and gratitude with their bias',
   game: 'playing a fun game with idol',
   request: 'asking idol for a special action',
   ask: 'asking a meaningful question',

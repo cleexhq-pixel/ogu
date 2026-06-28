@@ -1,0 +1,40 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- 배경 -->
+  <rect width="1200" height="630" fill="#F5F0E8"/>
+
+  <!-- 수평 텍스처 라인 -->
+  <line x1="0" y1="80" x2="1200" y2="80" stroke="#000" stroke-width="0.4" stroke-opacity="0.04"/>
+  <line x1="0" y1="160" x2="1200" y2="160" stroke="#000" stroke-width="0.4" stroke-opacity="0.04"/>
+  <line x1="0" y1="240" x2="1200" y2="240" stroke="#000" stroke-width="0.4" stroke-opacity="0.04"/>
+  <line x1="0" y1="320" x2="1200" y2="320" stroke="#000" stroke-width="0.4" stroke-opacity="0.04"/>
+  <line x1="0" y1="400" x2="1200" y2="400" stroke="#000" stroke-width="0.4" stroke-opacity="0.04"/>
+  <line x1="0" y1="480" x2="1200" y2="480" stroke="#000" stroke-width="0.4" stroke-opacity="0.04"/>
+  <line x1="0" y1="560" x2="1200" y2="560" stroke="#000" stroke-width="0.4" stroke-opacity="0.04"/>
+
+  <!-- 좌측 앰버 액센트 바 -->
+  <rect x="0" y="0" width="5" height="630" fill="#FFD84D"/>
+
+  <!-- 라벨 -->
+  <text x="80" y="185" font-family="'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#B08050" letter-spacing="3" text-transform="uppercase">FANSIGN VIDEO CALL PREP</text>
+
+  <!-- 메인 카피 -->
+  <text x="80" y="290" font-family="'Helvetica Neue', Arial, sans-serif" font-size="88" font-weight="800" fill="#1A1714" letter-spacing="-2">For every fan</text>
+  <text x="80" y="390" font-family="'Helvetica Neue', Arial, sans-serif" font-size="88" font-weight="800" fill="#1A1714" letter-spacing="-2">who waited.</text>
+
+  <!-- 앰버 언더라인 -->
+  <rect x="80" y="415" width="90" height="5" rx="2" fill="#FFD84D"/>
+
+  <!-- 서브카피 -->
+  <text x="80" y="470" font-family="'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#6B5E4E">Practice your 90 seconds before the day comes.</text>
+  <text x="80" y="500" font-family="'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="500" fill="#6B5E4E">We'll be here every time you want to try again.</text>
+
+  <!-- 우측 세로 텍스트 -->
+  <text x="1150" y="200" font-family="'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="500" fill="#6B5E4E" fill-opacity="0.35" letter-spacing="4" transform="rotate(90, 1150, 200)">MADE WITH FANS · FOR FANS</text>
+
+  <!-- 브랜드 로고 (우하단) -->
+  <circle cx="1080" cy="565" r="18" fill="#1A1714"/>
+  <text x="1080" y="571" font-family="'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="800" fill="#FFD84D" text-anchor="middle">M</text>
+  <text x="1107" y="571" font-family="'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="700" fill="#6B5E4E">My 90 Seconds</text>
+
+</svg>

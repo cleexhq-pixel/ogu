@@ -8,13 +8,13 @@
   --m-surface-bright:      #2C2C2D;
 
   /* ── Brand Colors ── */
-  --m-primary:             #FF8AA9;
-  --m-primary-end:         #FF719B;
-  --m-secondary:           #00E3FD;
-  --m-tertiary:            #9E8FFD;
+  --m-primary:             #FFD84D;
+  --m-primary-end:         #FFD84D;
+  --m-secondary:           #FFD84D;
+  --m-tertiary:            #FFD84D;
 
   /* ── Gradients ── */
-  --m-gradient-cta:        linear-gradient(135deg, #FF8AA9, #FF719B);
+  --m-gradient-cta:        #FFD84D;
 
   /* ── Text ── */
   --m-text-primary:        #F2F0F4;
@@ -50,7 +50,7 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(158, 143, 253, 0.13) 0%,
+    rgba(255, 216, 77, 0.10) 0%,
     transparent 70%
   );
   pointer-events: none;
@@ -64,7 +64,7 @@
   border-radius: var(--m-radius-full);
   border: none;
   background: var(--m-gradient-cta);
-  color: #fff;
+  color: #0E0E0F;
   font-family: var(--m-font-display);
   font-size: 13px;
   font-weight: 700;
@@ -76,7 +76,7 @@
   padding: 13px 20px;
   border-radius: var(--m-radius-full);
   background: transparent;
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
   color: var(--m-text-secondary);
   font-family: var(--m-font-display);
   font-size: 12px;
@@ -154,7 +154,7 @@
   width: 100%;
   background: transparent;
   border: none;
-  border-bottom: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.15);
   color: var(--m-text-primary);
   font-family: var(--m-font-body);
   font-size: 14px;
@@ -164,14 +164,14 @@
 
 .m-input:focus {
   border-bottom-color: var(--m-secondary);
-  box-shadow: 0 2px 0 0 rgba(0, 227, 253, 0.3);
+  box-shadow: 0 2px 0 0 rgba(255, 216, 77, 0.24);
 }
 
 /* ── Neon Leak (고우선순위 요소 글로우) ── */
 .m-glow-primary {
-  box-shadow: 0 0 24px rgba(255, 138, 169, 0.15);
+  box-shadow: 0 0 24px rgba(255, 216, 77, 0.15);
 }
 
 .m-glow-secondary {
-  box-shadow: 0 0 24px rgba(0, 227, 253, 0.15);
+  box-shadow: 0 0 24px rgba(255, 216, 77, 0.15);
 }

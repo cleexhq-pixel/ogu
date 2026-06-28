@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { trackEvent } from '@/lib/analytics';
 
 export default function RedeemPage() {
   const router = useRouter();
@@ -9,12 +10,12 @@ export default function RedeemPage() {
   const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleRedeem = () => {
+  const handleRedeem = async () => {
     if (!code.trim()) return;
 
     setStatus('loading');
 
-    window.setTimeout(() => {
+    try {
       const cleanCode = code.trim().toUpperCase();
 
       if (cleanCode.length < 8) {
@@ -23,18 +24,33 @@ export default function RedeemPage() {
         return;
       }
 
-      if (typeof window !== 'undefined') {
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7);
+      const res = await fetch('/api/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ licenseKey: cleanCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        setStatus('error');
+        setErrorMsg(
+          data?.error || 'License verification failed. Please check and try again.',
+        );
+        return;
+      }
 
-        localStorage.setItem('kkobi_pass_tier', 'prep_pass');
-        localStorage.setItem('kkobi_pass_expires', expiresAt.toISOString());
-        localStorage.setItem('kkobi_pass_code', cleanCode);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('kkobi_pass_tier', data.tier || 'prep_pass');
+        localStorage.setItem('kkobi_pass_expires', data.expiresAt);
+        localStorage.setItem('kkobi_pass_code', data.licenseKey || cleanCode);
         localStorage.setItem('kkobi_pass_activated', new Date().toISOString());
       }
 
+      trackEvent('m90s_pass_activated');
       setStatus('success');
-    }, 1200);
+    } catch {
+      setStatus('error');
+      setErrorMsg('License verification failed. Please check and try again.');
+    }
   };
 
   if (status === 'success') {
@@ -85,16 +101,16 @@ export default function RedeemPage() {
           onClick={() => router.push('/my-90-seconds')}
           style={{
             padding: '16px 40px',
-            background: 'linear-gradient(135deg, #FF8AA9, #FF719B)',
+            background: '#FFD84D',
             border: 'none',
             borderRadius: '9999px',
-            color: '#fff',
-            fontSize: '14px',
+            color: '#0E0E0F',
+            fontSize: '11px',
             fontWeight: 700,
-            letterSpacing: '0.1em',
+            letterSpacing: '0.14em',
             textTransform: 'uppercase',
             cursor: 'pointer',
-            boxShadow: '0 4px 24px rgba(255,138,169,0.4)',
+            boxShadow: '0 4px 24px rgba(255,216,77,0.24)',
           }}
         >
           Start Practicing →
@@ -205,18 +221,18 @@ export default function RedeemPage() {
           width: '100%',
           padding: '16px',
           background: code.trim()
-            ? 'linear-gradient(135deg, #FF8AA9, #FF719B)'
-            : 'rgba(255,255,255,0.1)',
+            ? '#FFD84D'
+            : 'rgba(255,255,255,0.05)',
           border: 'none',
           borderRadius: '9999px',
-          color: code.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
-          fontSize: '14px',
+          color: code.trim() ? '#0E0E0F' : 'rgba(255,255,255,0.2)',
+          fontSize: '11px',
           fontWeight: 700,
-          letterSpacing: '0.1em',
+          letterSpacing: '0.14em',
           textTransform: 'uppercase',
           cursor: code.trim() ? 'pointer' : 'not-allowed',
           marginBottom: '24px',
-          boxShadow: code.trim() ? '0 4px 24px rgba(255,138,169,0.3)' : 'none',
+          boxShadow: code.trim() ? '0 4px 24px rgba(255,216,77,0.2)' : 'none',
           transition: 'all 0.3s',
         }}
       >

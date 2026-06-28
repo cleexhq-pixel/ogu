@@ -396,10 +396,16 @@ function PrepPageInner() {
         next.delete(index);
       } else {
         next.add(index);
+        if (completedRef.current[index]) {
+          trackEvent("m90s_line_replay", {
+            scenario: scenarioId,
+            line_index: index + 1,
+          });
+        }
       }
       return next;
     });
-  }, []);
+  }, [scenarioId]);
 
   useEffect(() => {
     if (!hasResult || !transcript.trim()) {
@@ -784,7 +790,7 @@ function PrepPageInner() {
                 key={i}
                 style={{
                   background: "rgba(255,216,77,0.05)",
-                  border: "1px solid #FFD84D",
+                  border: "0.5px solid #FFD84D",
                   borderRadius: 14,
                   padding: "14px",
                 }}

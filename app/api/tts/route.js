@@ -41,11 +41,6 @@ function sanitizeTextForTts(raw) {
 
 export async function POST(request) {
   try {
-    const apiKey = process.env.GOOGLE_TTS_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "TTS failed" }, { status: 500 });
-    }
-
     let body;
     try {
       body = await request.json();
@@ -60,6 +55,11 @@ export async function POST(request) {
       const genderPath = gender === "MALE" ? "male" : "female";
       const audioUrl = `/audio/${genderPath}/${scriptId.trim()}.mp3`;
       return NextResponse.json({ audioUrl });
+    }
+
+    const apiKey = process.env.GOOGLE_TTS_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "TTS failed" }, { status: 500 });
     }
 
     if (!text || typeof text !== "string" || !text.trim()) {

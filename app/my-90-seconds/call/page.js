@@ -114,6 +114,15 @@ function CallPageContent() {
   const callCompletedTrackedRef = useRef(false);
   const speechRecognitionRef = useRef(null);
   const interimTranscriptRef = useRef('');
+  const audioRef = useRef(null);
+
+  const getSharedAudio = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    }
+    return audioRef.current;
+  }, []);
 
   useEffect(() => {
     conversationHistoryRef.current = conversationHistory;
@@ -195,12 +204,24 @@ function CallPageContent() {
 
   const unlockAudioAndStartConnecting = useCallback(() => {
     if (typeof window === 'undefined') return;
-    const audio = new Audio();
-    void audio.play().catch((err) => {
-      console.error('Audio unlock failed:', err);
-    });
+    const audio = getSharedAudio();
+    if (audio) {
+      const attemptUnlock = async (isRetry) => {
+        try {
+          await audio.play();
+        } catch (err) {
+          if (!isRetry) {
+            await new Promise((r) => setTimeout(r, 100));
+            return attemptUnlock(true);
+          }
+          console.error('Audio unlock failed:', err);
+          trackEvent('m90s_audio_unlock_failed');
+        }
+      };
+      void attemptUnlock(false);
+    }
     setIntroStep('connecting');
-  }, []);
+  }, [getSharedAudio]);
 
   useEffect(() => {
     if (!started) return;
@@ -339,6 +360,78 @@ function CallPageContent() {
     return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }, []);
 
+  const runAudioPlayback = useCallback(
+    (src, { onLoadError, failReasonOnPlay = 'playback' }) =>
+      new Promise((resolve) => {
+        const audio = getSharedAudio();
+        if (!audio) {
+          resolve();
+          return;
+        }
+
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          audio.onended = null;
+          audio.onerror = null;
+          resolve();
+        };
+
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.onended = null;
+          audio.onerror = null;
+          audio.src = src;
+          audio.load();
+        } catch {
+          trackEvent('m90s_tts_failed', {
+            scenario: scenarioIdRef.current,
+            reason: failReasonOnPlay,
+          });
+          finish();
+          return;
+        }
+
+        audio.onended = finish;
+
+        audio.onerror = () => {
+          audio.onended = null;
+          audio.onerror = null;
+          if (onLoadError) {
+            void Promise.resolve(onLoadError()).then(finish);
+          } else {
+            trackEvent('m90s_tts_failed', {
+              scenario: scenarioIdRef.current,
+              reason: 'playback',
+            });
+            finish();
+          }
+        };
+
+        const attemptPlay = async (isRetry) => {
+          try {
+            await audio.play();
+          } catch (err) {
+            if (!isRetry) {
+              await new Promise((r) => setTimeout(r, 100));
+              return attemptPlay(true);
+            }
+            console.error('TTS play failed:', err);
+            trackEvent('m90s_tts_failed', {
+              scenario: scenarioIdRef.current,
+              reason: failReasonOnPlay,
+            });
+            finish();
+          }
+        };
+
+        void attemptPlay(false);
+      }),
+    [getSharedAudio],
+  );
+
   const playTtsAndWait = useCallback(
     async (text, scriptId) => {
       const trimmed = typeof text === 'string' ? text.trim() : '';
@@ -348,17 +441,15 @@ function CallPageContent() {
         if (scriptId && typeof scriptId === 'string') {
           const genderPath = genderTts === 'MALE' ? 'male' : 'female';
           const audioUrl = `/audio/${genderPath}/${scriptId}.mp3`;
-          const audio = new Audio(audioUrl);
-          await new Promise((resolve) => {
-            audio.onended = resolve;
-            audio.onerror = () => {
-              // 캐시 파일 없으면 폴백으로 TTS API 호출
-              playTtsAndWait(text, null).then(resolve);
-            };
-            void audio.play().catch((err) => {
-              console.error('Cached TTS play failed:', err);
-              resolve();
-            });
+          await runAudioPlayback(audioUrl, {
+            failReasonOnPlay: 'cached_play',
+            onLoadError: async () => {
+              trackEvent('m90s_tts_failed', {
+                scenario: scenarioIdRef.current,
+                reason: 'cached_load',
+              });
+              await playTtsAndWait(text, null);
+            },
           });
           return;
         }
@@ -379,21 +470,10 @@ function CallPageContent() {
           });
           return;
         }
-        const audio = new Audio(
+        await runAudioPlayback(
           `data:audio/mp3;base64,${data.audioContent}`,
+          { failReasonOnPlay: 'playback' },
         );
-        await new Promise((resolve) => {
-          audio.onended = resolve;
-          audio.onerror = resolve;
-          void audio.play().catch((err) => {
-            console.error('TTS play failed:', err);
-            trackEvent('m90s_tts_failed', {
-              scenario: scenarioIdRef.current,
-              reason: 'playback',
-            });
-            resolve();
-          });
-        });
       } catch {
         trackEvent('m90s_tts_failed', {
           scenario: scenarioIdRef.current,
@@ -402,7 +482,7 @@ function CallPageContent() {
         /* subtitle-only */
       }
     },
-    [genderTts],
+    [genderTts, runAudioPlayback],
   );
 
   /** Legacy name — kept for callers; 실제 종료 안내 텍스트는 idolScripts 기준 */
@@ -1043,6 +1123,23 @@ function CallPageContent() {
     router.push(`/my-90-seconds/review?scenario=${encodeURIComponent(sid)}`);
   }, [scenarioId, router]);
 
+  const returnToScenarios = useCallback((source) => {
+    if (
+      introStepRef.current === 'started' &&
+      !endSequenceRef.current &&
+      timeRemainingRef.current > 0
+    ) {
+      trackEvent('m90s_call_abandoned', {
+        scenario: scenarioIdRef.current,
+        phase: currentPhaseRef.current,
+        elapsed: 90 - timeRemainingRef.current,
+        source,
+      });
+    }
+    cleanupMicPipeline();
+    router.push('/my-90-seconds');
+  }, [router]);
+
   if (!isReady) {
     return (
       <div
@@ -1257,7 +1354,7 @@ function CallPageContent() {
                       inset: 0,
                       borderRadius: '50%',
                       background: 'rgba(255,216,77,0.08)',
-                      border: '1.5px solid rgba(255,216,77,0.25)',
+                      border: '0.5px solid rgba(255,216,77,0.25)',
                       animation: 'incoming-pulse 1.5s infinite',
                     }}
                   />
@@ -1267,7 +1364,7 @@ function CallPageContent() {
                       inset: '20px',
                       borderRadius: '50%',
                       background: 'rgba(255,216,77,0.1)',
-                      border: '1px solid rgba(255,216,77,0.2)',
+                      border: '0.5px solid rgba(255,216,77,0.2)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1324,13 +1421,13 @@ function CallPageContent() {
                 >
                   <button
                     type="button"
-                    onClick={() => router.push('/my-90-seconds')}
+                    onClick={() => returnToScenarios('decline_incoming')}
                     style={{
                       width: '64px',
                       height: '64px',
                       borderRadius: '50%',
                       background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.2)',
+                      border: '0.5px solid rgba(255,255,255,0.2)',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -1443,7 +1540,7 @@ function CallPageContent() {
                       position: 'absolute',
                       inset: 0,
                       background:
-                        'radial-gradient(ellipse at center, rgba(255,138,169,0.25), transparent 60%)',
+                        'radial-gradient(ellipse at center, rgba(255,216,77,0.2), transparent 60%)',
                       animation: 'glow-fade 1.5s ease-out',
                     }}
                   />
@@ -1470,7 +1567,7 @@ function CallPageContent() {
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      background: 'rgba(255,138,169,0.4)',
+                      background: 'rgba(255,216,77,0.28)',
                       animation: 'flash 0.4s ease-out',
                     }}
                   />
@@ -1557,7 +1654,7 @@ function CallPageContent() {
 
         <button
           type="button"
-          onClick={() => router.push('/my-90-seconds')}
+          onClick={() => returnToScenarios('close_button')}
           style={{
             position: 'absolute',
             top: '12px',
@@ -1785,7 +1882,7 @@ function CallPageContent() {
                 pointerEvents: 'auto',
                 flexShrink: 0,
                 background: 'transparent',
-                borderLeft: '2px solid rgba(255,216,77,0.6)',
+                borderLeft: '0.5px solid rgba(255,216,77,0.6)',
                 borderRadius: 0,
                 padding: '4px 12px',
                 minHeight: '110px',
@@ -2034,7 +2131,7 @@ function CallPageContent() {
                     maxWidth: '110px',
                     padding: '8px 10px',
                     background: 'rgba(255,216,77,0.08)',
-                    border: '1px solid rgba(255,216,77,0.25)',
+                    border: '0.5px solid rgba(255,216,77,0.25)',
                     backdropFilter: 'blur(12px)',
                     borderRadius: '12px',
                     cursor: 'pointer',
@@ -2080,7 +2177,7 @@ function CallPageContent() {
                 fontWeight: 700,
                 letterSpacing: '0.14em',
                 fontFamily: 'Manrope, sans-serif',
-                background: 'rgba(255,138,169,0.12)',
+                background: 'rgba(255,216,77,0.08)',
               }}
             >
               Preparing mic…
@@ -2092,7 +2189,7 @@ function CallPageContent() {
                 width: '100%',
                 borderRadius: '100px',
                 padding: '14px',
-                border: '1.5px solid rgba(255,216,77,0.5)',
+                border: '0.5px solid rgba(255,216,77,0.5)',
                 background: 'transparent',
                 color: 'rgba(255,216,77,0.6)',
                 fontSize: '11px',
@@ -2121,7 +2218,7 @@ function CallPageContent() {
               marginBottom: 8,
               borderRadius: 12,
               background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              border: '0.5px solid rgba(255, 255, 255, 0.15)',
               color: '#FFFFFF',
               fontSize: 13,
               fontFamily: 'Inter, sans-serif',
@@ -2186,7 +2283,7 @@ function CallPageContent() {
                 width: '100%',
                 borderRadius: '100px',
                 padding: '14px',
-                border: '1.5px solid rgba(255,216,77,0.3)',
+                border: '0.5px solid rgba(255,216,77,0.3)',
                 background: 'transparent',
                 color: 'rgba(255,216,77,0.4)',
                 fontSize: '11px',
@@ -2245,7 +2342,7 @@ function CallPageContent() {
                 type="button"
                 onClick={() => setPhase(p)}
                 style={{
-                  background: phase === p ? '#FF8AA9' : '#FFD84D',
+                  background: phase === p ? '#FFD84D' : 'rgba(255,255,255,0.08)',
                   color: '#000',
                   border: 'none',
                   borderRadius: '9999px',
@@ -2263,8 +2360,8 @@ function CallPageContent() {
               type="button"
               onClick={() => setShowEmergencyCards(!showEmergencyCards)}
               style={{
-                background: '#9E8FFD',
-                color: '#fff',
+                background: 'rgba(255,216,77,0.18)',
+                color: '#FFD84D',
                 border: 'none',
                 borderRadius: '9999px',
                 padding: '6px 14px',
@@ -2280,7 +2377,7 @@ function CallPageContent() {
               type="button"
               onClick={() => setMicState('idol_speaking')}
               style={{
-                background: '#00E3FD',
+                background: '#FFD84D',
                 color: '#0E0E0F',
                 border: 'none',
                 borderRadius: '9999px',
@@ -2297,7 +2394,7 @@ function CallPageContent() {
               type="button"
               onClick={() => setMicState('your_turn')}
               style={{
-                background: '#FF8AA9',
+                background: '#FFD84D',
                 color: '#0E0E0F',
                 border: 'none',
                 borderRadius: '9999px',
@@ -2331,8 +2428,8 @@ function CallPageContent() {
               type="button"
               onClick={() => setMicState('processing')}
               style={{
-                background: 'rgba(0,227,253,0.35)',
-                color: '#fff',
+                background: 'rgba(255,216,77,0.22)',
+                color: '#FFD84D',
                 border: 'none',
                 borderRadius: '9999px',
                 padding: '6px 14px',
@@ -2349,7 +2446,7 @@ function CallPageContent() {
               onClick={() => triggerEmotionalMoment('first_korean', 'test')}
               style={{
                 background: '#2C2C2D',
-                color: '#FF8AA9',
+                color: '#FFD84D',
                 border: 'none',
                 borderRadius: '9999px',
                 padding: '6px 14px',
