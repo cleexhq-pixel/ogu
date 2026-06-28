@@ -323,10 +323,10 @@ function ReviewContent() {
 
   const fetchReview = useCallback(
     async (moments, gender, statPayload, nameForPrompt) => {
+      let lang = normalizeLang(
+        window.localStorage.getItem('ogu_lang') || 'en',
+      );
       try {
-        const lang = normalizeLang(
-          window.localStorage.getItem('ogu_lang') || 'en',
-        );
 
         let conversationHistory = [];
         try {
@@ -371,6 +371,16 @@ function ReviewContent() {
           }),
         });
         const data = await res.json();
+        if (!res.ok || data.success === false) {
+          trackEvent('m90s_review_generation_failed', {
+            scenario,
+            reason:
+              typeof data?.error === 'string'
+                ? data.error
+                : `http_${res.status}`,
+            status: res.status,
+          });
+        }
         const nextReview = data?.review || getFallbackReview(lang);
         setReviewData(nextReview);
         trackEvent('m90s_score_received', {
@@ -387,6 +397,11 @@ function ReviewContent() {
         });
       } catch (e) {
         console.error('Review fetch error:', e);
+        trackEvent('m90s_review_generation_failed', {
+          scenario,
+          reason: e instanceof Error ? e.message : 'network_error',
+          status: 0,
+        });
         const fallback = getFallbackReview(lang);
         setReviewData(fallback);
         trackEvent('m90s_score_received', {

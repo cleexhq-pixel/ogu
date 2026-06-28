@@ -129,7 +129,14 @@ const loadingTexts = {
   },
 };
 
-import { useState, useEffect, useRef, Suspense, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  Suspense,
+  useCallback,
+} from "react";
 import { useSearchParams } from "next/navigation";
 import { trackEvent } from "@/lib/analytics";
 import scenarios from "../../../src/data/scenarios";
@@ -210,6 +217,7 @@ function PrepPageInner() {
     startListening,
     stopListening,
     reset,
+    finishTranscribing,
   } = useSpeechRecognition();
 
   const micBusy = isTranscribing || holdLineIndex !== null;
@@ -407,7 +415,7 @@ function PrepPageInner() {
     });
   }, [scenarioId]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!hasResult || !transcript.trim()) {
       lastCompletionKeyRef.current = "";
       return undefined;
@@ -433,6 +441,7 @@ function PrepPageInner() {
     listenPhaseRef.current = "idle";
     setCompletingLines((prev) => new Set([...prev, line]));
     setHoldLineIndex(line);
+    finishTranscribing();
 
     const id = setTimeout(() => {
       lastCompletionKeyRef.current = "";
@@ -463,10 +472,8 @@ function PrepPageInner() {
 
     return () => {
       clearTimeout(id);
-      lastCompletionKeyRef.current = "";
-      setHoldLineIndex(null);
     };
-  }, [hasResult, transcript, reset]);
+  }, [hasResult, transcript, reset, finishTranscribing]);
 
   // waiting → listening 전환: isListening이 실제 true가 된 시점에 phase 갱신
   useEffect(() => {
@@ -659,10 +666,10 @@ function PrepPageInner() {
             currentLine === i &&
             !completed[i] &&
             !isListeningThis &&
-            (isTranscribing ||
+            (completingLines.has(i) ||
               holdLineIndex === i ||
-              micBusy ||
-              completingLines.has(i));
+              isTranscribing ||
+              micBusy);
           const isPlayingThis = isPlaying && playingLine === i;
 
           if (isDone) {

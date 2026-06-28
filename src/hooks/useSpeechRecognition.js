@@ -18,6 +18,10 @@ export function useSpeechRecognition() {
     setIsTranscribing(false);
   }, []);
 
+  const finishTranscribing = useCallback(() => {
+    setIsTranscribing(false);
+  }, []);
+
   const stopListening = useCallback(() => {
     if (safetyTimerRef.current) {
       clearTimeout(safetyTimerRef.current);
@@ -83,6 +87,7 @@ export function useSpeechRecognition() {
 
         setIsTranscribing(true);
 
+        let transcribeSucceeded = false;
         try {
           const formData = new FormData();
           const extension = mimeType.includes("mp4")
@@ -108,6 +113,7 @@ export function useSpeechRecognition() {
           if (data.text && data.text.trim().length > 0) {
             setTranscript(data.text.trim());
             setHasResult(true);
+            transcribeSucceeded = true;
           } else {
             setHasResult(false);
           }
@@ -115,7 +121,9 @@ export function useSpeechRecognition() {
           console.error("Whisper API error:", err);
           setHasResult(false);
         } finally {
-          setIsTranscribing(false);
+          if (!transcribeSucceeded) {
+            setIsTranscribing(false);
+          }
         }
       };
 
@@ -154,6 +162,7 @@ export function useSpeechRecognition() {
     startListening,
     stopListening,
     reset,
+    finishTranscribing,
   };
 }
 

@@ -31,6 +31,33 @@ const INTENT_LABELS = [
 
 const EMOTIONS = ['happy', 'surprised', 'touched', 'playful', 'gentle'];
 
+/** User history keyword → idol question topic (avoid obvious repeats) */
+const TOPIC_KEYWORDS = {
+  country: ['나라', 'country', '에서 왔', '국적', '미국', '일본', 'from '],
+  fan_since: ['팬', '좋아했', '년 됐', 'years', 'since', '부터', '덕질'],
+  korean_learning: ['한국어', '배웠', '공부', 'korean', 'learned', 'studied', '서툴'],
+  song: ['노래', 'song', '곡', 'title track', 'favorite song'],
+  concert: ['콘서트', '공연', 'concert', '와본', '가봤', 'fanmeet', '팬미'],
+  album: ['앨범', 'album', '컴백', 'comeback', '신곡', 'new album'],
+  wish: ['소원', 'wish', '사진', 'photo', '하고 싶', 'finger heart', '볼하트'],
+  comeback: ['다음', '또 올', 'again', 'come back', '재방문', '다시 올'],
+};
+
+function extractUsedTopics(conversationHistory) {
+  const userText = (conversationHistory || [])
+    .filter((m) => m?.role === 'user')
+    .map((m) => String(m.text || ''))
+    .join(' ');
+  const normalized = userText.toLowerCase();
+  const used = [];
+  for (const [topic, keywords] of Object.entries(TOPIC_KEYWORDS)) {
+    if (keywords.some((kw) => normalized.includes(kw.toLowerCase()))) {
+      used.push(topic);
+    }
+  }
+  return used;
+}
+
 function replaceNamePlaceholder(text, idolNameRaw) {
   const nm =
     typeof idolNameRaw === 'string' && idolNameRaw.trim()
@@ -156,7 +183,8 @@ function buildPayload(body, intent, emotion) {
     shouldAskIdolQuestion =
       history.length === 3 || history.length === 6;
     if (shouldAskIdolQuestion) {
-      const q = getIdolQuestion();
+      const usedTopics = extractUsedTopics(history);
+      const q = getIdolQuestion(usedTopics);
       idolQuestion = q?.text ?? null;
     }
     let line =

@@ -192,6 +192,8 @@ function errorFallbackReview(lang) {
 
 export async function POST(req) {
   let lang = normalizeLang('en');
+  let scenarioKey = 'compliment';
+  let conversationHistoryLength = 0;
   try {
     const body = await req.json().catch(() => ({}));
     const {
@@ -214,6 +216,7 @@ export async function POST(req) {
       ? fansignRaw
       : null;
     const conversationHistory = parseConversationHistory(conversationHistoryRaw);
+    conversationHistoryLength = conversationHistory.length;
     const phaseLog = parsePhaseLog(phaseLogRaw);
 
     const trimmedIdol =
@@ -227,7 +230,7 @@ export async function POST(req) {
           ? 'JISUNG'
           : 'WONYOUNG';
 
-    const scenarioKey =
+    scenarioKey =
       scenario && scenarioContext[scenario] ? scenario : 'compliment';
     const scenarioLine =
       scenarioContext[scenarioKey] || String(scenario || 'practice session');
@@ -387,7 +390,13 @@ Romanization: Revised Romanization (e.g. 안녕하세요 → Annyeonghaseyo). Ko
 
     return NextResponse.json({ success: true, review: out });
   } catch (error) {
-    console.error('Review generation error:', error);
+    console.error('Review generation error:', {
+      message: error?.message,
+      name: error?.name,
+      scenario: scenarioKey,
+      lang,
+      conversationHistoryLength,
+    });
     return NextResponse.json(
       {
         success: false,

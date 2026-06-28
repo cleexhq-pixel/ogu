@@ -121,14 +121,14 @@ const idolScripts = {
   ],
 
   idol_question_pool: [
-    { id: "IQ01", text: "어느 나라에서 왔어요?", hintKo: "[나라] 사람이에요!", hintEn: "I'm from [country]!" },
-    { id: "IQ02", text: "언제부터 팬이었어요?", hintKo: "[N]년 됐어요!", hintEn: "It's been [N] years!" },
-    { id: "IQ03", text: "한국어 어디서 배웠어요?", hintKo: "혼자 공부했어요!", hintEn: "I studied on my own!" },
-    { id: "IQ04", text: "좋아하는 노래 있어요?", hintKo: "[노래 제목]이요!", hintEn: "It's [song title]!" },
-    { id: "IQ05", text: "콘서트 와본 적 있어요?", hintKo: "꼭 가고 싶어요!", hintEn: "I really want to go!" },
-    { id: "IQ06", text: "이번 앨범 어땠어요?", hintKo: "너무 좋았어요!", hintEn: "I loved it so much!" },
-    { id: "IQ07", text: "뭐 하고 싶어요? 소원 있어요?", hintKo: "같이 사진 찍고 싶어요!", hintEn: "I want to take a photo together!" },
-    { id: "IQ08", text: "다음에도 또 올 거예요?", hintKo: "당연하죠! 꼭 다시 올게요!", hintEn: "Of course! I'll definitely come back!" },
+    { id: "IQ01", text: "어느 나라에서 왔어요?", hintKo: "[나라] 사람이에요!", hintEn: "I'm from [country]!", topics: ["country"] },
+    { id: "IQ02", text: "언제부터 팬이었어요?", hintKo: "[N]년 됐어요!", hintEn: "It's been [N] years!", topics: ["fan_since"] },
+    { id: "IQ03", text: "한국어 어디서 배웠어요?", hintKo: "혼자 공부했어요!", hintEn: "I studied on my own!", topics: ["korean_learning"] },
+    { id: "IQ04", text: "좋아하는 노래 있어요?", hintKo: "[노래 제목]이요!", hintEn: "It's [song title]!", topics: ["song"] },
+    { id: "IQ05", text: "콘서트 와본 적 있어요?", hintKo: "꼭 가고 싶어요!", hintEn: "I really want to go!", topics: ["concert"] },
+    { id: "IQ06", text: "이번 앨범 어땠어요?", hintKo: "너무 좋았어요!", hintEn: "I loved it so much!", topics: ["album"] },
+    { id: "IQ07", text: "뭐 하고 싶어요? 소원 있어요?", hintKo: "같이 사진 찍고 싶어요!", hintEn: "I want to take a photo together!", topics: ["wish"] },
+    { id: "IQ08", text: "다음에도 또 올 거예요?", hintKo: "당연하죠! 꼭 다시 올게요!", hintEn: "Of course! I'll definitely come back!", topics: ["comeback"] },
   ],
 
   staff_closing: "이제 종료하겠습니다.",
@@ -157,9 +157,17 @@ export function getLineByScenario(scenario, phase) {
   return null;
 }
 
-// 역질문 랜덤 선택 (Phase B 강제 삽입용)
-export function getIdolQuestion() {
-  return getRandomLine("idol_question_pool");
+// 역질문 선택 (Phase B 강제 삽입용) — excludeTopics에 해당하는 주제는 제외
+export function getIdolQuestion(excludeTopics = []) {
+  const exclude = new Set(
+    Array.isArray(excludeTopics) ? excludeTopics : [],
+  );
+  const pool = idolScripts.idol_question_pool || [];
+  let eligible = pool.filter(
+    (q) => !q.topics?.some((t) => exclude.has(t)),
+  );
+  if (eligible.length === 0) eligible = pool;
+  return eligible[Math.floor(Math.random() * eligible.length)];
 }
 
 // 긴장 감지 시 우선순위 반응
