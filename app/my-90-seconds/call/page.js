@@ -29,6 +29,17 @@ const pulseKeyframes = `
   }
 `;
 
+function normalizeForTTS(text) {
+  return text
+    .replace(/~+/g, '')
+    .replace(/!+/g, '.')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const MIN_RECORDING_BYTES = 3000;
+const GUIDING_NERVOUS_TEXT = '천천히 한 글자씩 말해봐도 괜찮아요~';
+
 const emergencyCards = [
   { id: 'E01', en: 'Wait, restart', ko: '아 잠깐만요~ 다시 말할게요' },
   { id: 'E02', en: 'Change topic', ko: '그거 말고, 다른 얘기 할게요!' },
@@ -114,6 +125,7 @@ function CallPageContent() {
   const callCompletedTrackedRef = useRef(false);
   const speechRecognitionRef = useRef(null);
   const interimTranscriptRef = useRef('');
+  const consecutiveFailCountRef = useRef(0);
   const audioRef = useRef(null);
 
   const getSharedAudio = useCallback(() => {
@@ -457,7 +469,7 @@ function CallPageContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            text: trimmed,
+            text: normalizeForTTS(trimmed),
             lang: 'ko-KR',
             gender: genderTts,
           }),
@@ -687,138 +699,9 @@ function CallPageContent() {
     return () => window.clearTimeout(yourTurnHintTimeoutRef.current);
   }, [micState, introStep, savedScript]);
 
-  useEffect(() => {
-    stopSpeakingInnerRef.current = async () => {
-      if (micStateRef.current !== 'speaking') return;
-
-      cleanupSpeechDetection();
-      setSilenceTimer((prev) => {
-        if (prev != null) window.clearTimeout(prev);
-        return null;
-      });
-
-      const mr = mediaRecorderRef.current;
-      if (!mr || mr.state === 'inactive') {
-        setMicState((s) => (s === 'speaking' ? 'your_turn' : s));
-        return;
-      }
-
-      // Web Speech 정리
-      if (speechRecognitionRef.current) {
-        try { speechRecognitionRef.current.stop(); } catch {}
-        speechRecognitionRef.current = null;
-      }
-      setLiveTranscript('');
-      interimTranscriptRef.current = '';
-
-      let blob;
-      try {
-        blob = await new Promise((resolve, reject) => {
-          mr.onstop = () => {
-            try {
-              const mime = mr.mimeType || 'audio/webm';
-              resolve(new Blob(audioChunksRef.current, { type: mime }));
-            } catch (e) {
-              reject(e);
-            }
-          };
-          mr.onerror = () => reject(new Error('recorder'));
-          try {
-            mr.stop();
-          } catch (e) {
-            reject(e);
-          }
-        });
-      } catch {
-        cleanupMicPipeline();
-        setMicState('your_turn');
-        return;
-      }
-
-      try {
-        streamRef.current?.getTracks?.().forEach((t) => t.stop());
-      } catch {
-        /* noop */
-      }
-      streamRef.current = null;
-      mediaRecorderRef.current = null;
-      setMediaRecorder(null);
-      setMicState('processing');
-
-      let userText = '';
-      try {
-        const fd = new FormData();
-        fd.append(
-          'audio',
-          blob,
-          blob.type.includes('webm') ? 'clip.webm' : 'clip.webm',
-        );
-        const tr = await fetch('/api/transcribe', {
-          method: 'POST',
-          body: fd,
-        });
-        if (!tr.ok) throw new Error('transcribe HTTP');
-        const td = await tr.json();
-        userText =
-          typeof td.text === 'string' ? td.text.trim() : '';
-      } catch {
-        trackEvent('m90s_transcribe_failed', {
-          scenario: scenarioIdRef.current,
-          phase: currentPhaseRef.current,
-          reason: 'request',
-        });
-        const fb = getNervousResponse();
-        const fbText =
-          fb?.text || '괜찮아요~ 천천히 해요.';
-        const t0 = Date.now();
-        setConversationHistory((prev) => {
-          const next = [
-            ...prev,
-            { role: 'user', text: '(인식 실패)', timestamp: t0 },
-            { role: 'idol', text: fbText, timestamp: t0 + 1 },
-          ];
-          conversationHistoryRef.current = next;
-          return next;
-        });
-        setCurrentSubtitle({
-          korean: fbText,
-          roman: toRoman(fbText),
-          translation: '',
-          visible: true,
-        });
-        await playTtsAndWait(fbText);
-        setMicState('your_turn');
-        return;
-      }
-
-      if (!userText.trim()) {
-        trackEvent('m90s_transcribe_failed', {
-          scenario: scenarioIdRef.current,
-          phase: currentPhaseRef.current,
-          reason: 'empty_text',
-        });
-        const fb = getNervousResponse();
-        const fbText = fb?.text || '괜찮아요~ 천천히 해요.';
-        const t0 = Date.now();
-        setConversationHistory((prev) => {
-          const next = [
-            ...prev,
-            { role: 'user', text: '(…)', timestamp: t0 },
-            { role: 'idol', text: fbText, timestamp: t0 + 1 },
-          ];
-          conversationHistoryRef.current = next;
-          return next;
-        });
-        setCurrentSubtitle({
-          korean: fbText,
-          roman: toRoman(fbText),
-          translation: '',
-          visible: true,
-        });
-        await playTtsAndWait(fbText);
-        setMicState('your_turn');
-        return;
-      }
+  const processUserUtterance = useCallback(
+    async (userText) => {
+      consecutiveFailCountRef.current = 0;
 
       const cap = Math.max((savedScript?.lines?.length ?? 1) - 1, 0);
       scriptHintIndexRef.current = Math.min(
@@ -885,7 +768,12 @@ function CallPageContent() {
         const t0 = Date.now();
         const next = [
           ...histBefore,
-          { role: 'user', text: userText, roman: toRoman(userText), timestamp: t0 },
+          {
+            role: 'user',
+            text: userText,
+            roman: toRoman(userText),
+            timestamp: t0,
+          },
           { role: 'idol', text: idolMain, timestamp: t0 + 1 },
         ];
         if (shouldAsk && idolQuestionStr) {
@@ -926,8 +814,168 @@ function CallPageContent() {
       }
 
       setMicState('your_turn');
+    },
+    [playTtsAndWait, uiLang, savedScript, idolName],
+  );
+
+  const applySttFailureFallback = useCallback(
+    async (userDisplayText, reason) => {
+      consecutiveFailCountRef.current += 1;
+      const count = consecutiveFailCountRef.current;
+
+      if (count >= 3) {
+        trackEvent('m90s_consecutive_stt_failures', {
+          count,
+          phase: currentPhaseRef.current,
+        });
+        consecutiveFailCountRef.current = 0;
+        const e04 = emergencyCards.find((c) => c.id === 'E04');
+        setLineHint(e04?.ko || '');
+        setShowEmergencyCards(false);
+        trackEvent('m90s_emergency_card_used', {
+          scenario: scenarioIdRef.current,
+          card_id: 'E04',
+          auto: true,
+        });
+        if (e04?.ko) {
+          await processUserUtterance(e04.ko);
+        } else {
+          setMicState('your_turn');
+        }
+        return;
+      }
+
+      trackEvent('m90s_transcribe_failed', {
+        scenario: scenarioIdRef.current,
+        phase: currentPhaseRef.current,
+        reason,
+      });
+
+      const fbText =
+        count === 2
+          ? GUIDING_NERVOUS_TEXT
+          : getNervousResponse()?.text || '괜찮아요~ 천천히 해요.';
+      const t0 = Date.now();
+      setConversationHistory((prev) => {
+        const next = [
+          ...prev,
+          { role: 'user', text: userDisplayText, timestamp: t0 },
+          { role: 'idol', text: fbText, timestamp: t0 + 1 },
+        ];
+        conversationHistoryRef.current = next;
+        return next;
+      });
+      setCurrentSubtitle({
+        korean: fbText,
+        roman: toRoman(fbText),
+        translation: '',
+        visible: true,
+      });
+      await playTtsAndWait(fbText);
+      setMicState('your_turn');
+    },
+    [playTtsAndWait, processUserUtterance],
+  );
+
+  useEffect(() => {
+    stopSpeakingInnerRef.current = async () => {
+      if (micStateRef.current !== 'speaking') return;
+
+      cleanupSpeechDetection();
+      setSilenceTimer((prev) => {
+        if (prev != null) window.clearTimeout(prev);
+        return null;
+      });
+
+      const mr = mediaRecorderRef.current;
+      if (!mr || mr.state === 'inactive') {
+        setMicState((s) => (s === 'speaking' ? 'your_turn' : s));
+        return;
+      }
+
+      // Web Speech 정리
+      if (speechRecognitionRef.current) {
+        try { speechRecognitionRef.current.stop(); } catch {}
+        speechRecognitionRef.current = null;
+      }
+      setLiveTranscript('');
+      interimTranscriptRef.current = '';
+
+      let blob;
+      try {
+        blob = await new Promise((resolve, reject) => {
+          mr.onstop = () => {
+            try {
+              const mime = mr.mimeType || 'audio/webm';
+              resolve(new Blob(audioChunksRef.current, { type: mime }));
+            } catch (e) {
+              reject(e);
+            }
+          };
+          mr.onerror = () => reject(new Error('recorder'));
+          try {
+            mr.stop();
+          } catch (e) {
+            reject(e);
+          }
+        });
+      } catch {
+        cleanupMicPipeline();
+        setMicState('your_turn');
+        return;
+      }
+
+      try {
+        streamRef.current?.getTracks?.().forEach((t) => t.stop());
+      } catch {
+        /* noop */
+      }
+      streamRef.current = null;
+      mediaRecorderRef.current = null;
+      setMediaRecorder(null);
+      setMicState('processing');
+
+      if (blob.size < MIN_RECORDING_BYTES) {
+        await applySttFailureFallback('(…)', 'too_short');
+        return;
+      }
+
+      let userText = '';
+      try {
+        const fd = new FormData();
+        fd.append(
+          'audio',
+          blob,
+          blob.type.includes('webm') ? 'clip.webm' : 'clip.webm',
+        );
+        const tr = await fetch('/api/transcribe', {
+          method: 'POST',
+          body: fd,
+        });
+        if (!tr.ok) throw new Error('transcribe HTTP');
+        const td = await tr.json();
+        userText =
+          typeof td.text === 'string' ? td.text.trim() : '';
+      } catch {
+        await applySttFailureFallback('(인식 실패)', 'request');
+        return;
+      }
+
+      if (!userText.trim()) {
+        await applySttFailureFallback('(…)', 'empty_text');
+        return;
+      }
+
+      await processUserUtterance(userText);
     };
-  }, [playTtsAndWait, uiLang, savedScript, idolName]);
+  }, [
+    playTtsAndWait,
+    uiLang,
+    savedScript,
+    idolName,
+    applySttFailureFallback,
+    processUserUtterance,
+  ]);
 
   const startSpeaking = useCallback(async () => {
     if (typeof window === 'undefined') return;

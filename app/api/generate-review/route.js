@@ -366,7 +366,7 @@ If best_moment is non-null, use object:
 Romanization: Revised Romanization (e.g. 안녕하세요 → Annyeonghaseyo). Korean dialogue: natural casual fan–idol speech.`;
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1800,
       messages: [{ role: 'user', content: prompt }],
     });
