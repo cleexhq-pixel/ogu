@@ -701,6 +701,7 @@ function CallPageContent() {
 
   const processUserUtterance = useCallback(
     async (userText) => {
+      const recentSttFailures = consecutiveFailCountRef.current;
       consecutiveFailCountRef.current = 0;
 
       const cap = Math.max((savedScript?.lines?.length ?? 1) - 1, 0);
@@ -732,6 +733,8 @@ function CallPageContent() {
             phase: phaseNow,
             conversationHistory: histBefore,
             lang,
+            timeRemaining: timeRemainingRef.current,
+            recentSttFailures,
           }),
         });
         const chatData = await resChat.json();

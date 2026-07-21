@@ -238,7 +238,7 @@ function PrepPageInner() {
           ? localStorage.getItem(LANG_KEY) || "en"
           : "en",
       );
-      const cacheKey = `kkobi_m90s_v5_${scenarioId}_${uiLang}`;
+      const cacheKey = `kkobi_m90s_v6_${scenarioId}_${uiLang}`;
 
       try {
         const cached = localStorage.getItem(cacheKey);

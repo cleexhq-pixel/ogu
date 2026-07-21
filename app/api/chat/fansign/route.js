@@ -149,6 +149,61 @@ function pickPhaseB(intent, scenarioObj) {
   }
 }
 
+const STT_FAILURE_MARKERS = new Set(['(인식 실패)', '(…)', '(...)']);
+
+function isShortUtterance(text) {
+  const t = String(text || '').trim();
+  if (!t) return true;
+  return t.length <= 10;
+}
+
+function isSttFailureUtterance(text) {
+  return STT_FAILURE_MARKERS.has(String(text || '').trim());
+}
+
+function countRecentSttFailuresInHistory(history) {
+  const users = (history || []).filter((m) => m?.role === 'user');
+  let streak = 0;
+  for (let i = users.length - 1; i >= 0; i--) {
+    if (isSttFailureUtterance(users[i].text)) streak++;
+    else break;
+  }
+  return streak;
+}
+
+/** Phase B line pick: intent pool + small_talk / heart_talk overlays */
+function pickPhaseBLine(intent, scenarioObj, ctx) {
+  if (intent === 'name_given') {
+    return getRandomLine('reaction_name');
+  }
+
+  const { userText, history, timeRemaining, recentSttFailures } = ctx;
+  const remaining =
+    typeof timeRemaining === 'number' ? timeRemaining : 90;
+
+  if (remaining <= 40 && Math.random() < 0.12) {
+    const ht = getRandomLine('heart_talk');
+    if (ht?.text) return ht;
+  }
+
+  const failureStreak = Math.max(
+    typeof recentSttFailures === 'number' ? recentSttFailures : 0,
+    countRecentSttFailuresInHistory(history),
+  );
+  const trimmed = String(userText || '').trim();
+  const wantsSmallTalk =
+    failureStreak >= 2 ||
+    isSttFailureUtterance(trimmed) ||
+    (isShortUtterance(trimmed) && trimmed.length > 0);
+
+  if (wantsSmallTalk) {
+    const st = getRandomLine('small_talk');
+    if (st?.text) return st;
+  }
+
+  return pickPhaseB(intent, scenarioObj);
+}
+
 function buildPayload(body, intent, emotion) {
   const phase = typeof body.phase === 'string' ? body.phase : 'PHASE_B';
   const history = Array.isArray(body.conversationHistory)
@@ -187,10 +242,12 @@ function buildPayload(body, intent, emotion) {
       const q = getIdolQuestion(usedTopics);
       idolQuestion = q?.text ?? null;
     }
-    let line =
-      intent === 'name_given'
-        ? getRandomLine('reaction_name')
-        : pickPhaseB(intent, scenarioObj);
+    let line = pickPhaseBLine(intent, scenarioObj, {
+      userText: body.userText,
+      history,
+      timeRemaining: body.timeRemaining,
+      recentSttFailures: body.recentSttFailures,
+    });
     if (!line?.text) {
       line = getRandomLine('reaction_compliment');
     }
@@ -279,7 +336,15 @@ export async function POST(request) {
     });
 
     const out = buildPayload(
-      { phase, conversationHistory, idolName, scenario },
+      {
+        phase,
+        conversationHistory,
+        idolName,
+        scenario,
+        userText,
+        timeRemaining: body.timeRemaining,
+        recentSttFailures: body.recentSttFailures,
+      },
       intent,
       emotion,
     );

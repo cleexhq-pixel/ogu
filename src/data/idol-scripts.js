@@ -11,6 +11,9 @@ const idolScripts = {
     { id: "G08", text: "기다렸어요~" },
     { id: "G09", text: "오~ 왔어요? 반가워요!" },
     { id: "G10", text: "안녕~ 오늘 컨디션 좋아 보이네요!" },
+    { id: "G11", text: "혹시 오늘이 처음이에요?", persona: "Universal" },
+    { id: "G12", text: "기다려줘서 고마워요~", persona: "Calm" },
+    { id: "G13", text: "우리 잘 부탁해요~", persona: "Universal" },
   ],
 
   first_question: [
@@ -24,6 +27,8 @@ const idolScripts = {
     { id: "Q08", text: "오늘 뭐 하다 왔어요?" },
     { id: "Q09", text: "집에서 멀어요?" },
     { id: "Q10", text: "준비한 거 있어요? 말해봐요~" },
+    { id: "Q11", text: "오늘 많이 기다렸어요?", persona: "Cheerful" },
+    { id: "Q12", text: "지금 몇 시예요? 거기는?", persona: "Universal" },
   ],
 
   reaction_to_korean: [
@@ -37,6 +42,10 @@ const idolScripts = {
     { id: "K08", text: "완전 잘하는데? 진짜로!" },
     { id: "K09", text: "이 정도면 잘하는 거예요, 걱정 마요!" },
     { id: "K10", text: "한국어로 말해줘서 너무 좋아요~" },
+    { id: "K11", text: "요즘 한국어 공부했어요?", persona: "Playful" },
+    { id: "K12", text: "오~ 한번 해봐요 해봐요!", persona: "Playful" },
+    { id: "K13", text: "노래 많이 들으면 늘어요!", persona: "Cheerful" },
+    { id: "K14", text: "우리 같이 공부해요~", persona: "Cheerful" },
   ],
 
   reaction_compliment: [
@@ -48,6 +57,12 @@ const idolScripts = {
     { id: "C06", text: "진짜요? 나도 좋아요~" },
     { id: "C07", text: "그런 말 들으면 너무 행복해요." },
     { id: "C08", text: "오늘 하루 기분 좋겠는데?" },
+    { id: "C09", text: "에이~ 부끄럽잖아요~", persona: "Shy" },
+    { id: "C10", text: "언젠가 꼭 해볼게요~", persona: "Shy" },
+    { id: "C11", text: "우와, 이런 걸 준비했어요?", persona: "Cheerful" },
+    { id: "C12", text: "이거 진짜 최고의 선물이에요.", persona: "Cheerful" },
+    { id: "C13", text: "괜찮아요, 저 체력 좋아요!", persona: "Playful" },
+    { id: "C14", text: "그렇게 봐줘서 고마워요~", persona: "Calm" },
   ],
 
   reaction_request: [
@@ -70,6 +85,8 @@ const idolScripts = {
     { id: "N06", text: "숨 한번 깊게 쉬어봐요, 후~" },
     { id: "N07", text: "괜찮아요, 틀려도 돼요. 그냥 말해봐요." },
     { id: "N08", text: "어머, 귀여워~ 왜 이렇게 떨어요?" },
+    { id: "N09", text: "오늘 처음이라 그런가 봐요~", persona: "Calm" },
+    { id: "N10", text: "안 어색해요. 저도 그래요~", persona: "Calm" },
   ],
 
   reaction_game: [
@@ -81,6 +98,32 @@ const idolScripts = {
     { id: "M06", text: "내가 이겼다! 어때요?" },
     { id: "M07", text: "이 게임 처음 해봐요~ 신기하다!" },
     { id: "M08", text: "다음에 또 이 게임 하고 싶어요~" },
+    { id: "M09", text: "음... 모르겠다! 답이 뭐예요?", persona: "Playful" },
+    { id: "M10", text: "아~ 그거였구나! 재밌다~", persona: "Playful" },
+    { id: "M11", text: "어려운 질문이네요~ 잠깐만요.", persona: "Universal" },
+  ],
+
+  small_talk: [
+    { id: "S01", text: "저 요즘 고양이 키우고 싶어요.", persona: "Calm" },
+    { id: "S02", text: "키운다는 건 아니고~ 그냥요.", persona: "Shy" },
+    { id: "S03", text: "그 부분, 제가 직접 짰어요.", persona: "Calm" },
+    { id: "S04", text: "무대 직전에 또 바꿨어요~", persona: "Cheerful" },
+    { id: "S05", text: "크지 않아도 돼요. 작게요.", persona: "Calm" },
+    { id: "S06", text: "우와, 그거 뭐예요? 보여줘요!", persona: "Cheerful" },
+    { id: "S07", text: "어? 잠깐만요, 다시 보여줘요~", persona: "Playful" },
+    { id: "S08", text: "저도 갖고 싶어요, 그거~", persona: "Playful" },
+  ],
+
+  heart_talk: [
+    { id: "H01", text: "음... 저도 잘 모르겠어요.", persona: "Calm" },
+    { id: "H02", text: "그냥 내 일 잘하면 되더라고요.", persona: "Calm" },
+    { id: "H03", text: "저도 요즘 그런 거 느꼈어요.", persona: "Calm" },
+    { id: "H04", text: "왜요? 무슨 일 있었어요?", persona: "Calm" },
+    { id: "H05", text: "그랬구나... 많이 힘들었겠다.", persona: "Calm" },
+    { id: "H06", text: "못 와도 괜찮아요. 잘할게요!", persona: "Cheerful" },
+    { id: "H07", text: "응원해준다는 말 들을 때요.", persona: "Calm" },
+    { id: "H08", text: "저는 세계 평화요!", persona: "Playful" },
+    { id: "H09", text: "그렇게 말해줘서 고마워요.", persona: "Calm" },
   ],
 
   reaction_name: [
