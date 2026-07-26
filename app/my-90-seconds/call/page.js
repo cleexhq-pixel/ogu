@@ -40,6 +40,35 @@ function normalizeForTTS(text) {
 const MIN_RECORDING_BYTES = 3000;
 const GUIDING_NERVOUS_TEXT = '천천히 한 글자씩 말해봐도 괜찮아요~';
 
+function pickAudioMime() {
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/aac',
+    'audio/mp4;codecs=mp4a.40.2',
+  ];
+  for (const type of candidates) {
+    if (
+      typeof MediaRecorder !== 'undefined' &&
+      MediaRecorder.isTypeSupported(type)
+    ) {
+      return type;
+    }
+  }
+  return '';
+}
+
+function getAudioFilename(mimeType) {
+  if (!mimeType) return 'clip.webm';
+  if (mimeType.includes('webm')) return 'clip.webm';
+  if (mimeType.includes('mp4')) return 'clip.mp4';
+  if (mimeType.includes('aac')) return 'clip.aac';
+  if (mimeType.includes('ogg')) return 'clip.ogg';
+  if (mimeType.includes('mpeg')) return 'clip.mp3';
+  return 'clip.webm';
+}
+
 const emergencyCards = [
   { id: 'E01', en: 'Wait, restart', ko: '아 잠깐만요~ 다시 말할게요' },
   { id: 'E02', en: 'Change topic', ko: '그거 말고, 다른 얘기 할게요!' },
@@ -928,6 +957,8 @@ function CallPageContent() {
         return;
       }
 
+      console.log('[transcribe] blob.type:', blob.type, 'size:', blob.size);
+
       try {
         streamRef.current?.getTracks?.().forEach((t) => t.stop());
       } catch {
@@ -945,12 +976,9 @@ function CallPageContent() {
 
       let userText = '';
       try {
+        const filename = getAudioFilename(blob.type);
         const fd = new FormData();
-        fd.append(
-          'audio',
-          blob,
-          blob.type.includes('webm') ? 'clip.webm' : 'clip.webm',
-        );
+        fd.append('audio', blob, filename);
         const tr = await fetch('/api/transcribe', {
           method: 'POST',
           body: fd,
@@ -1005,13 +1033,7 @@ function CallPageContent() {
     streamRef.current = stream;
     audioChunksRef.current = [];
 
-    const mimeCandidate = MediaRecorder.isTypeSupported(
-      'audio/webm;codecs=opus',
-    )
-      ? 'audio/webm;codecs=opus'
-      : MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : '';
+    const mimeCandidate = pickAudioMime();
     const recorder = mimeCandidate
       ? new MediaRecorder(stream, { mimeType: mimeCandidate })
       : new MediaRecorder(stream);

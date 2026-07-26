@@ -56,10 +56,12 @@ export function useSpeechRecognition() {
       streamRef.current = stream;
 
       const mimeType = getSupportedMimeType();
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType,
-        audioBitsPerSecond: 64000,
-      });
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, {
+            mimeType,
+            audioBitsPerSecond: 64000,
+          })
+        : new MediaRecorder(stream, { audioBitsPerSecond: 64000 });
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -74,10 +76,11 @@ export function useSpeechRecognition() {
         // 녹음이 끝나는 즉시 Listening UI 종료 (전사는 별도 단계)
         setIsListening(false);
 
-        const audioBlob = new Blob(
-          audioChunksRef.current,
-          { type: mimeType }
-        );
+        const actualMime =
+          mediaRecorder.mimeType || mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: actualMime,
+        });
 
         if (audioBlob.size < 3000) {
           setHasResult(false);
@@ -90,15 +93,10 @@ export function useSpeechRecognition() {
         let transcribeSucceeded = false;
         try {
           const formData = new FormData();
-          const extension = mimeType.includes("mp4")
-            ? "mp4"
-            : mimeType.includes("webm")
-            ? "webm"
-            : "ogg";
           formData.append(
-            "audio",
+            'audio',
             audioBlob,
-            `recording.${extension}`
+            getAudioFilename(audioBlob.type),
           );
 
           const response = await fetch("/api/transcribe", {
@@ -168,19 +166,31 @@ export function useSpeechRecognition() {
 
 function getSupportedMimeType() {
   const types = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-    "audio/ogg;codecs=opus",
-    "audio/ogg",
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/aac',
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
   ];
   for (const type of types) {
     if (
-      typeof MediaRecorder !== "undefined" &&
+      typeof MediaRecorder !== 'undefined' &&
       MediaRecorder.isTypeSupported(type)
     ) {
       return type;
     }
   }
-  return "audio/webm";
+  return '';
+}
+
+function getAudioFilename(mimeType) {
+  if (!mimeType) return 'clip.webm';
+  if (mimeType.includes('webm')) return 'clip.webm';
+  if (mimeType.includes('mp4')) return 'clip.mp4';
+  if (mimeType.includes('aac')) return 'clip.aac';
+  if (mimeType.includes('ogg')) return 'clip.ogg';
+  if (mimeType.includes('mpeg')) return 'clip.mp3';
+  return 'clip.webm';
 }
