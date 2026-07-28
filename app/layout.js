@@ -1,5 +1,7 @@
 import "./globals.css";
+import { Suspense } from "react";
 import Analytics from "@/app/components/Analytics";
+import GAPageView from "@/app/components/GAPageView";
 import UtmCapture from "@/components/UtmCapture";
 import OAuthCompleteTracker from "./components/OAuthCompleteTracker";
 import { ActiveSessionProvider } from "@/hooks/useActiveSession";
@@ -63,6 +65,9 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-screen" style={{ backgroundColor: "#0E0E0F" }}>
         <Analytics />
+        <Suspense fallback={null}>
+          <GAPageView />
+        </Suspense>
         <UtmCapture />
         <OAuthCompleteTracker />
         <ActiveSessionProvider>{children}</ActiveSessionProvider>
