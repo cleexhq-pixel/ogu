@@ -203,3 +203,56 @@ Until that exists:
 - After any change, state explicitly **what the owner should click, and what they should see**, in Korean. Be specific about the screen and the expected result.
 - Flag anything you changed that **cannot be verified in a browser on desktop** (iOS audio, payment redemption, GA4 events). Say so plainly.
 - Prefer changes that are easy to reverse.
+
+---
+
+# Pre-deploy checklist
+
+## 원칙
+
+모든 변경은 preview 브랜치를 거쳐서 production으로 간다. 오너는 diff를 읽지 못하므로 이 체크리스트가 실질적인 검증 수단이다.
+
+## 작업 순서
+
+1. main에서 새 브랜치를 딴다 (`git checkout -b 작업이름`).
+2. Claude Code가 작업하고 커밋한다.
+3. `git push -u origin 작업이름` 으로 올리면 Vercel이 preview URL을 만든다.
+4. 그 URL을 반드시 휴대폰으로 열어서 아래 A 항목을 확인한다.
+5. 통과하면 `git checkout main`, `git merge 작업이름`, `git push` 순으로 production에 반영한다.
+6. 하나라도 실패하면 merge하지 않고 브랜치를 버리고 다시 한다. main은 그대로 유지된다.
+
+## A. 항상 확인 (휴대폰에서 2분)
+
+1. 첫 화면이 로드된다.
+2. 언어를 바꾸면 UI 텍스트가 바뀐다.
+3. 시나리오를 하나 시작하면 아이돌 음성이 재생된다.
+4. 마이크 권한 요청이 뜬다.
+
+## B. 건드린 영역에 따라 추가 확인
+
+- **`src/data/idol-scripts.js`를 건드렸으면**: 새 대사의 음성이 실제로 재생되는지 확인한다. 재생되지 않으면 MP3가 재생성되지 않은 것이므로 `GOOGLE_TTS_API_KEY` 환경변수와 함께 `node scripts/generate-audio.js` 를 실행해야 한다.
+- **UI 문자열을 건드렸으면**: en, ko, id, pt, fr 5개 언어가 모두 렌더링되는지, 영어 fallback이나 누락된 키가 없는지 확인한다.
+- **`lib/freeLimit.js`를 건드렸으면**: 시크릿 창에서 일일 제한을 소진시켜 정확한 횟수에서 페이월이 뜨는지 확인한다.
+
+## B-2. preview에서 절대 테스트하면 안 되는 것
+
+이것들은 preview에서 실행하면 실제 데이터가 오염된다.
+
+1. **redeem 코드** (`app/api/redeem/route.js`). preview에서 코드를 사용하면 그 코드가 소진된다. 코드를 눈으로만 검토하고, 배포 후 production에서 조심스럽게 확인한다.
+2. **GA4 이벤트** (`lib/analytics.ts`, `app/lib/gtag.js`). preview 이벤트가 실제 통계에 섞인다. 코드를 눈으로만 검토하고, 배포 후 GA4 실시간 보고서에서 확인한다.
+
+이 둘 중 하나를 건드리는 변경이면, 검증되지 않은 배포임을 요약에 명시적으로 알려야 한다.
+
+## C. 데스크톱에서 검증 불가 — 배포 후 휴대폰으로 재확인
+
+- iOS 음성 인식 (`src/hooks/useSpeechRecognition.js`), Safari/iOS 오디오 포맷 처리.
+- 인앱 브라우저 (`lib/inAppBrowser.js`), 트위터나 인스타그램에서 링크를 열었을 때.
+
+이 영역을 건드리면 항상 알려야 한다.
+
+## Claude Code가 모든 작업 후 반드시 출력할 것
+
+1. 어떤 파일을 바꿨는지와 각각 왜 바꿨는지 한 줄씩.
+2. 이 체크리스트의 어느 항목이 해당되는지 (A만인지, A와 B의 어느 행인지).
+3. B-2나 C에 해당해서 배포 전에 검증할 수 없는 것이 있는지.
+4. 한국어로 쉽게, 무엇을 클릭하고 무엇이 보여야 하는지.
