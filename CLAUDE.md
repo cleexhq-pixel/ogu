@@ -195,14 +195,11 @@ If you are writing user-facing copy and unsure, draft it and ask before committi
 
 ---
 
-# Verification (current state: weak — be conservative)
+# Verification
 
-There is **no automated test suite and no preview deployment yet.** The owner cannot verify your changes by reading the diff.
+자동 테스트 스위트는 아직 없다. 하지만 preview 배포는 구축되어 있다. main이 아닌 브랜치에 push하면 Vercel이 preview URL을 자동으로 만든다. 검증은 diff를 읽는 것이 아니라 preview URL을 휴대폰에서 직접 확인하는 방식으로 이루어진다. 구체적인 절차는 아래 Pre-deploy checklist 섹션을 따른다.
 
-Until that exists:
-- After any change, state explicitly **what the owner should click, and what they should see**, in Korean. Be specific about the screen and the expected result.
-- Flag anything you changed that **cannot be verified in a browser on desktop** (iOS audio, payment redemption, GA4 events). Say so plainly.
-- Prefer changes that are easy to reverse.
+모든 변경 후에는 반드시 한국어로, 오너가 무엇을 클릭하고 무엇을 보아야 하는지 화면과 예상 결과를 구체적으로 알려야 한다. 브라우저에서 데스크톱으로 검증할 수 없는 것은 명확히 표시해야 한다. 되돌리기 쉬운 변경을 선호한다.
 
 ---
 
