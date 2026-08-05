@@ -18,6 +18,9 @@ import { toRoman } from '@/lib/romanize';
 /** 팬싱 분류 전용 채팅 라우트 (기존 /api/chat 학습 기능과 분리) */
 const FANSIGN_CHAT_API = '/api/chat/fansign';
 
+/** 마이크 진단 표시줄 킬스위치. false로 바꾸면 ?debug=mic를 붙여도 절대 보이지 않는다. */
+const MIC_DEBUG_BAR_ENABLED = true;
+
 const pulseKeyframes = `
   @keyframes pulse {
     0%, 100% { opacity: 0.3; transform: scale(0.8); }
@@ -128,6 +131,12 @@ function CallPageContent() {
   const [aiThinking, setAiThinking] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
 
+  // 마이크 진단용 (개발/디버그 표시줄 전용, ?debug=mic로만 노출됨)
+  const [pipelineStage, setPipelineStage] = useState('idle');
+  const [micLevel, setMicLevel] = useState(0);
+  const [lastRecordingBytes, setLastRecordingBytes] = useState(0);
+  const [micTrackInfo, setMicTrackInfo] = useState({ readyState: 'none', muted: false });
+
   const emotionalClearRef = useRef(null);
   const endSequenceRef = useRef(false);
   const conversationHistoryRef = useRef([]);
@@ -156,6 +165,7 @@ function CallPageContent() {
   const interimTranscriptRef = useRef('');
   const consecutiveFailCountRef = useRef(0);
   const audioRef = useRef(null);
+  const micLevelLastUpdateRef = useRef(0);
 
   const getSharedAudio = useCallback(() => {
     if (typeof window === 'undefined') return null;
@@ -239,6 +249,14 @@ function CallPageContent() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     setUiLang(normalizeLang(localStorage.getItem('ogu_lang') || 'en'));
+  }, []);
+
+  // 화면을 벗어나는 모든 경우(뒤로가기, 탭 전환 등)에 마이크가 켜진 채로 남지 않도록 하는 안전장치
+  useEffect(() => {
+    return () => {
+      cleanupMicPipeline();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const started = introStep === 'started';
@@ -370,7 +388,8 @@ function CallPageContent() {
     silenceAudioCtxRef.current = null;
   }
 
-  function cleanupMicPipeline() {
+  /** 녹음기만 정리. 마이크 스트림 자체는 살려둔다 (턴 사이 전환용). */
+  function cleanupRecorderOnly() {
     cleanupSpeechDetection();
     const mr = mediaRecorderRef.current;
     if (mr && mr.state !== 'inactive') {
@@ -381,12 +400,6 @@ function CallPageContent() {
       }
     }
     mediaRecorderRef.current = null;
-    try {
-      streamRef.current?.getTracks?.().forEach((t) => t.stop());
-    } catch {
-      /* noop */
-    }
-    streamRef.current = null;
     audioChunksRef.current = [];
     setMediaRecorder(null);
     setAudioChunks([]);
@@ -394,12 +407,60 @@ function CallPageContent() {
       if (prev != null) window.clearTimeout(prev);
       return null;
     });
+    setMicLevel(0);
+  }
+
+  /** 녹음기 + 마이크 스트림 전체 종료. 통화 종료/화면 이탈 시에만 호출. */
+  function cleanupMicPipeline() {
+    cleanupRecorderOnly();
+    try {
+      streamRef.current?.getTracks?.().forEach((t) => t.stop());
+    } catch {
+      /* noop */
+    }
+    streamRef.current = null;
+    setMicTrackInfo({ readyState: 'ended', muted: false });
   }
 
   const isWebSpeechSupported = useCallback(() => {
     if (typeof window === 'undefined') return false;
     return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }, []);
+
+  /** 트랙이 살아있고(live) 음소거되지 않았는지 확인. false면 재요청이 필요하다는 뜻. */
+  const isStreamUsable = useCallback((stream) => {
+    const track = stream?.getAudioTracks?.()[0];
+    return !!track && track.readyState === 'live' && !track.muted;
+  }, []);
+
+  /** 마이크 트랙 상태(live/ended, muted 여부)를 진단 표시줄용 state에 반영 */
+  const attachTrackListeners = useCallback((stream) => {
+    const track = stream?.getAudioTracks?.()[0];
+    if (!track) return;
+    const update = () => {
+      setMicTrackInfo({ readyState: track.readyState, muted: track.muted });
+    };
+    track.onended = update;
+    track.onmute = update;
+    track.onunmute = update;
+    update();
+  }, []);
+
+  /**
+   * 통화 내내 재사용할 마이크 스트림을 반환한다.
+   * 기존 스트림이 살아있으면 그대로 재사용하고, 죽어있을 때만 새로 요청한다.
+   * (iOS에서 매 턴 getUserMedia를 다시 부르면, 성공한 것처럼 보여도
+   * 실제로는 무음만 들어오는 경우가 있어 이 방식으로 바꿨다.)
+   */
+  const ensureMicStream = useCallback(async () => {
+    if (isStreamUsable(streamRef.current)) {
+      return streamRef.current;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    streamRef.current = stream;
+    attachTrackListeners(stream);
+    return stream;
+  }, [isStreamUsable, attachTrackListeners]);
 
   const runAudioPlayback = useCallback(
     (src, { onLoadError, failReasonOnPlay = 'playback' }) =>
@@ -539,6 +600,7 @@ function CallPageContent() {
     cleanupMicPipeline();
 
     setMicState('idol_speaking');
+    setPipelineStage('idol_speaking');
 
     const run = async () => {
       const staffText = idolScripts.staff_closing;
@@ -686,6 +748,7 @@ function CallPageContent() {
       const text = greet?.text || '안녕하세요~';
       const opening = [historyEntry('idol', text)];
       setMicState('idol_speaking');
+      setPipelineStage('idol_speaking');
       conversationHistoryRef.current = opening;
       setConversationHistory(opening);
       setLineHint('');
@@ -698,6 +761,7 @@ function CallPageContent() {
       await playTtsAndWait(text);
       if (!cancelled && !endSequenceRef.current) {
         setMicState('your_turn');
+        setPipelineStage('idle');
       }
     }, 1000);
     return () => {
@@ -748,6 +812,7 @@ function CallPageContent() {
       let idolScriptId = null;
 
       setAiThinking(true);
+      setPipelineStage('waiting_idol');
       setCurrentSubtitle((prev) => ({ ...prev, visible: false }));
 
       try {
@@ -822,6 +887,7 @@ function CallPageContent() {
       setLineHint('');
       setAiThinking(false);
       setMicState('idol_speaking');
+      setPipelineStage('idol_speaking');
 
       setCurrentSubtitle({
         korean: idolMain,
@@ -846,6 +912,7 @@ function CallPageContent() {
       }
 
       setMicState('your_turn');
+      setPipelineStage('idle');
     },
     [playTtsAndWait, uiLang, savedScript, idolName],
   );
@@ -873,6 +940,7 @@ function CallPageContent() {
           await processUserUtterance(e04.ko);
         } else {
           setMicState('your_turn');
+          setPipelineStage('idle');
         }
         return;
       }
@@ -903,8 +971,10 @@ function CallPageContent() {
         translation: '',
         visible: true,
       });
+      setPipelineStage('idol_speaking');
       await playTtsAndWait(fbText);
       setMicState('your_turn');
+      setPipelineStage('idle');
     },
     [playTtsAndWait, processUserUtterance],
   );
@@ -952,22 +1022,22 @@ function CallPageContent() {
           }
         });
       } catch {
-        cleanupMicPipeline();
+        // 마이크 스트림 자체는 살려둔다 — 녹음기만 실패했을 뿐이므로
+        cleanupRecorderOnly();
         setMicState('your_turn');
+        setPipelineStage('idle');
         return;
       }
 
       console.log('[transcribe] blob.type:', blob.type, 'size:', blob.size);
 
-      try {
-        streamRef.current?.getTracks?.().forEach((t) => t.stop());
-      } catch {
-        /* noop */
-      }
-      streamRef.current = null;
+      // 마이크 스트림은 통화 내내 유지 — 여기서 트랙을 끊지 않는다
       mediaRecorderRef.current = null;
       setMediaRecorder(null);
       setMicState('processing');
+      setPipelineStage('uploading');
+      setMicLevel(0);
+      setLastRecordingBytes(blob.size);
 
       if (blob.size < MIN_RECORDING_BYTES) {
         await applySttFailureFallback('(…)', 'too_short');
@@ -1018,19 +1088,20 @@ function CallPageContent() {
     if (micStateRef.current !== 'your_turn') return;
     if (timeRemainingRef.current <= 0) return;
 
-    cleanupMicPipeline();
+    cleanupRecorderOnly();
     setLineHint('');
+    setPipelineStage('mic_prep');
 
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await ensureMicStream();
     } catch {
       alert('마이크 권한이 필요합니다');
       setMicState('your_turn');
+      setPipelineStage('idle');
       return;
     }
 
-    streamRef.current = stream;
     audioChunksRef.current = [];
 
     const mimeCandidate = pickAudioMime();
@@ -1046,8 +1117,9 @@ function CallPageContent() {
       recorder.start(250);
     } catch {
       alert('마이크 권한이 필요합니다');
-      cleanupMicPipeline();
+      cleanupRecorderOnly();
       setMicState('your_turn');
+      setPipelineStage('idle');
       return;
     }
 
@@ -1057,6 +1129,8 @@ function CallPageContent() {
     recordingStartMsRef.current = Date.now();
     lastSpeechTsRef.current = recordingStartMsRef.current;
     setMicState('speaking');
+    setPipelineStage('recording');
+    setMicLevel(0);
 
     // Web Speech API 실시간 자막 (지원 환경만)
     if (isWebSpeechSupported()) {
@@ -1110,6 +1184,10 @@ function CallPageContent() {
         }
         const lvl = sum / buffer.length;
         const now = Date.now();
+        if (now - micLevelLastUpdateRef.current > 120) {
+          micLevelLastUpdateRef.current = now;
+          setMicLevel(Math.round(lvl * 10) / 10);
+        }
         if (lvl > 5.5) lastSpeechTsRef.current = now;
         if (
           now - lastSpeechTsRef.current >= 5000 &&
@@ -1133,7 +1211,7 @@ function CallPageContent() {
       void stopSpeakingInnerRef.current?.();
     }, 28000);
     setSilenceTimer(maxId);
-  }, [isWebSpeechSupported]);
+  }, [isWebSpeechSupported, ensureMicStream]);
 
   const stopSpeaking = useCallback(() => {
     void stopSpeakingInnerRef.current?.();
@@ -1853,6 +1931,31 @@ function CallPageContent() {
             </div>
           </div>
         </div>
+
+        {MIC_DEBUG_BAR_ENABLED && searchParams.get('debug') === 'mic' && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '40px',
+              left: '16px',
+              right: '16px',
+              zIndex: 30,
+              pointerEvents: 'none',
+              fontFamily: 'monospace',
+              fontSize: '9px',
+              lineHeight: 1.5,
+              color: 'rgba(255,255,255,0.55)',
+              background: 'rgba(0,0,0,0.45)',
+              borderRadius: '6px',
+              padding: '3px 8px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {`stage:${pipelineStage} · mic:${micTrackInfo.readyState}/${micTrackInfo.muted ? 'muted' : 'unmuted'} · level:${micLevel} · lastRecBytes:${lastRecordingBytes}`}
+          </div>
+        )}
 
         <div
           style={{
