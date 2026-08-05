@@ -1,14 +1,15 @@
 {
   "permissions": {
     "deny": [
-      "Bash(git push:*)",
-      "Bash(git reset --hard:*)",
-      "Bash(git rebase:*)",
-      "Bash(git checkout .:*)",
-      "Bash(git clean:*)",
-      "Bash(rm -rf:*)",
-      "Bash(vercel:*)",
-      "Bash(npx vercel:*)",
+      "Bash(git push*)",
+      "Bash(git reset*)",
+      "Bash(git rebase*)",
+      "Bash(git checkout*)",
+      "Bash(git clean*)",
+      "Bash(rm -rf*)",
+      "Bash(rm -fr*)",
+      "Bash(vercel*)",
+      "Bash(npx vercel*)",
       "Read(.env)",
       "Read(.env.*)",
       "Read(**/.env)",
