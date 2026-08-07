@@ -41,6 +41,11 @@ function normalizeForTTS(text) {
 }
 
 const MIN_RECORDING_BYTES = 3000;
+/** 재사용 전 짧게 마이크를 찔러보는 시간(ms). 너무 길면 턴 시작이 눈에 띄게 늦어진다. */
+const MIC_PROBE_DURATION_MS = 250;
+/** 이 값을 한 번도 못 넘기면 "죽은 스트림"으로 본다. 완전 무음이어도 살아있는 마이크는
+ * 보통 이보다 약간이라도 높은 배경 잡음을 잡는다 — 발화 감지 기준(5.5)보다 훨씬 낮게 잡았다. */
+const MIC_PROBE_LEVEL_THRESHOLD = 1.2;
 const GUIDING_NERVOUS_TEXT = '천천히 한 글자씩 말해봐도 괜찮아요~';
 
 function pickAudioMime() {
@@ -136,6 +141,7 @@ function CallPageContent() {
   const [micLevel, setMicLevel] = useState(0);
   const [lastRecordingBytes, setLastRecordingBytes] = useState(0);
   const [micTrackInfo, setMicTrackInfo] = useState({ readyState: 'none', muted: false });
+  const [micProbeStatus, setMicProbeStatus] = useState('none');
 
   const emotionalClearRef = useRef(null);
   const endSequenceRef = useRef(false);
@@ -447,20 +453,98 @@ function CallPageContent() {
   }, []);
 
   /**
+   * 스트림을 아주 짧게(MIC_PROBE_DURATION_MS) 들어보고 실제로 신호가 잡히는지 확인한다.
+   * readyState/muted 같은 겉보기 상태값은 정상인데 하드웨어 캡처만 죽어있는 iOS 케이스를
+   * 걸러내기 위한 것 — 사용자에게 말하라고 하는 게 아니라 배경 잡음 수준만 본다.
+   * 분석 자체가 실패하면(브라우저 제약 등) 판단 불가로 보고 재사용을 막지 않는다.
+   */
+  const probeStreamHasSignal = useCallback((stream) => {
+    return new Promise((resolve) => {
+      let ctx;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        ctx = new AC();
+        const src = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        src.connect(analyser);
+        const buffer = new Uint8Array(analyser.fftSize);
+        const startedAt = Date.now();
+        let maxLevel = 0;
+
+        const finish = (hasSignal) => {
+          try {
+            void ctx.close();
+          } catch {
+            /* noop */
+          }
+          resolve(hasSignal);
+        };
+
+        const sample = () => {
+          analyser.getByteTimeDomainData(buffer);
+          let sum = 0;
+          for (let i = 0; i < buffer.length; i += 1) {
+            sum += Math.abs(buffer[i] - 128);
+          }
+          const lvl = sum / buffer.length;
+          if (lvl > maxLevel) maxLevel = lvl;
+
+          if (Date.now() - startedAt >= MIC_PROBE_DURATION_MS) {
+            finish(maxLevel > MIC_PROBE_LEVEL_THRESHOLD);
+            return;
+          }
+          window.requestAnimationFrame(sample);
+        };
+        window.requestAnimationFrame(sample);
+      } catch {
+        resolve(true);
+      }
+    });
+  }, []);
+
+  /**
    * 통화 내내 재사용할 마이크 스트림을 반환한다.
-   * 기존 스트림이 살아있으면 그대로 재사용하고, 죽어있을 때만 새로 요청한다.
-   * (iOS에서 매 턴 getUserMedia를 다시 부르면, 성공한 것처럼 보여도
-   * 실제로는 무음만 들어오는 경우가 있어 이 방식으로 바꿨다.)
+   * 기존 스트림의 상태값이 정상이면, 재사용하기 전에 아주 짧게 신호가 실제로
+   * 잡히는지 한 번 더 확인한다. 신호가 없으면 죽은 스트림으로 보고 트랙을
+   * 확실히 정지시킨 뒤 새로 요청한다 — 죽은 트랙을 정지시키지 않은 채 새로
+   * 요청하면 iOS에서 새 요청마저 실패할 수 있어, 정지를 먼저 한다.
    */
   const ensureMicStream = useCallback(async () => {
-    if (isStreamUsable(streamRef.current)) {
-      return streamRef.current;
+    const candidate = streamRef.current;
+    if (isStreamUsable(candidate)) {
+      setMicProbeStatus('probing');
+      const hasSignal = await probeStreamHasSignal(candidate);
+      if (hasSignal) {
+        setMicProbeStatus('reused');
+        return candidate;
+      }
+      setMicProbeStatus('rejected');
+      try {
+        candidate.getTracks().forEach((t) => t.stop());
+      } catch {
+        /* noop */
+      }
+      streamRef.current = null;
+      setMicTrackInfo({ readyState: 'ended', muted: false });
+    } else if (candidate) {
+      // 상태값부터 이미 비정상 — 확인 없이 바로 죽은 것으로 보고 트랙을 정지시킨다
+      setMicProbeStatus('stale');
+      try {
+        candidate.getTracks().forEach((t) => t.stop());
+      } catch {
+        /* noop */
+      }
+      streamRef.current = null;
+      setMicTrackInfo({ readyState: 'ended', muted: false });
+    } else {
+      setMicProbeStatus('first');
     }
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     streamRef.current = stream;
     attachTrackListeners(stream);
     return stream;
-  }, [isStreamUsable, attachTrackListeners]);
+  }, [isStreamUsable, attachTrackListeners, probeStreamHasSignal]);
 
   const runAudioPlayback = useCallback(
     (src, { onLoadError, failReasonOnPlay = 'playback' }) =>
@@ -2257,6 +2341,19 @@ function CallPageContent() {
                 {' · mic: '}
                 <b style={{ color: micTrackInfo.readyState === 'live' ? '#4ADE80' : '#FF4444' }}>
                   {micTrackInfo.readyState}/{micTrackInfo.muted ? 'muted' : 'unmuted'}
+                </b>
+                {' · probe: '}
+                <b
+                  style={{
+                    color:
+                      micProbeStatus === 'reused' || micProbeStatus === 'first'
+                        ? '#4ADE80'
+                        : micProbeStatus === 'rejected' || micProbeStatus === 'stale'
+                          ? '#FF4444'
+                          : '#FFD84D',
+                  }}
+                >
+                  {micProbeStatus}
                 </b>
               </div>
               <div>
