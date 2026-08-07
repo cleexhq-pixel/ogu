@@ -18,7 +18,7 @@ import { toRoman } from '@/lib/romanize';
 /** 팬싱 분류 전용 채팅 라우트 (기존 /api/chat 학습 기능과 분리) */
 const FANSIGN_CHAT_API = '/api/chat/fansign';
 
-/** 마이크 진단 표시줄 킬스위치. false로 바꾸면 ?debug=mic를 붙여도 절대 보이지 않는다. */
+/** 마이크 진단 표시줄 킬스위치. true면 통화 화면에서 항상 보인다. 실사용자 배포 전 반드시 false로. */
 const MIC_DEBUG_BAR_ENABLED = true;
 
 const pulseKeyframes = `
@@ -131,7 +131,7 @@ function CallPageContent() {
   const [aiThinking, setAiThinking] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
 
-  // 마이크 진단용 (개발/디버그 표시줄 전용, ?debug=mic로만 노출됨)
+  // 마이크 진단용 (개발/디버그 표시줄 전용, MIC_DEBUG_BAR_ENABLED로만 켜고 끔)
   const [pipelineStage, setPipelineStage] = useState('idle');
   const [micLevel, setMicLevel] = useState(0);
   const [lastRecordingBytes, setLastRecordingBytes] = useState(0);
@@ -1932,31 +1932,6 @@ function CallPageContent() {
           </div>
         </div>
 
-        {MIC_DEBUG_BAR_ENABLED && searchParams.get('debug') === 'mic' && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '40px',
-              left: '16px',
-              right: '16px',
-              zIndex: 30,
-              pointerEvents: 'none',
-              fontFamily: 'monospace',
-              fontSize: '9px',
-              lineHeight: 1.5,
-              color: 'rgba(255,255,255,0.55)',
-              background: 'rgba(0,0,0,0.45)',
-              borderRadius: '6px',
-              padding: '3px 8px',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {`stage:${pipelineStage} · mic:${micTrackInfo.readyState}/${micTrackInfo.muted ? 'muted' : 'unmuted'} · level:${micLevel} · lastRecBytes:${lastRecordingBytes}`}
-          </div>
-        )}
-
         <div
           style={{
             position: 'absolute',
@@ -2262,6 +2237,36 @@ function CallPageContent() {
               'linear-gradient(180deg, transparent 0%, rgba(14,14,15,0.92) 24%, #0E0E0F 100%)',
           }}
         >
+          {MIC_DEBUG_BAR_ENABLED && (
+            <div
+              style={{
+                alignSelf: 'stretch',
+                pointerEvents: 'none',
+                fontFamily: 'monospace',
+                fontSize: '10px',
+                lineHeight: 1.6,
+                color: 'rgba(255,255,255,0.75)',
+                background: 'rgba(0,0,0,0.55)',
+                border: '0.5px solid rgba(255,216,77,0.35)',
+                borderRadius: '8px',
+                padding: '5px 10px',
+              }}
+            >
+              <div>
+                stage: <b style={{ color: '#FFD84D' }}>{pipelineStage}</b>
+                {' · mic: '}
+                <b style={{ color: micTrackInfo.readyState === 'live' ? '#4ADE80' : '#FF4444' }}>
+                  {micTrackInfo.readyState}/{micTrackInfo.muted ? 'muted' : 'unmuted'}
+                </b>
+              </div>
+              <div>
+                {'level: '}
+                <b style={{ fontSize: '13px', color: '#FFD84D' }}>{micLevel}</b>
+                {'  ·  lastRecBytes: '}
+                <b>{lastRecordingBytes}</b>
+              </div>
+            </div>
+          )}
           {(micState === 'your_turn' || micState === 'speaking') && (
             <button
               type="button"
