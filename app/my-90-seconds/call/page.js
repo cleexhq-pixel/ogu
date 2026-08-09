@@ -40,6 +40,18 @@ function normalizeForTTS(text) {
     .trim();
 }
 
+/** iOS가 TTS 재생 중 오디오 세션 카테고리를 바꿔 이후 마이크 캡처를 죽이는 것을 막기 위해
+ * 통화 시작 시점과 매 TTS 재생 전후로 반복 호출해 카테고리를 강제 고정한다.
+ * navigator.audioSession은 구형 iOS/타 브라우저에 없을 수 있으므로 조용히 넘어간다. */
+function pinAudioSession() {
+  if (typeof navigator === 'undefined' || !('audioSession' in navigator)) return;
+  try {
+    navigator.audioSession.type = 'play-and-record';
+  } catch {
+    /* noop */
+  }
+}
+
 const MIN_RECORDING_BYTES = 3000;
 /** 재사용 전 짧게 마이크를 찔러보는 시간(ms). 너무 길면 턴 시작이 눈에 띄게 늦어진다. */
 const MIC_PROBE_DURATION_MS = 250;
@@ -49,7 +61,7 @@ const MIC_PROBE_LEVEL_THRESHOLD = 1.2;
 const GUIDING_NERVOUS_TEXT = '천천히 한 글자씩 말해봐도 괜찮아요~';
 
 /** true면 TTS 호출/재생을 건너뛰고 자막만 2500ms 보여준 뒤 진행한다. 테스트 전용, 배포 전 반드시 false로. */
-const SKIP_TTS_FOR_TEST = true;
+const SKIP_TTS_FOR_TEST = false;
 
 /** AudioContext 진단용 모듈 스코프 카운터. 컴포넌트 인스턴스가 아니라 모듈 로드 기준으로 누적된다 — 디버그 표시줄 전용이며 실제 로직에는 관여하지 않는다. */
 let audioContextCreateCount = 0;
@@ -581,12 +593,15 @@ function CallPageContent() {
           return;
         }
 
+        pinAudioSession();
+
         let settled = false;
         const finish = () => {
           if (settled) return;
           settled = true;
           audio.onended = null;
           audio.onerror = null;
+          pinAudioSession();
           resolve();
         };
 
@@ -1717,7 +1732,10 @@ function CallPageContent() {
 
                   <button
                     type="button"
-                    onClick={() => setIntroStep('answered')}
+                    onClick={() => {
+                      pinAudioSession();
+                      setIntroStep('answered');
+                    }}
                     style={{
                       width: '64px',
                       height: '64px',
@@ -2406,6 +2424,14 @@ function CallPageContent() {
                 {' · exc: '}
                 <b style={{ color: probeExceptions > 0 ? '#FF4444' : '#4ADE80' }}>
                   {probeExceptions}
+                </b>
+              </div>
+              <div>
+                {'sess: '}
+                <b style={{ color: '#FFD84D' }}>
+                  {typeof navigator !== 'undefined' && navigator.audioSession
+                    ? navigator.audioSession.type
+                    : 'n/a'}
                 </b>
               </div>
             </div>
