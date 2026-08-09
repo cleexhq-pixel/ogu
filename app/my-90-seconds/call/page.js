@@ -52,6 +52,27 @@ function pinAudioSession() {
   }
 }
 
+/** 아이돌 음성을 new Audio() 대신 마이크와 같은 AudioContext(ctx)로 재생한다.
+ * HTMLMediaElement 재생 자체가 iOS의 마이크 하드웨어 캡처를 방해하는 것으로
+ * 확인되어(2/3턴부터 무음), 재생 경로를 마이크와 동일한 Web Audio 그래프로 옮긴다. */
+async function playIdolAudioViaWebAudio(url, ctx) {
+  const res = await fetch(url);
+  const arrayBuffer = await res.arrayBuffer();
+  const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+  const source = ctx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(ctx.destination);
+
+  return new Promise((resolve, reject) => {
+    source.onended = () => resolve();
+    try {
+      source.start(0);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
 const MIN_RECORDING_BYTES = 3000;
 /** 재사용 전 짧게 마이크를 찔러보는 시간(ms). 너무 길면 턴 시작이 눈에 띄게 늦어진다. */
 const MIC_PROBE_DURATION_MS = 250;
@@ -174,7 +195,13 @@ function CallPageContent() {
   const streamRef = useRef(null);
   const audioChunksRef = useRef([]);
   const silenceRafRef = useRef(null);
-  const silenceAudioCtxRef = useRef(null);
+  /** 무음 감지용으로 매 턴 만드는 MediaStreamSource/Analyser 쌍. AudioContext 자체는
+   * callAudioCtxRef가 통화 내내 공유하므로 여기선 노드만 들고 있다가 턴이 끝나면 disconnect한다. */
+  const silenceNodesRef = useRef(null);
+  /** 통화 전체가 공유하는 단일 AudioContext. Answer 버튼(user gesture)에서 생성/resume되고
+   * 통화 종료(cleanupMicPipeline) 시에만 close된다 — 마이크(getUserMedia)와 TTS 재생이
+   * 같은 컨텍스트를 쓰도록 하기 위함. */
+  const callAudioCtxRef = useRef(null);
   const recordingStartMsRef = useRef(0);
   const lastSpeechTsRef = useRef(0);
   const phaseAIntroStartedRef = useRef(false);
@@ -192,9 +219,12 @@ function CallPageContent() {
   const speechRecognitionRef = useRef(null);
   const interimTranscriptRef = useRef('');
   const consecutiveFailCountRef = useRef(0);
+  /** 미사용 — 아이돌 음성(TTS) 재생은 Web Audio API(callAudioCtxRef)로 대체됨.
+   * "Start call" 버튼의 iOS 오디오 언락 제스처(unlockAudioAndStartConnecting)에서만 여전히 쓰인다. */
   const audioRef = useRef(null);
   const micLevelLastUpdateRef = useRef(0);
 
+  /** 미사용 — 아이돌 음성(TTS) 재생 경로에서는 더 이상 호출되지 않는다. Web Audio 전환으로 대체됨. */
   const getSharedAudio = useCallback(() => {
     if (typeof window === 'undefined') return null;
     if (!audioRef.current) {
@@ -409,18 +439,15 @@ function CallPageContent() {
       silenceRafRef.current = null;
     }
     try {
-      const ctxToClose = silenceAudioCtxRef.current;
-      if (ctxToClose) {
-        setClosePending(true);
-        ctxToClose
-          .close()
-          .then(() => setClosePending(false))
-          .catch(() => setClosePending(false));
+      const nodes = silenceNodesRef.current;
+      if (nodes) {
+        nodes.src.disconnect();
+        nodes.analyser.disconnect();
       }
     } catch {
       /* ignore */
     }
-    silenceAudioCtxRef.current = null;
+    silenceNodesRef.current = null;
   }
 
   /** 녹음기만 정리. 마이크 스트림 자체는 살려둔다 (턴 사이 전환용). */
@@ -445,7 +472,7 @@ function CallPageContent() {
     setMicLevel(0);
   }
 
-  /** 녹음기 + 마이크 스트림 전체 종료. 통화 종료/화면 이탈 시에만 호출. */
+  /** 녹음기 + 마이크 스트림 + 통화 공유 AudioContext 전체 종료. 통화 종료/화면 이탈 시에만 호출. */
   function cleanupMicPipeline() {
     cleanupRecorderOnly();
     try {
@@ -455,6 +482,31 @@ function CallPageContent() {
     }
     streamRef.current = null;
     setMicTrackInfo({ readyState: 'ended', muted: false });
+
+    const ctxToClose = callAudioCtxRef.current;
+    if (ctxToClose && ctxToClose.state !== 'closed') {
+      setClosePending(true);
+      ctxToClose
+        .close()
+        .then(() => setClosePending(false))
+        .catch(() => setClosePending(false));
+    }
+    callAudioCtxRef.current = null;
+  }
+
+  /** Answer 버튼(user gesture) 안에서 호출. 통화 전체가 공유할 AudioContext를 이 시점에
+   * 딱 1개 생성하고, iOS가 suspended로 시작하는 경우를 대비해 같은 제스처 안에서 resume한다. */
+  async function initCallAudioContext() {
+    if (typeof window === 'undefined') return;
+    if (!callAudioCtxRef.current) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      callAudioCtxRef.current = new AC();
+      audioContextCreateCount += 1;
+      setCtxCount(audioContextCreateCount);
+    }
+    if (callAudioCtxRef.current.state === 'suspended') {
+      await callAudioCtxRef.current.resume();
+    }
   }
 
   const isWebSpeechSupported = useCallback(() => {
@@ -489,14 +541,17 @@ function CallPageContent() {
    */
   const probeStreamHasSignal = useCallback((stream) => {
     return new Promise((resolve) => {
-      let ctx;
+      const ctx = callAudioCtxRef.current;
+      if (!ctx) {
+        // 공유 컨텍스트가 아직 없으면(이론상 Answer 이후엔 항상 있어야 함) 판단 불가로 보고 재사용을 막지 않는다.
+        resolve(true);
+        return;
+      }
+      let src;
+      let analyser;
       try {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        ctx = new AC();
-        audioContextCreateCount += 1;
-        setCtxCount(audioContextCreateCount);
-        const src = ctx.createMediaStreamSource(stream);
-        const analyser = ctx.createAnalyser();
+        src = ctx.createMediaStreamSource(stream);
+        analyser = ctx.createAnalyser();
         analyser.fftSize = 512;
         src.connect(analyser);
         const buffer = new Uint8Array(analyser.fftSize);
@@ -504,12 +559,10 @@ function CallPageContent() {
         let maxLevel = 0;
 
         const finish = (hasSignal) => {
+          // 통화 전체가 공유하는 컨텍스트이므로 여기서 close하지 않는다 — 노드만 끊는다.
           try {
-            setClosePending(true);
-            ctx
-              .close()
-              .then(() => setClosePending(false))
-              .catch(() => setClosePending(false));
+            src.disconnect();
+            analyser.disconnect();
           } catch {
             /* noop */
           }
@@ -532,8 +585,13 @@ function CallPageContent() {
           window.requestAnimationFrame(sample);
         };
         window.requestAnimationFrame(sample);
-      } catch (e) {
-        try { ctx?.close?.(); } catch {}
+      } catch {
+        try {
+          src?.disconnect?.();
+          analyser?.disconnect?.();
+        } catch {
+          /* noop */
+        }
         probeExceptionCount += 1;
         setProbeExceptions(probeExceptionCount);
         resolve(true);
@@ -587,8 +645,8 @@ function CallPageContent() {
   const runAudioPlayback = useCallback(
     (src, { onLoadError, failReasonOnPlay = 'playback' }) =>
       new Promise((resolve) => {
-        const audio = getSharedAudio();
-        if (!audio) {
+        const ctx = callAudioCtxRef.current;
+        if (!ctx) {
           resolve();
           return;
         }
@@ -599,64 +657,38 @@ function CallPageContent() {
         const finish = () => {
           if (settled) return;
           settled = true;
-          audio.onended = null;
-          audio.onerror = null;
           pinAudioSession();
           resolve();
         };
 
-        try {
-          audio.pause();
-          audio.currentTime = 0;
-          audio.onended = null;
-          audio.onerror = null;
-          audio.src = src;
-          audio.load();
-        } catch {
-          trackEvent('m90s_tts_failed', {
-            scenario: scenarioIdRef.current,
-            reason: failReasonOnPlay,
-          });
-          finish();
-          return;
-        }
-
-        audio.onended = finish;
-
-        audio.onerror = () => {
-          audio.onended = null;
-          audio.onerror = null;
-          if (onLoadError) {
-            void Promise.resolve(onLoadError()).then(finish);
-          } else {
-            trackEvent('m90s_tts_failed', {
-              scenario: scenarioIdRef.current,
-              reason: 'playback',
-            });
-            finish();
-          }
-        };
-
         const attemptPlay = async (isRetry) => {
           try {
-            await audio.play();
+            if (ctx.state === 'suspended') {
+              await ctx.resume();
+            }
+            await playIdolAudioViaWebAudio(src, ctx);
+            finish();
           } catch (err) {
             if (!isRetry) {
               await new Promise((r) => setTimeout(r, 100));
               return attemptPlay(true);
             }
             console.error('TTS play failed:', err);
-            trackEvent('m90s_tts_failed', {
-              scenario: scenarioIdRef.current,
-              reason: failReasonOnPlay,
-            });
-            finish();
+            if (onLoadError) {
+              void Promise.resolve(onLoadError()).then(finish);
+            } else {
+              trackEvent('m90s_tts_failed', {
+                scenario: scenarioIdRef.current,
+                reason: failReasonOnPlay,
+              });
+              finish();
+            }
           }
         };
 
         void attemptPlay(false);
       }),
-    [getSharedAudio],
+    [],
   );
 
   const playTtsAndWait = useCallback(
@@ -1295,15 +1327,13 @@ function CallPageContent() {
     }
 
     try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AC();
-      audioContextCreateCount += 1;
-      setCtxCount(audioContextCreateCount);
-      silenceAudioCtxRef.current = ctx;
+      const ctx = callAudioCtxRef.current;
+      if (!ctx) throw new Error('no shared audio context');
       const srcN = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 1024;
       srcN.connect(analyser);
+      silenceNodesRef.current = { src: srcN, analyser };
       const buffer = new Uint8Array(analyser.fftSize);
 
       const tick = () => {
@@ -1734,6 +1764,7 @@ function CallPageContent() {
                     type="button"
                     onClick={() => {
                       pinAudioSession();
+                      void initCallAudioContext();
                       setIntroStep('answered');
                     }}
                     style={{
@@ -2415,7 +2446,7 @@ function CallPageContent() {
               <div>
                 {'ctx: '}
                 <b style={{ color: '#FFD84D' }}>
-                  {silenceAudioCtxRef.current?.state || 'none'}({ctxCount})
+                  {callAudioCtxRef.current?.state || 'none'}({ctxCount})
                 </b>
                 {' · close: '}
                 <b style={{ color: closePending ? '#FF4444' : '#4ADE80' }}>
@@ -2433,6 +2464,8 @@ function CallPageContent() {
                     ? navigator.audioSession.type
                     : 'n/a'}
                 </b>
+                {' · playMethod: '}
+                <b style={{ color: '#4ADE80' }}>webaudio</b>
               </div>
             </div>
           )}
