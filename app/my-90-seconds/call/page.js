@@ -49,7 +49,7 @@ const MIC_PROBE_LEVEL_THRESHOLD = 1.2;
 const GUIDING_NERVOUS_TEXT = '천천히 한 글자씩 말해봐도 괜찮아요~';
 
 /** true면 TTS 호출/재생을 건너뛰고 자막만 2500ms 보여준 뒤 진행한다. 테스트 전용, 배포 전 반드시 false로. */
-const SKIP_TTS_FOR_TEST = false;
+const SKIP_TTS_FOR_TEST = true;
 
 /** AudioContext 진단용 모듈 스코프 카운터. 컴포넌트 인스턴스가 아니라 모듈 로드 기준으로 누적된다 — 디버그 표시줄 전용이며 실제 로직에는 관여하지 않는다. */
 let audioContextCreateCount = 0;
