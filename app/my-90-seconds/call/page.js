@@ -19,7 +19,7 @@ import { toRoman } from '@/lib/romanize';
 const FANSIGN_CHAT_API = '/api/chat/fansign';
 
 /** 마이크 진단 표시줄 킬스위치. true면 통화 화면에서 항상 보인다. 실사용자 배포 전 반드시 false로. */
-const MIC_DEBUG_BAR_ENABLED = true;
+const MIC_DEBUG_BAR_ENABLED = false;
 
 const pulseKeyframes = `
   @keyframes pulse {
