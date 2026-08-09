@@ -48,6 +48,13 @@ const MIC_PROBE_DURATION_MS = 250;
 const MIC_PROBE_LEVEL_THRESHOLD = 1.2;
 const GUIDING_NERVOUS_TEXT = '천천히 한 글자씩 말해봐도 괜찮아요~';
 
+/** true면 TTS 호출/재생을 건너뛰고 자막만 2500ms 보여준 뒤 진행한다. 테스트 전용, 배포 전 반드시 false로. */
+const SKIP_TTS_FOR_TEST = false;
+
+/** AudioContext 진단용 모듈 스코프 카운터. 컴포넌트 인스턴스가 아니라 모듈 로드 기준으로 누적된다 — 디버그 표시줄 전용이며 실제 로직에는 관여하지 않는다. */
+let audioContextCreateCount = 0;
+let probeExceptionCount = 0;
+
 function pickAudioMime() {
   const candidates = [
     'audio/webm;codecs=opus',
@@ -142,6 +149,9 @@ function CallPageContent() {
   const [lastRecordingBytes, setLastRecordingBytes] = useState(0);
   const [micTrackInfo, setMicTrackInfo] = useState({ readyState: 'none', muted: false });
   const [micProbeStatus, setMicProbeStatus] = useState('none');
+  const [ctxCount, setCtxCount] = useState(0);
+  const [closePending, setClosePending] = useState(false);
+  const [probeExceptions, setProbeExceptions] = useState(0);
 
   const emotionalClearRef = useRef(null);
   const endSequenceRef = useRef(false);
@@ -387,7 +397,14 @@ function CallPageContent() {
       silenceRafRef.current = null;
     }
     try {
-      void silenceAudioCtxRef.current?.close?.();
+      const ctxToClose = silenceAudioCtxRef.current;
+      if (ctxToClose) {
+        setClosePending(true);
+        ctxToClose
+          .close()
+          .then(() => setClosePending(false))
+          .catch(() => setClosePending(false));
+      }
     } catch {
       /* ignore */
     }
@@ -464,6 +481,8 @@ function CallPageContent() {
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
         ctx = new AC();
+        audioContextCreateCount += 1;
+        setCtxCount(audioContextCreateCount);
         const src = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 512;
@@ -474,7 +493,11 @@ function CallPageContent() {
 
         const finish = (hasSignal) => {
           try {
-            void ctx.close();
+            setClosePending(true);
+            ctx
+              .close()
+              .then(() => setClosePending(false))
+              .catch(() => setClosePending(false));
           } catch {
             /* noop */
           }
@@ -497,7 +520,10 @@ function CallPageContent() {
           window.requestAnimationFrame(sample);
         };
         window.requestAnimationFrame(sample);
-      } catch {
+      } catch (e) {
+        try { ctx?.close?.(); } catch {}
+        probeExceptionCount += 1;
+        setProbeExceptions(probeExceptionCount);
         resolve(true);
       }
     });
@@ -622,6 +648,10 @@ function CallPageContent() {
     async (text, scriptId) => {
       const trimmed = typeof text === 'string' ? text.trim() : '';
       if (!trimmed || typeof window === 'undefined') return;
+      if (SKIP_TTS_FOR_TEST) {
+        await new Promise((r) => setTimeout(r, 2500));
+        return;
+      }
       try {
         // 캐시 히트: scriptId가 있으면 정적 mp3 직접 재생
         if (scriptId && typeof scriptId === 'string') {
@@ -1252,6 +1282,8 @@ function CallPageContent() {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
+      audioContextCreateCount += 1;
+      setCtxCount(audioContextCreateCount);
       silenceAudioCtxRef.current = ctx;
       const srcN = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
@@ -2361,6 +2393,20 @@ function CallPageContent() {
                 <b style={{ fontSize: '13px', color: '#FFD84D' }}>{micLevel}</b>
                 {'  ·  lastRecBytes: '}
                 <b>{lastRecordingBytes}</b>
+              </div>
+              <div>
+                {'ctx: '}
+                <b style={{ color: '#FFD84D' }}>
+                  {silenceAudioCtxRef.current?.state || 'none'}({ctxCount})
+                </b>
+                {' · close: '}
+                <b style={{ color: closePending ? '#FF4444' : '#4ADE80' }}>
+                  {closePending ? 'pending' : 'idle'}
+                </b>
+                {' · exc: '}
+                <b style={{ color: probeExceptions > 0 ? '#FF4444' : '#4ADE80' }}>
+                  {probeExceptions}
+                </b>
               </div>
             </div>
           )}
