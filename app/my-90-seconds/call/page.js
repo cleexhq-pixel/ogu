@@ -18,6 +18,9 @@ import { toRoman } from '@/lib/romanize';
 /** 팬싱 분류 전용 채팅 라우트 (기존 /api/chat 학습 기능과 분리) */
 const FANSIGN_CHAT_API = '/api/chat/fansign';
 
+/** 마이크 진단 표시줄 킬스위치. true면 통화 화면에서 항상 보인다. 실사용자 배포 전 반드시 false로. */
+const MIC_DEBUG_BAR_ENABLED = false;
+
 const pulseKeyframes = `
   @keyframes pulse {
     0%, 100% { opacity: 0.3; transform: scale(0.8); }
@@ -37,8 +40,53 @@ function normalizeForTTS(text) {
     .trim();
 }
 
+/** iOS가 TTS 재생 중 오디오 세션 카테고리를 바꿔 이후 마이크 캡처를 죽이는 것을 막기 위해
+ * 통화 시작 시점과 매 TTS 재생 전후로 반복 호출해 카테고리를 강제 고정한다.
+ * navigator.audioSession은 구형 iOS/타 브라우저에 없을 수 있으므로 조용히 넘어간다. */
+function pinAudioSession() {
+  if (typeof navigator === 'undefined' || !('audioSession' in navigator)) return;
+  try {
+    navigator.audioSession.type = 'play-and-record';
+  } catch {
+    /* noop */
+  }
+}
+
+/** 아이돌 음성을 new Audio() 대신 마이크와 같은 AudioContext(ctx)로 재생한다.
+ * HTMLMediaElement 재생 자체가 iOS의 마이크 하드웨어 캡처를 방해하는 것으로
+ * 확인되어(2/3턴부터 무음), 재생 경로를 마이크와 동일한 Web Audio 그래프로 옮긴다. */
+async function playIdolAudioViaWebAudio(url, ctx) {
+  const res = await fetch(url);
+  const arrayBuffer = await res.arrayBuffer();
+  const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+  const source = ctx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(ctx.destination);
+
+  return new Promise((resolve, reject) => {
+    source.onended = () => resolve();
+    try {
+      source.start(0);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
 const MIN_RECORDING_BYTES = 3000;
+/** 재사용 전 짧게 마이크를 찔러보는 시간(ms). 너무 길면 턴 시작이 눈에 띄게 늦어진다. */
+const MIC_PROBE_DURATION_MS = 250;
+/** 이 값을 한 번도 못 넘기면 "죽은 스트림"으로 본다. 완전 무음이어도 살아있는 마이크는
+ * 보통 이보다 약간이라도 높은 배경 잡음을 잡는다 — 발화 감지 기준(5.5)보다 훨씬 낮게 잡았다. */
+const MIC_PROBE_LEVEL_THRESHOLD = 1.2;
 const GUIDING_NERVOUS_TEXT = '천천히 한 글자씩 말해봐도 괜찮아요~';
+
+/** true면 TTS 호출/재생을 건너뛰고 자막만 2500ms 보여준 뒤 진행한다. 테스트 전용, 배포 전 반드시 false로. */
+const SKIP_TTS_FOR_TEST = false;
+
+/** AudioContext 진단용 모듈 스코프 카운터. 컴포넌트 인스턴스가 아니라 모듈 로드 기준으로 누적된다 — 디버그 표시줄 전용이며 실제 로직에는 관여하지 않는다. */
+let audioContextCreateCount = 0;
+let probeExceptionCount = 0;
 
 function pickAudioMime() {
   const candidates = [
@@ -128,6 +176,16 @@ function CallPageContent() {
   const [aiThinking, setAiThinking] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
 
+  // 마이크 진단용 (개발/디버그 표시줄 전용, MIC_DEBUG_BAR_ENABLED로만 켜고 끔)
+  const [pipelineStage, setPipelineStage] = useState('idle');
+  const [micLevel, setMicLevel] = useState(0);
+  const [lastRecordingBytes, setLastRecordingBytes] = useState(0);
+  const [micTrackInfo, setMicTrackInfo] = useState({ readyState: 'none', muted: false });
+  const [micProbeStatus, setMicProbeStatus] = useState('none');
+  const [ctxCount, setCtxCount] = useState(0);
+  const [closePending, setClosePending] = useState(false);
+  const [probeExceptions, setProbeExceptions] = useState(0);
+
   const emotionalClearRef = useRef(null);
   const endSequenceRef = useRef(false);
   const conversationHistoryRef = useRef([]);
@@ -137,7 +195,13 @@ function CallPageContent() {
   const streamRef = useRef(null);
   const audioChunksRef = useRef([]);
   const silenceRafRef = useRef(null);
-  const silenceAudioCtxRef = useRef(null);
+  /** 무음 감지용으로 매 턴 만드는 MediaStreamSource/Analyser 쌍. AudioContext 자체는
+   * callAudioCtxRef가 통화 내내 공유하므로 여기선 노드만 들고 있다가 턴이 끝나면 disconnect한다. */
+  const silenceNodesRef = useRef(null);
+  /** 통화 전체가 공유하는 단일 AudioContext. Answer 버튼(user gesture)에서 생성/resume되고
+   * 통화 종료(cleanupMicPipeline) 시에만 close된다 — 마이크(getUserMedia)와 TTS 재생이
+   * 같은 컨텍스트를 쓰도록 하기 위함. */
+  const callAudioCtxRef = useRef(null);
   const recordingStartMsRef = useRef(0);
   const lastSpeechTsRef = useRef(0);
   const phaseAIntroStartedRef = useRef(false);
@@ -155,8 +219,12 @@ function CallPageContent() {
   const speechRecognitionRef = useRef(null);
   const interimTranscriptRef = useRef('');
   const consecutiveFailCountRef = useRef(0);
+  /** 미사용 — 아이돌 음성(TTS) 재생은 Web Audio API(callAudioCtxRef)로 대체됨.
+   * "Start call" 버튼의 iOS 오디오 언락 제스처(unlockAudioAndStartConnecting)에서만 여전히 쓰인다. */
   const audioRef = useRef(null);
+  const micLevelLastUpdateRef = useRef(0);
 
+  /** 미사용 — 아이돌 음성(TTS) 재생 경로에서는 더 이상 호출되지 않는다. Web Audio 전환으로 대체됨. */
   const getSharedAudio = useCallback(() => {
     if (typeof window === 'undefined') return null;
     if (!audioRef.current) {
@@ -239,6 +307,14 @@ function CallPageContent() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     setUiLang(normalizeLang(localStorage.getItem('ogu_lang') || 'en'));
+  }, []);
+
+  // 화면을 벗어나는 모든 경우(뒤로가기, 탭 전환 등)에 마이크가 켜진 채로 남지 않도록 하는 안전장치
+  useEffect(() => {
+    return () => {
+      cleanupMicPipeline();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const started = introStep === 'started';
@@ -363,14 +439,19 @@ function CallPageContent() {
       silenceRafRef.current = null;
     }
     try {
-      void silenceAudioCtxRef.current?.close?.();
+      const nodes = silenceNodesRef.current;
+      if (nodes) {
+        nodes.src.disconnect();
+        nodes.analyser.disconnect();
+      }
     } catch {
       /* ignore */
     }
-    silenceAudioCtxRef.current = null;
+    silenceNodesRef.current = null;
   }
 
-  function cleanupMicPipeline() {
+  /** 녹음기만 정리. 마이크 스트림 자체는 살려둔다 (턴 사이 전환용). */
+  function cleanupRecorderOnly() {
     cleanupSpeechDetection();
     const mr = mediaRecorderRef.current;
     if (mr && mr.state !== 'inactive') {
@@ -381,12 +462,6 @@ function CallPageContent() {
       }
     }
     mediaRecorderRef.current = null;
-    try {
-      streamRef.current?.getTracks?.().forEach((t) => t.stop());
-    } catch {
-      /* noop */
-    }
-    streamRef.current = null;
     audioChunksRef.current = [];
     setMediaRecorder(null);
     setAudioChunks([]);
@@ -394,6 +469,44 @@ function CallPageContent() {
       if (prev != null) window.clearTimeout(prev);
       return null;
     });
+    setMicLevel(0);
+  }
+
+  /** 녹음기 + 마이크 스트림 + 통화 공유 AudioContext 전체 종료. 통화 종료/화면 이탈 시에만 호출. */
+  function cleanupMicPipeline() {
+    cleanupRecorderOnly();
+    try {
+      streamRef.current?.getTracks?.().forEach((t) => t.stop());
+    } catch {
+      /* noop */
+    }
+    streamRef.current = null;
+    setMicTrackInfo({ readyState: 'ended', muted: false });
+
+    const ctxToClose = callAudioCtxRef.current;
+    if (ctxToClose && ctxToClose.state !== 'closed') {
+      setClosePending(true);
+      ctxToClose
+        .close()
+        .then(() => setClosePending(false))
+        .catch(() => setClosePending(false));
+    }
+    callAudioCtxRef.current = null;
+  }
+
+  /** Answer 버튼(user gesture) 안에서 호출. 통화 전체가 공유할 AudioContext를 이 시점에
+   * 딱 1개 생성하고, iOS가 suspended로 시작하는 경우를 대비해 같은 제스처 안에서 resume한다. */
+  async function initCallAudioContext() {
+    if (typeof window === 'undefined') return;
+    if (!callAudioCtxRef.current) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      callAudioCtxRef.current = new AC();
+      audioContextCreateCount += 1;
+      setCtxCount(audioContextCreateCount);
+    }
+    if (callAudioCtxRef.current.state === 'suspended') {
+      await callAudioCtxRef.current.resume();
+    }
   }
 
   const isWebSpeechSupported = useCallback(() => {
@@ -401,82 +514,191 @@ function CallPageContent() {
     return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }, []);
 
+  /** 트랙이 살아있고(live) 음소거되지 않았는지 확인. false면 재요청이 필요하다는 뜻. */
+  const isStreamUsable = useCallback((stream) => {
+    const track = stream?.getAudioTracks?.()[0];
+    return !!track && track.readyState === 'live' && !track.muted;
+  }, []);
+
+  /** 마이크 트랙 상태(live/ended, muted 여부)를 진단 표시줄용 state에 반영 */
+  const attachTrackListeners = useCallback((stream) => {
+    const track = stream?.getAudioTracks?.()[0];
+    if (!track) return;
+    const update = () => {
+      setMicTrackInfo({ readyState: track.readyState, muted: track.muted });
+    };
+    track.onended = update;
+    track.onmute = update;
+    track.onunmute = update;
+    update();
+  }, []);
+
+  /**
+   * 스트림을 아주 짧게(MIC_PROBE_DURATION_MS) 들어보고 실제로 신호가 잡히는지 확인한다.
+   * readyState/muted 같은 겉보기 상태값은 정상인데 하드웨어 캡처만 죽어있는 iOS 케이스를
+   * 걸러내기 위한 것 — 사용자에게 말하라고 하는 게 아니라 배경 잡음 수준만 본다.
+   * 분석 자체가 실패하면(브라우저 제약 등) 판단 불가로 보고 재사용을 막지 않는다.
+   */
+  const probeStreamHasSignal = useCallback((stream) => {
+    return new Promise((resolve) => {
+      const ctx = callAudioCtxRef.current;
+      if (!ctx) {
+        // 공유 컨텍스트가 아직 없으면(이론상 Answer 이후엔 항상 있어야 함) 판단 불가로 보고 재사용을 막지 않는다.
+        resolve(true);
+        return;
+      }
+      let src;
+      let analyser;
+      try {
+        src = ctx.createMediaStreamSource(stream);
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        src.connect(analyser);
+        const buffer = new Uint8Array(analyser.fftSize);
+        const startedAt = Date.now();
+        let maxLevel = 0;
+
+        const finish = (hasSignal) => {
+          // 통화 전체가 공유하는 컨텍스트이므로 여기서 close하지 않는다 — 노드만 끊는다.
+          try {
+            src.disconnect();
+            analyser.disconnect();
+          } catch {
+            /* noop */
+          }
+          resolve(hasSignal);
+        };
+
+        const sample = () => {
+          analyser.getByteTimeDomainData(buffer);
+          let sum = 0;
+          for (let i = 0; i < buffer.length; i += 1) {
+            sum += Math.abs(buffer[i] - 128);
+          }
+          const lvl = sum / buffer.length;
+          if (lvl > maxLevel) maxLevel = lvl;
+
+          if (Date.now() - startedAt >= MIC_PROBE_DURATION_MS) {
+            finish(maxLevel > MIC_PROBE_LEVEL_THRESHOLD);
+            return;
+          }
+          window.requestAnimationFrame(sample);
+        };
+        window.requestAnimationFrame(sample);
+      } catch {
+        try {
+          src?.disconnect?.();
+          analyser?.disconnect?.();
+        } catch {
+          /* noop */
+        }
+        probeExceptionCount += 1;
+        setProbeExceptions(probeExceptionCount);
+        resolve(true);
+      }
+    });
+  }, []);
+
+  /**
+   * 통화 내내 재사용할 마이크 스트림을 반환한다.
+   * 기존 스트림의 상태값이 정상이면, 재사용하기 전에 아주 짧게 신호가 실제로
+   * 잡히는지 한 번 더 확인한다. 신호가 없으면 죽은 스트림으로 보고 트랙을
+   * 확실히 정지시킨 뒤 새로 요청한다 — 죽은 트랙을 정지시키지 않은 채 새로
+   * 요청하면 iOS에서 새 요청마저 실패할 수 있어, 정지를 먼저 한다.
+   */
+  const ensureMicStream = useCallback(async () => {
+    const candidate = streamRef.current;
+    if (isStreamUsable(candidate)) {
+      setMicProbeStatus('probing');
+      const hasSignal = await probeStreamHasSignal(candidate);
+      if (hasSignal) {
+        setMicProbeStatus('reused');
+        return candidate;
+      }
+      setMicProbeStatus('rejected');
+      try {
+        candidate.getTracks().forEach((t) => t.stop());
+      } catch {
+        /* noop */
+      }
+      streamRef.current = null;
+      setMicTrackInfo({ readyState: 'ended', muted: false });
+    } else if (candidate) {
+      // 상태값부터 이미 비정상 — 확인 없이 바로 죽은 것으로 보고 트랙을 정지시킨다
+      setMicProbeStatus('stale');
+      try {
+        candidate.getTracks().forEach((t) => t.stop());
+      } catch {
+        /* noop */
+      }
+      streamRef.current = null;
+      setMicTrackInfo({ readyState: 'ended', muted: false });
+    } else {
+      setMicProbeStatus('first');
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    streamRef.current = stream;
+    attachTrackListeners(stream);
+    return stream;
+  }, [isStreamUsable, attachTrackListeners, probeStreamHasSignal]);
+
   const runAudioPlayback = useCallback(
     (src, { onLoadError, failReasonOnPlay = 'playback' }) =>
       new Promise((resolve) => {
-        const audio = getSharedAudio();
-        if (!audio) {
+        const ctx = callAudioCtxRef.current;
+        if (!ctx) {
           resolve();
           return;
         }
+
+        pinAudioSession();
 
         let settled = false;
         const finish = () => {
           if (settled) return;
           settled = true;
-          audio.onended = null;
-          audio.onerror = null;
+          pinAudioSession();
           resolve();
-        };
-
-        try {
-          audio.pause();
-          audio.currentTime = 0;
-          audio.onended = null;
-          audio.onerror = null;
-          audio.src = src;
-          audio.load();
-        } catch {
-          trackEvent('m90s_tts_failed', {
-            scenario: scenarioIdRef.current,
-            reason: failReasonOnPlay,
-          });
-          finish();
-          return;
-        }
-
-        audio.onended = finish;
-
-        audio.onerror = () => {
-          audio.onended = null;
-          audio.onerror = null;
-          if (onLoadError) {
-            void Promise.resolve(onLoadError()).then(finish);
-          } else {
-            trackEvent('m90s_tts_failed', {
-              scenario: scenarioIdRef.current,
-              reason: 'playback',
-            });
-            finish();
-          }
         };
 
         const attemptPlay = async (isRetry) => {
           try {
-            await audio.play();
+            if (ctx.state === 'suspended') {
+              await ctx.resume();
+            }
+            await playIdolAudioViaWebAudio(src, ctx);
+            finish();
           } catch (err) {
             if (!isRetry) {
               await new Promise((r) => setTimeout(r, 100));
               return attemptPlay(true);
             }
             console.error('TTS play failed:', err);
-            trackEvent('m90s_tts_failed', {
-              scenario: scenarioIdRef.current,
-              reason: failReasonOnPlay,
-            });
-            finish();
+            if (onLoadError) {
+              void Promise.resolve(onLoadError()).then(finish);
+            } else {
+              trackEvent('m90s_tts_failed', {
+                scenario: scenarioIdRef.current,
+                reason: failReasonOnPlay,
+              });
+              finish();
+            }
           }
         };
 
         void attemptPlay(false);
       }),
-    [getSharedAudio],
+    [],
   );
 
   const playTtsAndWait = useCallback(
     async (text, scriptId) => {
       const trimmed = typeof text === 'string' ? text.trim() : '';
       if (!trimmed || typeof window === 'undefined') return;
+      if (SKIP_TTS_FOR_TEST) {
+        await new Promise((r) => setTimeout(r, 2500));
+        return;
+      }
       try {
         // 캐시 히트: scriptId가 있으면 정적 mp3 직접 재생
         if (scriptId && typeof scriptId === 'string') {
@@ -539,6 +761,7 @@ function CallPageContent() {
     cleanupMicPipeline();
 
     setMicState('idol_speaking');
+    setPipelineStage('idol_speaking');
 
     const run = async () => {
       const staffText = idolScripts.staff_closing;
@@ -686,6 +909,7 @@ function CallPageContent() {
       const text = greet?.text || '안녕하세요~';
       const opening = [historyEntry('idol', text)];
       setMicState('idol_speaking');
+      setPipelineStage('idol_speaking');
       conversationHistoryRef.current = opening;
       setConversationHistory(opening);
       setLineHint('');
@@ -698,6 +922,7 @@ function CallPageContent() {
       await playTtsAndWait(text);
       if (!cancelled && !endSequenceRef.current) {
         setMicState('your_turn');
+        setPipelineStage('idle');
       }
     }, 1000);
     return () => {
@@ -748,6 +973,7 @@ function CallPageContent() {
       let idolScriptId = null;
 
       setAiThinking(true);
+      setPipelineStage('waiting_idol');
       setCurrentSubtitle((prev) => ({ ...prev, visible: false }));
 
       try {
@@ -822,6 +1048,7 @@ function CallPageContent() {
       setLineHint('');
       setAiThinking(false);
       setMicState('idol_speaking');
+      setPipelineStage('idol_speaking');
 
       setCurrentSubtitle({
         korean: idolMain,
@@ -846,6 +1073,7 @@ function CallPageContent() {
       }
 
       setMicState('your_turn');
+      setPipelineStage('idle');
     },
     [playTtsAndWait, uiLang, savedScript, idolName],
   );
@@ -873,6 +1101,7 @@ function CallPageContent() {
           await processUserUtterance(e04.ko);
         } else {
           setMicState('your_turn');
+          setPipelineStage('idle');
         }
         return;
       }
@@ -903,8 +1132,10 @@ function CallPageContent() {
         translation: '',
         visible: true,
       });
+      setPipelineStage('idol_speaking');
       await playTtsAndWait(fbText);
       setMicState('your_turn');
+      setPipelineStage('idle');
     },
     [playTtsAndWait, processUserUtterance],
   );
@@ -952,22 +1183,22 @@ function CallPageContent() {
           }
         });
       } catch {
-        cleanupMicPipeline();
+        // 마이크 스트림 자체는 살려둔다 — 녹음기만 실패했을 뿐이므로
+        cleanupRecorderOnly();
         setMicState('your_turn');
+        setPipelineStage('idle');
         return;
       }
 
       console.log('[transcribe] blob.type:', blob.type, 'size:', blob.size);
 
-      try {
-        streamRef.current?.getTracks?.().forEach((t) => t.stop());
-      } catch {
-        /* noop */
-      }
-      streamRef.current = null;
+      // 마이크 스트림은 통화 내내 유지 — 여기서 트랙을 끊지 않는다
       mediaRecorderRef.current = null;
       setMediaRecorder(null);
       setMicState('processing');
+      setPipelineStage('uploading');
+      setMicLevel(0);
+      setLastRecordingBytes(blob.size);
 
       if (blob.size < MIN_RECORDING_BYTES) {
         await applySttFailureFallback('(…)', 'too_short');
@@ -1018,19 +1249,20 @@ function CallPageContent() {
     if (micStateRef.current !== 'your_turn') return;
     if (timeRemainingRef.current <= 0) return;
 
-    cleanupMicPipeline();
+    cleanupRecorderOnly();
     setLineHint('');
+    setPipelineStage('mic_prep');
 
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await ensureMicStream();
     } catch {
       alert('마이크 권한이 필요합니다');
       setMicState('your_turn');
+      setPipelineStage('idle');
       return;
     }
 
-    streamRef.current = stream;
     audioChunksRef.current = [];
 
     const mimeCandidate = pickAudioMime();
@@ -1046,8 +1278,9 @@ function CallPageContent() {
       recorder.start(250);
     } catch {
       alert('마이크 권한이 필요합니다');
-      cleanupMicPipeline();
+      cleanupRecorderOnly();
       setMicState('your_turn');
+      setPipelineStage('idle');
       return;
     }
 
@@ -1057,6 +1290,8 @@ function CallPageContent() {
     recordingStartMsRef.current = Date.now();
     lastSpeechTsRef.current = recordingStartMsRef.current;
     setMicState('speaking');
+    setPipelineStage('recording');
+    setMicLevel(0);
 
     // Web Speech API 실시간 자막 (지원 환경만)
     if (isWebSpeechSupported()) {
@@ -1092,13 +1327,13 @@ function CallPageContent() {
     }
 
     try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AC();
-      silenceAudioCtxRef.current = ctx;
+      const ctx = callAudioCtxRef.current;
+      if (!ctx) throw new Error('no shared audio context');
       const srcN = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 1024;
       srcN.connect(analyser);
+      silenceNodesRef.current = { src: srcN, analyser };
       const buffer = new Uint8Array(analyser.fftSize);
 
       const tick = () => {
@@ -1110,6 +1345,10 @@ function CallPageContent() {
         }
         const lvl = sum / buffer.length;
         const now = Date.now();
+        if (now - micLevelLastUpdateRef.current > 120) {
+          micLevelLastUpdateRef.current = now;
+          setMicLevel(Math.round(lvl * 10) / 10);
+        }
         if (lvl > 5.5) lastSpeechTsRef.current = now;
         if (
           now - lastSpeechTsRef.current >= 5000 &&
@@ -1133,7 +1372,7 @@ function CallPageContent() {
       void stopSpeakingInnerRef.current?.();
     }, 28000);
     setSilenceTimer(maxId);
-  }, [isWebSpeechSupported]);
+  }, [isWebSpeechSupported, ensureMicStream]);
 
   const stopSpeaking = useCallback(() => {
     void stopSpeakingInnerRef.current?.();
@@ -1523,7 +1762,11 @@ function CallPageContent() {
 
                   <button
                     type="button"
-                    onClick={() => setIntroStep('answered')}
+                    onClick={() => {
+                      pinAudioSession();
+                      void initCallAudioContext();
+                      setIntroStep('answered');
+                    }}
                     style={{
                       width: '64px',
                       height: '64px',
@@ -2159,6 +2402,73 @@ function CallPageContent() {
               'linear-gradient(180deg, transparent 0%, rgba(14,14,15,0.92) 24%, #0E0E0F 100%)',
           }}
         >
+          {MIC_DEBUG_BAR_ENABLED && (
+            <div
+              style={{
+                alignSelf: 'stretch',
+                pointerEvents: 'none',
+                fontFamily: 'monospace',
+                fontSize: '10px',
+                lineHeight: 1.6,
+                color: 'rgba(255,255,255,0.75)',
+                background: 'rgba(0,0,0,0.55)',
+                border: '0.5px solid rgba(255,216,77,0.35)',
+                borderRadius: '8px',
+                padding: '5px 10px',
+              }}
+            >
+              <div>
+                stage: <b style={{ color: '#FFD84D' }}>{pipelineStage}</b>
+                {' · mic: '}
+                <b style={{ color: micTrackInfo.readyState === 'live' ? '#4ADE80' : '#FF4444' }}>
+                  {micTrackInfo.readyState}/{micTrackInfo.muted ? 'muted' : 'unmuted'}
+                </b>
+                {' · probe: '}
+                <b
+                  style={{
+                    color:
+                      micProbeStatus === 'reused' || micProbeStatus === 'first'
+                        ? '#4ADE80'
+                        : micProbeStatus === 'rejected' || micProbeStatus === 'stale'
+                          ? '#FF4444'
+                          : '#FFD84D',
+                  }}
+                >
+                  {micProbeStatus}
+                </b>
+              </div>
+              <div>
+                {'level: '}
+                <b style={{ fontSize: '13px', color: '#FFD84D' }}>{micLevel}</b>
+                {'  ·  lastRecBytes: '}
+                <b>{lastRecordingBytes}</b>
+              </div>
+              <div>
+                {'ctx: '}
+                <b style={{ color: '#FFD84D' }}>
+                  {callAudioCtxRef.current?.state || 'none'}({ctxCount})
+                </b>
+                {' · close: '}
+                <b style={{ color: closePending ? '#FF4444' : '#4ADE80' }}>
+                  {closePending ? 'pending' : 'idle'}
+                </b>
+                {' · exc: '}
+                <b style={{ color: probeExceptions > 0 ? '#FF4444' : '#4ADE80' }}>
+                  {probeExceptions}
+                </b>
+              </div>
+              <div>
+                {'sess: '}
+                <b style={{ color: '#FFD84D' }}>
+                  {typeof navigator !== 'undefined' && navigator.audioSession
+                    ? navigator.audioSession.type
+                    : 'n/a'}
+                </b>
+                {' · playMethod: '}
+                <b style={{ color: '#4ADE80' }}>webaudio</b>
+              </div>
+            </div>
+          )}
           {(micState === 'your_turn' || micState === 'speaking') && (
             <button
               type="button"
