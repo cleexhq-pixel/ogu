@@ -12,7 +12,12 @@ import { getSupabase } from '@/lib/supabase';
 import { hasReachedDailyLimit, incrementSessionsUsed } from '@/lib/freeLimit';
 import { trackEvent } from '@/lib/analytics';
 import { normalizeLang } from '@/app/lib/i18n';
-import idolScripts, { getRandomLine, getNervousResponse } from '@/src/data/idol-scripts';
+import idolScripts, {
+  getRandomLine,
+  getRandomLineNoRepeat,
+  resetUsedLines,
+  getNervousResponse,
+} from '@/src/data/idol-scripts';
 import { toRoman } from '@/lib/romanize';
 
 /** 팬싱 분류 전용 채팅 라우트 (기존 /api/chat 학습 기능과 분리) */
@@ -905,7 +910,8 @@ function CallPageContent() {
     let cancelled = false;
     const tid = window.setTimeout(async () => {
       if (cancelled || endSequenceRef.current) return;
-      const greet = getRandomLine('greeting');
+      resetUsedLines();
+      const greet = getRandomLineNoRepeat('greeting');
       const text = greet?.text || '안녕하세요~';
       const opening = [historyEntry('idol', text)];
       setMicState('idol_speaking');
@@ -1007,7 +1013,7 @@ function CallPageContent() {
             : '';
       } catch {
         const fb =
-          getRandomLine('reaction_nervous') || getNervousResponse();
+          getRandomLineNoRepeat('reaction_nervous') || getNervousResponse();
         idolMain =
           fb?.text || getNervousResponse()?.text || '괜찮아요~ 천천히 해요.';
         shouldAsk = false;
@@ -1015,7 +1021,7 @@ function CallPageContent() {
 
       if (!idolMain) {
         const fb =
-          getRandomLine('reaction_nervous') || getNervousResponse();
+          getRandomLineNoRepeat('reaction_nervous') || getNervousResponse();
         idolMain =
           fb?.text ||
           getNervousResponse()?.text ||
@@ -1061,7 +1067,7 @@ function CallPageContent() {
       if (shouldAsk && idolQuestionStr) {
         setIdolQuestionCount((q) => q + 1);
         await new Promise((r) => {
-          window.setTimeout(r, 2000);
+          window.setTimeout(r, 1200);
         });
         setCurrentSubtitle({
           korean: idolQuestionStr,

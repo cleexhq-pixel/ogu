@@ -1,14 +1,16 @@
 const idolScripts = {
 
+  // G02, G03, G08: 재회를 전제하는 문구라 첫 통화에서 나오면 어색함.
+  // 재방문(재회) 기능 도입 시 status를 되돌려 부활시킬 것.
   greeting: [
     { id: "G01", text: "안녕하세요~" },
-    { id: "G02", text: "안녕~ 잘 지냈어요?" },
-    { id: "G03", text: "오랜만이에요!" },
+    { id: "G02", text: "안녕~ 잘 지냈어요?", status: "retired" },
+    { id: "G03", text: "오랜만이에요!", status: "retired" },
     { id: "G04", text: "아가가 찾아왔네~" },
     { id: "G05", text: "잘 들려요? 저 잘 보여요?" },
     { id: "G06", text: "와~ 드디어 만났다!" },
     { id: "G07", text: "어머, 반가워요~" },
-    { id: "G08", text: "기다렸어요~" },
+    { id: "G08", text: "기다렸어요~", status: "retired" },
     { id: "G09", text: "오~ 왔어요? 반가워요!" },
     { id: "G10", text: "안녕~ 오늘 컨디션 좋아 보이네요!" },
     { id: "G11", text: "혹시 오늘이 처음이에요?", persona: "Universal" },
@@ -179,9 +181,36 @@ const idolScripts = {
 
 // Phase별 대사 선택 헬퍼
 export function getRandomLine(category) {
-  const lines = idolScripts[category];
-  if (!lines || lines.length === 0) return null;
+  const lines = (idolScripts[category] || []).filter(
+    (l) => l.status !== "retired",
+  );
+  if (lines.length === 0) return null;
   return lines[Math.floor(Math.random() * lines.length)];
+}
+
+// 통화(세션) 내 중복 회피 — 클라이언트(call/page.js)에서만 사용할 것.
+// 서버 API route는 여러 유저 요청이 같은 프로세스 메모리를 공유하므로
+// 이 상태를 쓰면 다른 유저의 사용 이력이 섞여 들어간다. 서버 쪽에서는
+// 기존 getRandomLine(무상태)만 사용한다.
+const usedIdsThisSession = new Set();
+
+export function getRandomLineNoRepeat(category) {
+  const lines = (idolScripts[category] || []).filter(
+    (l) => l.status !== "retired",
+  );
+  if (lines.length === 0) return null;
+  let candidates = lines.filter((l) => !usedIdsThisSession.has(l.id));
+  if (candidates.length === 0) {
+    usedIdsThisSession.clear();
+    candidates = lines;
+  }
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  usedIdsThisSession.add(picked.id);
+  return picked;
+}
+
+export function resetUsedLines() {
+  usedIdsThisSession.clear();
 }
 
 // 시나리오별 우선 카테고리에서 선택
