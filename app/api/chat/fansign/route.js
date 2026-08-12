@@ -20,6 +20,7 @@ const client = new Anthropic({
 });
 
 const INTENT_LABELS = [
+  'answering',
   'korean_attempt',
   'compliment',
   'request',
@@ -88,6 +89,7 @@ async function classifyIntent({
     `intent MUST be exactly one of: ${INTENT_LABELS.join(', ')}\n` +
     `emotion MUST be exactly one of: ${EMOTIONS.join(', ')}\n\n` +
     'Rules:\n' +
+    '- answering: the previous idol message in history was a QUESTION and the user is answering it. This takes PRIORITY over korean_attempt and compliment. Example: idol asked "좋아하는 노래 있어요?" and user says "저는 OO 좋아해요" → answering (NOT compliment).\n' +
     '- korean_attempt: user used Korean / Hangul to speak or mix.\n' +
     '- compliment: praise / thanks toward the idol or their work.\n' +
     '- request: asks for gesture, sang, nickname, fav moment etc.\n' +
@@ -126,6 +128,8 @@ async function classifyIntent({
 
 function pickPhaseB(intent, scenarioObj) {
   switch (intent) {
+    case 'answering':
+      return getRandomLine('reaction_to_korean');
     case 'korean_attempt':
       return getRandomLine('reaction_to_korean');
     case 'compliment':
@@ -236,7 +240,7 @@ function buildPayload(body, intent, emotion) {
 
   if (phase === 'PHASE_B') {
     shouldAskIdolQuestion =
-      history.length === 3 || history.length === 6;
+      (history.length === 3 || history.length === 6) && intent !== 'nervous';
     if (shouldAskIdolQuestion) {
       const usedTopics = extractUsedTopics(history);
       const q = getIdolQuestion(usedTopics);
@@ -266,7 +270,7 @@ function buildPayload(body, intent, emotion) {
   if (phase === 'PHASE_C') {
     const tp = getRandomLine('time_pressure');
     const rq = getRandomLine('reaction_request');
-    idolText = `${tp?.text || ''} ${rq?.text || ''}`.trim();
+    idolText = rq?.text || tp?.text || '';
     return {
       idolText: replaceNamePlaceholder(idolText, idolName),
       shouldAskIdolQuestion: false,
