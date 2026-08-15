@@ -1,937 +1,526 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { getSessionsRemaining } from "@/lib/freeLimit";
-import { getSupabase } from "@/lib/supabase";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { trackEvent } from "@/lib/analytics";
-import { calculateDday, formatDday } from "@/src/lib/dday";
-import { isInAppBrowser, getInAppBrowserName } from "@/lib/inAppBrowser";
-import InAppBrowserModal from "@/components/InAppBrowserModal";
 
 const LANG_KEY = "ogu_lang";
 const VOICE_KEY = "kkobi_voice_gender";
-const FANSIGN_DATE_KEY = "kkobi_m90s_fansign_date";
+const INTENT_TEXT_KEY = "kkobi_m90s_intent_text";
+const INTENT_KO_KEY = "kkobi_m90s_intent_ko";
+
+const EXAMPLES = [
+  "I've loved you since day one",
+  "You got me through a hard time",
+  "Take care of yourself, always",
+];
 
 const COPY = {
   en: {
-    eyebrow: "Fansign Video Call Prep",
-    hero_1: "What do you",
-    hero_2: "want to say?",
-    sub: "Pick the moment that matters.\nWe'll prepare every word with you.",
-    cta_placeholder: "Choose a moment first",
-    cta_ready: (s) => `Prepare for ${s} →`,
-    free_badge: (n) => `Free · ${n} sessions left today`,
-    limit_title: "All done for today!",
-    limit_desc: "Come back tomorrow for 3 more sessions 🌙",
-    scenarios: [
-      "Compliment", "Birthday", "Encouragement",
-      "Game", "Request"
-    ],
-    voice_label: "Idol's voice",
-    voice_desc: "Your idol will speak during the 90-second simulation",
+    hero_line1: "What's the one thing",
+    hero_line2: "you want to tell them?",
+    textarea_placeholder: "your words, any language",
+    dont_know_yet: "I don't know yet →",
+    who_calling: "who's calling?",
     voice_female: "Female",
     voice_male: "Male",
-    fansign_date_label: "Fansign date",
-    fansign_date_optional: "Optional",
-    fansign_date_hint:
-      "Stronger coaching when we know your date",
-    fansign_date_placeholder: "YYYY-MM-DD",
-    dday_label_format: "D-{n}",
+    cta_call: "Take the call",
+    loading: "Getting your words ready…",
+    error_msg: "That didn't go through.",
+    retry: "Try again",
+    step2_label: "your words, in Korean",
+    hear_it: "hear it",
+    can_you_say: "Can you actually say it out loud?",
   },
   ko: {
-    eyebrow: "영통 팬싸인회 준비 서비스",
-    hero_1: "무엇을",
-    hero_2: "말하고 싶나요?",
-    sub: "마음 가는 걸 고르세요.\n한 마디 한 마디 함께 준비할게요.",
-    cta_placeholder: "먼저 순간을 골라주세요",
-    cta_ready: (s) => `${s} 준비하기`,
-    free_badge: (n) => `무료 · 오늘 ${n}회 남음`,
-    limit_title: "오늘 연습을 다 했어요!",
-    limit_desc: "내일 다시 3회 충전돼요 🌙",
-    scenarios: [
-      "칭찬하기", "생일 축하", "응원하기",
-      "게임하기", "멘트 요청"
-    ],
-    voice_label: "아이돌 목소리",
-    voice_desc: "90초 시뮬레이션에서 아이돌이 이 목소리로 말해요",
+    hero_line1: "가장 하고 싶은 말,",
+    hero_line2: "한 가지만 골라볼까요?",
+    textarea_placeholder: "무슨 언어든 편하게 적어보세요",
+    dont_know_yet: "아직 잘 모르겠어요 →",
+    who_calling: "누구한테 거는 통화인가요?",
     voice_female: "여성",
     voice_male: "남성",
-    fansign_date_label: "팬싸 날짜",
-    fansign_date_optional: "선택",
-    fansign_date_hint:
-      "날짜를 알려주면 더 강력한 코칭을 받을 수 있어요",
-    fansign_date_placeholder: "YYYY-MM-DD",
-    dday_label_format: "D-{n}",
+    cta_call: "통화 시작하기",
+    loading: "말을 옮기고 있어요…",
+    error_msg: "다시 한번 해볼까요?",
+    retry: "다시 시도",
+    step2_label: "한국어로는 이렇게 말해요",
+    hear_it: "들어보기",
+    can_you_say: "이제 소리 내서 말해볼 수 있나요?",
   },
   id: {
-    eyebrow: "Persiapan Video Call Fansign",
-    hero_1: "Apa yang ingin",
-    hero_2: "kamu ucapkan?",
-    sub: "Pilih momen yang paling berarti.\nKami siapkan setiap kata bersamamu.",
-    cta_placeholder: "Pilih momen dulu",
-    cta_ready: (s) => `Siapkan ${s}`,
-    free_badge: (n) => `Gratis · Sisa ${n} sesi hari ini`,
-    limit_title: "Sesi hari ini sudah habis!",
-    limit_desc: "Kembali besok untuk 3 sesi lagi 🌙",
-    scenarios: [
-      "Pujian", "Ulang Tahun", "Dukungan",
-      "Game", "Permintaan"
-    ],
-    voice_label: "Suara idol",
-    voice_desc: "Idolmu akan berbicara dengan suara ini saat simulasi",
+    hero_line1: "Satu hal yang paling",
+    hero_line2: "ingin kamu sampaikan?",
+    textarea_placeholder: "tulis kata-katamu, bahasa apa saja",
+    dont_know_yet: "Belum tahu →",
+    who_calling: "mau telepon siapa?",
     voice_female: "Perempuan",
     voice_male: "Laki-laki",
-    fansign_date_label: "Tanggal fansign",
-    fansign_date_optional: "Opsional",
-    fansign_date_hint:
-      "Coaching-nya makin mantap kalau kami tahu tanggalnya",
-    fansign_date_placeholder: "YYYY-MM-DD",
-    dday_label_format: "D-{n}",
+    cta_call: "Mulai teleponnya",
+    loading: "Sedang menyiapkan kata-katamu…",
+    error_msg: "Ada yang tidak berhasil.",
+    retry: "Coba lagi",
+    step2_label: "kata-katamu, dalam bahasa Korea",
+    hear_it: "dengarkan",
+    can_you_say: "Coba, bisa kamu ucapkan dengan suara keras?",
   },
   pt: {
-    eyebrow: "Preparação para Fansign",
-    hero_1: "O que você quer",
-    hero_2: "dizer?",
-    sub: "Escolha o momento que importa.\nVamos preparar cada palavra com você.",
-    cta_placeholder: "Escolha um momento primeiro",
-    cta_ready: (s) => `Preparar ${s}`,
-    free_badge: (n) => `Grátis · ${n} sessões restantes hoje`,
-    limit_title: "Sessões de hoje esgotadas!",
-    limit_desc: "Volte amanhã para mais 3 sessões 🌙",
-    scenarios: [
-      "Elogio", "Aniversário", "Apoio",
-      "Jogo", "Pedido"
-    ],
-    voice_label: "Voz do idol",
-    voice_desc: "Seu idol vai falar durante a simulação de 90 segundos",
+    hero_line1: "Qual é a única coisa",
+    hero_line2: "que você quer dizer?",
+    textarea_placeholder: "suas palavras, em qualquer idioma",
+    dont_know_yet: "Ainda não sei →",
+    who_calling: "pra quem é a ligação?",
     voice_female: "Feminino",
     voice_male: "Masculino",
-    fansign_date_label: "Data do fansign",
-    fansign_date_optional: "Opcional",
-    fansign_date_hint:
-      "O coaching fica mais forte quando a gente sabe a data",
-    fansign_date_placeholder: "YYYY-MM-DD",
-    dday_label_format: "D-{n}",
+    cta_call: "Atender a ligação",
+    loading: "Preparando suas palavras…",
+    error_msg: "Isso não funcionou.",
+    retry: "Tentar de novo",
+    step2_label: "suas palavras, em coreano",
+    hear_it: "ouvir",
+    can_you_say: "Consegue dizer isso em voz alta?",
   },
   fr: {
-    eyebrow: "Préparation Appel Vidéo Fansign",
-    hero_1: "Que voulez-vous",
-    hero_2: "dire?",
-    sub: "Choisissez le moment qui compte.\nNous préparerons chaque mot avec vous.",
-    cta_placeholder: "Choisissez un moment d'abord",
-    cta_ready: (s) => `Préparer ${s}`,
-    free_badge: (n) => `Gratuit · ${n} sessions restantes`,
-    limit_title: "Sessions du jour épuisées!",
-    limit_desc: "Revenez demain pour 3 nouvelles sessions 🌙",
-    scenarios: [
-      "Compliment", "Anniversaire", "Encouragement",
-      "Jeu", "Demande"
-    ],
-    voice_label: "Voix de l'idol",
-    voice_desc: "Votre idol parlera pendant la simulation de 90 secondes",
+    hero_line1: "Quelle est la seule chose",
+    hero_line2: "que vous voulez lui dire?",
+    textarea_placeholder: "vos mots, dans n'importe quelle langue",
+    dont_know_yet: "Je ne sais pas encore →",
+    who_calling: "l'appel est pour qui?",
     voice_female: "Féminin",
     voice_male: "Masculin",
-    fansign_date_label: "Date du fansign",
-    fansign_date_optional: "Optionnel",
-    fansign_date_hint:
-      "Un coaching encore plus solide si on connaît ta date",
-    fansign_date_placeholder: "YYYY-MM-DD",
-    dday_label_format: "D-{n}",
+    cta_call: "Prendre l'appel",
+    loading: "Préparation de vos mots…",
+    error_msg: "Ça n'a pas fonctionné.",
+    retry: "Réessayer",
+    step2_label: "vos mots, en coréen",
+    hear_it: "écouter",
+    can_you_say: "Pouvez-vous le dire à voix haute?",
   },
 };
 
-const SCENARIO_IDS = [
-  "compliment", "birthday", "encouragement",
-  "game", "request"
-];
-
-const EMOJIS = ["💝", "🎂", "💪", "🎮", "🎤"];
-
-function ScenarioPageInner() {
-  const searchParams = useSearchParams();
-  const preSelected = searchParams.get("scenario");
-
-  const [selected, setSelected] = useState(preSelected || null);
-  const [lang, setLang] = useState("en");
-  const [user, setUser] = useState(null);
-  const [isPaid, setIsPaid] = useState(false);
-  const [sessionsLeft, setSessionsLeft] = useState(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showInAppModal, setShowInAppModal] = useState(false);
-  const [inAppBrowserName, setInAppBrowserName] = useState("");
-  const [voiceGender, setVoiceGender] = useState("FEMALE");
-  const [idolName, setIdolName] = useState("");
-  const [fansignDate, setFansignDate] = useState("");
-
-  useEffect(() => {
-    const savedLang = localStorage.getItem(LANG_KEY) || "en";
-    setLang(savedLang);
-    const savedGender = localStorage.getItem(VOICE_KEY) || "FEMALE";
-    setVoiceGender(savedGender);
-    const savedIdol = localStorage.getItem("kkobi_idol_name");
-    if (savedIdol && savedIdol !== "IDOL") {
-      setIdolName(savedIdol);
-    }
-    const savedFansign = localStorage.getItem(FANSIGN_DATE_KEY);
-    if (savedFansign && /^\d{4}-\d{2}-\d{2}$/.test(savedFansign.trim())) {
-      setFansignDate(savedFansign.trim());
-    }
-
-    const supabase = getSupabase();
-
-    const readPaid = () => {
-      const tier = localStorage.getItem("kkobi_pass_tier");
-      const expires = localStorage.getItem("kkobi_pass_expires");
-      return Boolean(
-        tier === "prep_pass" &&
-          expires &&
-          new Date(expires) > new Date(),
-      );
-    };
-
-    function applyDerived(maybeUser) {
-      const paid = readPaid();
-      setIsPaid(paid);
-      setSessionsLeft(getSessionsRemaining(maybeUser?.id ?? null, paid));
-    }
-
-    async function init() {
-      let currentUser = null;
-      if (supabase) {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        currentUser = session?.user ?? null;
-        setUser(currentUser);
-      }
-      applyDerived(currentUser);
-    }
-
-    void init();
-
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("code")) {
-        setTimeout(() => {
-          void (async () => {
-            let currentUser = null;
-            if (supabase) {
-              const {
-                data: { session },
-              } = await supabase.auth.getSession();
-              currentUser = session?.user ?? null;
-              setUser(currentUser);
-            }
-            applyDerived(currentUser);
-            window.history.replaceState({}, "", window.location.pathname);
-          })();
-        }, 500);
-      }
-    }
-
-    let authSubscription = null;
-    if (supabase) {
-      const { data } = supabase.auth.onAuthStateChange(
-        async (_event, session) => {
-          const u = session?.user ?? null;
-          setUser(u);
-          applyDerived(u);
-        },
-      );
-      authSubscription = data?.subscription ?? null;
-    }
-
-    return () => authSubscription?.unsubscribe?.();
-  }, []);
-
-  const t = COPY[lang] || COPY.en;
-  const selectedIndex = SCENARIO_IDS.indexOf(selected);
-  const selectedLabel = selectedIndex >= 0 ? t.scenarios[selectedIndex] : null;
-
-  function isLocked(index) {
-    if (user) return false;
-    return index !== 0;
-  }
-
-  async function continueWithGoogle() {
-    if (typeof window === "undefined") return;
-    if (isInAppBrowser()) {
-      setInAppBrowserName(getInAppBrowserName());
-      setShowInAppModal(true);
-      return;
-    }
-    const supabase = getSupabase();
-    if (!supabase) return;
-    const next = encodeURIComponent("/my-90-seconds");
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${next}`,
-      },
-    });
-  }
-
-  function handleStart() {
-    if (!selected) return;
-    const idx = SCENARIO_IDS.indexOf(selected);
-    if (idx < 0) return;
-
-    if (isLocked(idx)) {
-      setShowLoginModal(true);
-      return;
-    }
-
-    if (!isPaid && sessionsLeft !== null && sessionsLeft <= 0) {
-      window.location.href = `/my-90-seconds/paywall?scenario=${encodeURIComponent(
-        selected,
-      )}`;
-      return;
-    }
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem(VOICE_KEY, voiceGender);
-      const finalIdolName = idolName.trim().toUpperCase() || "IDOL";
-      localStorage.setItem("kkobi_idol_name", finalIdolName);
-    }
-    trackEvent("m90s_scenario_selected", {
-      scenario: selected,
-      user_type: user ? "member" : "guest",
-      is_paid: isPaid,
-    });
-    window.location.href = `/my-90-seconds/prep?scenario=${selected}`;
-  }
-
+function FemaleIcon({ color }) {
   return (
-    <div style={{
-      background: "#0E0E0F",
-      minHeight: "100vh",
-      maxWidth: 390,
-      margin: "0 auto",
-      fontFamily: "'Inter', sans-serif",
-      color: "#F2F0F4",
-      padding: "24px 22px 48px",
-      position: "relative",
-      overflow: "hidden",
-    }}>
-
-      {/* 상단 로고 — 홈과 동일 */}
-      <div style={{
-        display: "flex", alignItems: "center",
-        gap: 6, marginBottom: 32,
-      }}>
-        <span style={{
-          fontFamily: "'Manrope', sans-serif",
-          fontSize: 15, fontWeight: 800,
-          letterSpacing: "-0.02em", color: "#F2F0F4",
-        }}>
-          My90Seconds
-        </span>
-      </div>
-
-      {/* 메인 카피 */}
-      <h1 style={{
-        fontFamily: "'Manrope', sans-serif",
-        fontSize: 22, fontWeight: 800,
-        letterSpacing: "-0.01em",
-        lineHeight: 1.1, marginBottom: 12,
-      }}>
-        {t.hero_1}<br />
-        <span style={{ color: "#FFD84D" }}>
-          {t.hero_2}
-        </span>
-      </h1>
-
-      {/* 서브 카피 */}
-      <p style={{
-        fontSize: 13, fontWeight: 500, color: "#B0AEB8",
-        lineHeight: 1.65, marginBottom: 28,
-        whiteSpace: "pre-line",
-      }}>
-        {t.sub}
-      </p>
-
-      {/* 시나리오 그리드 */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 8, marginBottom: 8,
-      }}>
-        {SCENARIO_IDS.map((id, i) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => {
-              if (isLocked(i)) {
-                setShowLoginModal(true);
-                return;
-              }
-              setSelected(id);
-            }}
-            style={{
-              background: selected === id
-                ? "rgba(255,216,77,0.06)"
-                : "rgba(255,255,255,0.03)",
-              borderRadius: 14,
-              padding: "14px 12px",
-              border: selected === id
-                ? "0.5px solid #FFD84D"
-                : "0.5px solid rgba(255,255,255,0.08)",
-              cursor: "pointer",
-              textAlign: "center", position: "relative",
-              overflow: "hidden", transition: "background 0.15s",
-              opacity: isLocked(i) ? 0.45 : 1,
-              boxSizing: "border-box",
-            }}
-          >
-            <span style={{
-              fontSize: 20, marginBottom: 8,
-              display: "block",
-            }}>
-              {EMOJIS[i]}
-            </span>
-            <p style={{
-              fontFamily: "'Manrope', sans-serif",
-              fontSize: 11, fontWeight: 600,
-              color: "#F2F0F4", margin: 0,
-            }}>
-              {t.scenarios[i]}
-            </p>
-            {!user && i === 0 && (
-              <span
-                style={{
-                  position: "absolute",
-                  top: "6px",
-                  right: "6px",
-                  fontSize: "8px",
-                  fontWeight: 700,
-                  background: "rgba(255,216,77,0.18)",
-                  color: "#FFD84D",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  padding: "2px 6px",
-                  borderRadius: "99px",
-                }}
-              >
-                FREE
-              </span>
-            )}
-            {isLocked(i) && (
-              <span
-                style={{
-                  position: "absolute",
-                  top: "7px",
-                  right: "8px",
-                  fontSize: "11px",
-                  color: "rgba(255,255,255,0.2)",
-                }}
-              >
-                🔒
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {!user && (
-        <div
-          style={{
-            margin: "8px 0 0",
-            background: "rgba(255,255,255,0.03)",
-            border: "0.5px solid rgba(255,255,255,0.07)",
-            borderRadius: "10px",
-            padding: "9px 12px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "8px",
-          }}
-        >
-          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.45)" }}>
-            Sign in to unlock all scenarios — free
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowLoginModal(true)}
-            style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              color: "#FFD84D",
-              background: "none",
-              border: "none",
-              whiteSpace: "nowrap",
-              cursor: "pointer",
-            }}
-          >
-            Sign in →
-          </button>
-        </div>
-      )}
-
-      {/* 구분선 */}
-      <div style={{
-        height: 1,
-        background: "rgba(255,255,255,0.06)",
-        margin: "16px 0",
-      }} />
-
-      <div style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "0.5px solid rgba(255,255,255,0.1)",
-        borderRadius: "14px",
-        padding: "14px",
-        marginBottom: "10px",
-      }}>
-        <p style={{
-          fontSize: "9px",
-          color: "#FFD84D",
-          fontWeight: 700,
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          margin: "0 0 6px",
-          fontFamily: "'Manrope', sans-serif",
-        }}>
-          Idol&apos;s voice
-        </p>
-        <p style={{
-          fontSize: "10px",
-          fontWeight: 500,
-          color: "#7A7882",
-          margin: "0 0 10px",
-          lineHeight: 1.5,
-        }}>
-          {t.voice_desc}
-        </p>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "8px",
-        }}>
-          {(["FEMALE", "MALE"]).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => {
-                setVoiceGender(g);
-                if (typeof window !== "undefined") {
-                  localStorage.setItem(VOICE_KEY, g);
-                }
-              }}
-              style={{
-                background: voiceGender === g ? "#FFD84D" : "transparent",
-                border: voiceGender === g
-                  ? "none"
-                  : "0.5px solid rgba(255,255,255,0.15)",
-                borderRadius: "99px",
-                padding: "10px",
-                fontSize: "11px",
-                fontWeight: 700,
-                color: voiceGender === g ? "#0E0E0F" : "rgba(255,255,255,0.5)",
-                cursor: "pointer",
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              {g === "FEMALE" ? t.voice_female : t.voice_male}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "0.5px solid rgba(255,255,255,0.1)",
-        borderRadius: "14px",
-        padding: "14px",
-        marginBottom: "10px",
-      }}>
-        <p style={{
-          fontSize: "9px",
-          color: "#FFD84D",
-          fontWeight: 700,
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          margin: "0 0 6px",
-          fontFamily: "'Manrope', sans-serif",
-          display: "flex",
-          alignItems: "baseline",
-          gap: "4px",
-          flexWrap: "wrap",
-        }}>
-          <span>Idol&apos;s name</span>
-          <span style={{
-            fontSize: "8px",
-            color: "#7A7882",
-            fontWeight: 500,
-            letterSpacing: "0.08em",
-          }}>
-            · optional
-          </span>
-        </p>
-        <p style={{
-          fontSize: "10px",
-          fontWeight: 500,
-          color: "#7A7882",
-          margin: "0 0 10px",
-          lineHeight: 1.5,
-        }}>
-          Your fansign call will use this name throughout
-        </p>
-        <input
-          type="text"
-          value={idolName}
-          onChange={(e) => setIdolName(e.target.value)}
-          placeholder={
-            voiceGender === "MALE"
-              ? "e.g. Jisung, Felix, Mingyu"
-              : "e.g. Wonyoung, Chaeyeon, Karina"
-          }
-          maxLength={20}
-          style={{
-            width: "100%",
-            background: "rgba(255,255,255,0.05)",
-            border: "0.5px solid rgba(255,255,255,0.1)",
-            borderRadius: "8px",
-            padding: "10px 12px",
-            fontSize: "12px",
-            color: "#fff",
-            boxSizing: "border-box",
-            fontFamily: "'Inter', sans-serif",
-            outline: "none",
-          }}
-        />
-      </div>
-
-      <div
-        style={{
-          background: "rgba(255,255,255,0.03)",
-          border: "0.5px solid rgba(255,255,255,0.1)",
-          borderRadius: "14px",
-          padding: "14px",
-          marginBottom: "10px",
-        }}
-      >
-        <p
-          style={{
-            fontSize: "9px",
-            color: "#FFD84D",
-            fontWeight: 700,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            margin: "0 0 6px",
-            fontFamily: "'Manrope', sans-serif",
-            display: "flex",
-            alignItems: "baseline",
-            gap: "4px",
-            flexWrap: "wrap",
-          }}
-        >
-          <span>Fansign date</span>
-          <span style={{
-            fontSize: "8px",
-            color: "#7A7882",
-            fontWeight: 500,
-            letterSpacing: "0.08em",
-          }}>
-            · optional
-          </span>
-        </p>
-        <p
-          style={{
-            fontSize: "10px",
-            fontWeight: 500,
-            color: "#7A7882",
-            margin: "0 0 10px",
-            lineHeight: 1.55,
-          }}
-        >
-          {t.fansign_date_hint}
-        </p>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-          }}
-        >
-          <input
-            type="date"
-            value={fansignDate}
-            aria-label={t.fansign_date_label}
-            onChange={(e) => {
-              const v = e.target.value;
-              setFansignDate(v);
-              if (typeof window === "undefined") return;
-              if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
-                localStorage.setItem(FANSIGN_DATE_KEY, v);
-                trackEvent("m90s_fansign_date_entered", {
-                  dday: calculateDday(v),
-                });
-              } else {
-                localStorage.removeItem(FANSIGN_DATE_KEY);
-              }
-            }}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              background: "rgba(255,255,255,0.05)",
-              border: "0.5px solid rgba(255,255,255,0.1)",
-              borderRadius: "8px",
-              padding: "10px 12px",
-              fontSize: "12px",
-              color: "#fff",
-              boxSizing: "border-box",
-              fontFamily: "'Inter', sans-serif",
-              outline: "none",
-              colorScheme: "dark",
-            }}
-          />
-          {fansignDate && /^\d{4}-\d{2}-\d{2}$/.test(fansignDate) ? (
-            <span
-              style={{
-                fontSize: "13px",
-                fontWeight: 700,
-                color: "#FFD84D",
-                whiteSpace: "nowrap",
-                fontFamily: "'Manrope', sans-serif",
-              }}
-            >
-              {(() => {
-                const n = calculateDday(fansignDate);
-                if (n === null) return "";
-                if (n > 0)
-                  return t.dday_label_format.replace("{n}", String(n));
-                return formatDday(n);
-              })()}
-            </span>
-          ) : null}
-        </div>
-      </div>
-
-      {/* CTA 영역 */}
-      {!isPaid && sessionsLeft !== null && sessionsLeft <= 0 ? (
-        <div style={{
-          background: "rgba(255,216,77,0.06)",
-          border: "0.5px solid rgba(255,216,77,0.2)",
-          borderRadius: 14, padding: "18px 16px",
-          textAlign: "center",
-        }}>
-          <p style={{
-            fontFamily: "'Manrope', sans-serif",
-            fontSize: 14, fontWeight: 700,
-            color: "#FFD84D", marginBottom: 4,
-          }}>
-            {t.limit_title}
-          </p>
-          <p style={{ fontSize: 12, color: "#7A7882" }}>
-            {t.limit_desc}
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* D안 스타일 CTA 버튼 */}
-          <button
-            onClick={handleStart}
-            disabled={!selected}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "14px 24px",
-              borderRadius: 9999,
-              background: selected ? "#FFD84D" : "rgba(255,255,255,0.06)",
-              border: "none", cursor: selected ? "pointer" : "default",
-              marginBottom: 10,
-              transition: "background 0.2s",
-            }}
-          >
-            <span style={{
-              fontFamily: "'Manrope', sans-serif",
-              fontSize: 11, fontWeight: 700,
-              color: selected ? "#0E0E0F" : "rgba(255,255,255,0.3)",
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-            }}>
-              {selected && selectedLabel
-                ? t.cta_ready(selectedLabel)
-                : t.cta_placeholder}
-            </span>
-          </button>
-
-          {/* 횟수 표시 */}
-          <p style={{
-            fontSize: "10px",
-            fontWeight: 500,
-            color: "rgba(255,255,255,0.25)",
-            letterSpacing: "0.08em",
-            textAlign: "center",
-            marginTop: "8px",
-          }}>
-            {user ? (
-              <>
-                Free ·{" "}
-                <span style={{ color: "#FFD84D" }}>
-                  {isPaid
-                    ? "Unlimited"
-                    : sessionsLeft === null
-                      ? "…"
-                      : `${sessionsLeft} session${sessionsLeft !== 1 ? "s" : ""} left today`}
-                </span>
-              </>
-            ) : (
-              <>
-                Free ·{" "}
-                <span style={{ color: "#FFD84D" }}>1 session today</span>
-              </>
-            )}
-          </p>
-        </>
-      )}
-
-      {showLoginModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.8)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: "0 24px",
-          }}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            style={{
-              background: "#1A191B",
-              borderRadius: "20px",
-              padding: "28px 24px",
-              width: "100%",
-              maxWidth: "340px",
-              textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: "36px", marginBottom: "12px" }}>🔒</div>
-            <p
-              style={{
-                fontSize: "18px",
-                fontWeight: 800,
-                color: "#fff",
-                margin: "0 0 8px",
-              }}
-            >
-              Unlock all 5 scenarios
-            </p>
-            <p
-              style={{
-                fontSize: "13px",
-                fontWeight: 500,
-                color: "#B0AEB8",
-                margin: "0 0 20px",
-                lineHeight: 1.6,
-              }}
-            >
-              Sign in to practice every fansign moment — free.
-            </p>
-
-            {[
-              "All 5 scenarios unlocked",
-              "3 sessions per day — free",
-              "Progress & idol name saved",
-              "Korean lessons access",
-            ].map((perk) => (
-              <div
-                key={perk}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  color: "#F2F0F4",
-                  textAlign: "left",
-                  marginBottom: "8px",
-                }}
-              >
-                <div
-                  style={{
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    background: "#FFD84D",
-                    flexShrink: 0,
-                  }}
-                />
-                {perk}
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={() => void continueWithGoogle()}
-              style={{
-                width: "100%",
-                background: "#FFD84D",
-                border: "none",
-                borderRadius: "99px",
-                padding: "14px",
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                color: "#0E0E0F",
-                cursor: "pointer",
-                marginTop: "8px",
-              }}
-            >
-              Continue with Google
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowLoginModal(false)}
-              style={{
-                width: "100%",
-                background: "none",
-                border: "0.5px solid rgba(255,255,255,0.15)",
-                borderRadius: "99px",
-                padding: "12px",
-                fontSize: "11px",
-                fontWeight: 500,
-                color: "rgba(255,255,255,0.4)",
-                cursor: "pointer",
-                marginTop: "8px",
-              }}
-            >
-              Maybe later
-            </button>
-          </div>
-        </div>
-      )}
-
-      <InAppBrowserModal
-        isOpen={showInAppModal}
-        onClose={() => setShowInAppModal(false)}
-        browserName={inAppBrowserName}
-        lang={lang}
-      />
-    </div>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="5" />
+      <line x1="12" y1="13" x2="12" y2="21" />
+      <line x1="9" y1="18" x2="15" y2="18" />
+    </svg>
   );
 }
 
-export default function ScenarioPage() {
+function MaleIcon({ color }) {
   return (
-    <Suspense fallback={
-      <div style={{
-        minHeight: "100vh", background: "#0E0E0F",
-        display: "flex", alignItems: "center",
-        justifyContent: "center",
-      }}>
-        <p style={{ color: "#5C5A62", fontSize: 13 }}>Loading...</p>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="14" r="5" />
+      <line x1="14" y1="10" x2="20" y2="4" />
+      <polyline points="14 4 20 4 20 10" />
+    </svg>
+  );
+}
+
+function PlayIcon({ color }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill={color}>
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+function PauseIcon({ color }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill={color}>
+      <rect x="6" y="5" width="4" height="14" />
+      <rect x="14" y="5" width="4" height="14" />
+    </svg>
+  );
+}
+
+export default function IntentPage() {
+  const router = useRouter();
+  const textareaRef = useRef(null);
+  const audioRef = useRef(null);
+
+  const [lang, setLang] = useState("en");
+  const [step, setStep] = useState(1);
+  const [text, setText] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+  const [showExamples, setShowExamples] = useState(false);
+  const [voiceGender, setVoiceGender] = useState("FEMALE");
+  const [korean, setKorean] = useState("");
+  const [romanized, setRomanized] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState(false);
+  const [isHearingIt, setIsHearingIt] = useState(false);
+
+  useEffect(() => {
+    setLang(localStorage.getItem(LANG_KEY) || "en");
+    setVoiceGender(localStorage.getItem(VOICE_KEY) || "FEMALE");
+  }, []);
+
+  const t = COPY[lang] || COPY.en;
+
+  function handleExampleClick(example) {
+    setText(example);
+    setShowExamples(false);
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(example.length, example.length);
+      }
+    });
+  }
+
+  function handleGenderSelect(g) {
+    setVoiceGender(g);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(VOICE_KEY, g);
+    }
+  }
+
+  async function handleTranslate() {
+    const trimmed = text.trim();
+    if (!trimmed || isTranslating) return;
+    setIsTranslating(true);
+    setTranslateError(false);
+    try {
+      const res = await fetch("/api/translate-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: trimmed, lang }),
+      });
+      if (!res.ok) throw new Error("translate_failed");
+      const data = await res.json();
+      if (!data?.korean) throw new Error("translate_failed");
+      setKorean(data.korean);
+      setRomanized(data.romanized || "");
+      if (typeof window !== "undefined") {
+        localStorage.setItem(INTENT_TEXT_KEY, trimmed);
+        localStorage.setItem(INTENT_KO_KEY, data.korean);
+      }
+      trackEvent("m90s_intent_translated", { lang });
+      setStep(2);
+    } catch {
+      setTranslateError(true);
+    } finally {
+      setIsTranslating(false);
+    }
+  }
+
+  async function handleHearIt() {
+    if (isHearingIt || !korean) return;
+    setIsHearingIt(true);
+    window.setTimeout(() => setIsHearingIt(false), 1200);
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: korean, lang: "ko", gender: voiceGender }),
+      });
+      const data = await res.json();
+      if (data?.audioContent) {
+        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+        audioRef.current = audio;
+        void audio.play();
+      }
+    } catch {
+      // 재생 실패는 조용히 무시 — 아이콘은 타이머로 이미 원상 복귀됨
+    }
+  }
+
+  function handleTakeCall() {
+    trackEvent("m90s_scenario_selected", {
+      scenario: "compliment",
+      user_type: "guest",
+    });
+    router.push("/my-90-seconds/prep?scenario=compliment");
+  }
+
+  return (
+    <>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Gabarito:wght@600;700&display=swap"
+        rel="stylesheet"
+      />
+      <div
+        style={{
+          width: 390,
+          maxWidth: "100%",
+          margin: "0 auto",
+          background: "#FFF8F6",
+          minHeight: "100dvh",
+          display: "flex",
+          flexDirection: "column",
+          fontFamily: "'Pretendard Variable', Inter, sans-serif",
+          color: "#2A1815",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 20px 0" }}>
+          <div style={{ fontFamily: "'Gabarito', sans-serif", fontWeight: 600, fontSize: 13, color: "#B39189" }}>
+            my90sec
+          </div>
+          <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 13, color: "#8C6961" }}>
+            {step} / 2
+          </div>
+        </div>
+
+        {step === 1 ? (
+          <>
+            <div style={{ padding: "32px 20px 0" }}>
+              <div style={{ fontFamily: "'Gabarito', sans-serif", fontWeight: 700, fontSize: 28, lineHeight: 1.25, color: "#2A1815" }}>
+                {t.hero_line1}
+                <br />
+                {t.hero_line2}
+              </div>
+            </div>
+
+            <div style={{ padding: "24px 20px 0" }}>
+              <textarea
+                ref={textareaRef}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                placeholder={t.textarea_placeholder}
+                style={{
+                  width: "100%",
+                  minHeight: 72,
+                  padding: "14px 16px",
+                  borderRadius: 12,
+                  border: isFocused ? "0.5px solid #FF5A47" : "0.5px solid #F0DDD8",
+                  background: "#FFFFFF",
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: 15,
+                  lineHeight: 1.55,
+                  color: "#2A1815",
+                  resize: "none",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+
+              {!showExamples && (
+                <div
+                  onClick={() => setShowExamples(true)}
+                  style={{
+                    marginTop: 8,
+                    fontFamily: "Inter, sans-serif",
+                    fontWeight: 500,
+                    fontSize: 13,
+                    color: "#D93B28",
+                    cursor: "pointer",
+                    display: "inline-block",
+                  }}
+                >
+                  {t.dont_know_yet}
+                </div>
+              )}
+
+              {showExamples && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+                  {EXAMPLES.map((ex) => (
+                    <div
+                      key={ex}
+                      onClick={() => handleExampleClick(ex)}
+                      style={{
+                        alignSelf: "flex-start",
+                        padding: "8px 16px",
+                        borderRadius: 999,
+                        background: "#FFD9D2",
+                        color: "#D93B28",
+                        fontFamily: "Inter, sans-serif",
+                        fontWeight: 500,
+                        fontSize: 13,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {ex}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ flex: 1 }} />
+
+            {translateError && (
+              <div style={{ padding: "0 20px", marginBottom: 12 }}>
+                <p style={{ fontSize: 12, color: "#D93B28", marginBottom: 6 }}>{t.error_msg}</p>
+                <button
+                  type="button"
+                  onClick={handleTranslate}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#D93B28",
+                    background: "none",
+                    border: "none",
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  {t.retry}
+                </button>
+              </div>
+            )}
+
+            <div style={{ padding: "0 20px 24px" }}>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: "#8C6961", marginBottom: 12 }}>
+                {t.who_calling}
+              </div>
+              <div
+                style={{
+                  display: "inline-flex",
+                  padding: 4,
+                  borderRadius: 999,
+                  border: "0.5px solid #F0DDD8",
+                  background: "#FFEDE8",
+                  gap: 4,
+                  marginBottom: 24,
+                }}
+              >
+                <button
+                  type="button"
+                  aria-label={t.voice_female}
+                  onClick={() => handleGenderSelect("FEMALE")}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 999,
+                    background: voiceGender === "FEMALE" ? "#FF5A47" : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    border: "none",
+                    padding: 0,
+                  }}
+                >
+                  <FemaleIcon color={voiceGender === "FEMALE" ? "#FFFFFF" : "#8C6961"} />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t.voice_male}
+                  onClick={() => handleGenderSelect("MALE")}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 999,
+                    background: voiceGender === "MALE" ? "#FF5A47" : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    border: "none",
+                    padding: 0,
+                  }}
+                >
+                  <MaleIcon color={voiceGender === "MALE" ? "#FFFFFF" : "#8C6961"} />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTranslate}
+                disabled={!text.trim() || isTranslating}
+                style={{
+                  width: "100%",
+                  textAlign: "center",
+                  padding: "14px 24px",
+                  borderRadius: 999,
+                  background: text.trim() ? "#FF5A47" : "#FFD9D2",
+                  color: "#FFFFFF",
+                  fontFamily: "Inter, sans-serif",
+                  fontWeight: 600,
+                  fontSize: 15,
+                  border: "none",
+                  cursor: text.trim() && !isTranslating ? "pointer" : "default",
+                }}
+              >
+                {isTranslating ? t.loading : t.cta_call}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 20px",
+                gap: 24,
+              }}
+            >
+              <div style={{ width: "100%", fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 13, color: "#8C6961" }}>
+                {t.step2_label}
+              </div>
+
+              <div
+                style={{
+                  width: "100%",
+                  borderRadius: 12,
+                  border: "0.5px solid #F0DDD8",
+                  background: "#FFFFFF",
+                  padding: 24,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 16,
+                }}
+              >
+                <div>
+                  <div style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 600, fontSize: 20, lineHeight: 1.45, color: "#2A1815" }}>
+                    {korean}
+                  </div>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontStyle: "italic", fontSize: 11, lineHeight: 1.4, color: "#8C6961", marginTop: 6 }}>
+                    {romanized}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleHearIt}
+                  style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", alignSelf: "flex-start", background: "none", border: "none", padding: 0 }}
+                >
+                  {isHearingIt ? <PauseIcon color="#D93B28" /> : <PlayIcon color="#D93B28" />}
+                  <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 13, color: "#D93B28" }}>{t.hear_it}</span>
+                </button>
+              </div>
+
+              <div style={{ width: "100%", fontFamily: "Inter, sans-serif", fontSize: 15, lineHeight: 1.55, color: "#5C433D" }}>
+                {t.can_you_say}
+              </div>
+            </div>
+
+            <div style={{ padding: "0 20px 24px" }}>
+              <button
+                type="button"
+                onClick={handleTakeCall}
+                style={{
+                  width: "100%",
+                  textAlign: "center",
+                  padding: "14px 24px",
+                  borderRadius: 999,
+                  background: "#FF5A47",
+                  color: "#FFFFFF",
+                  fontFamily: "Inter, sans-serif",
+                  fontWeight: 600,
+                  fontSize: 15,
+                  cursor: "pointer",
+                  border: "none",
+                }}
+              >
+                {t.cta_call}
+              </button>
+            </div>
+          </>
+        )}
       </div>
-    }>
-      <ScenarioPageInner />
-    </Suspense>
+    </>
   );
 }
