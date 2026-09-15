@@ -185,6 +185,7 @@ function PrepPageInner() {
   const searchParams = useSearchParams();
   const scenarioId = searchParams.get("scenario") || "compliment";
   const scenario = scenarios.find((s) => s.id === scenarioId) || scenarios[0];
+  const duration = searchParams.get("duration") || "60";
 
   const [lines, setLines] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -537,7 +538,7 @@ function PrepPageInner() {
     const billing = `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
     window.location.href = `/my-90-seconds/call?scenario=${scenarioId}&billing=${encodeURIComponent(
       billing,
-    )}`;
+    )}&duration=${duration}`;
   }
 
   const allDone = completed.every(Boolean);

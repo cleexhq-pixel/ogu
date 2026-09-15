@@ -26,6 +26,10 @@ const FANSIGN_CHAT_API = '/api/chat/fansign';
 /** 마이크 진단 표시줄 킬스위치. true면 통화 화면에서 항상 보인다. 실사용자 배포 전 반드시 false로. */
 const MIC_DEBUG_BAR_ENABLED = false;
 
+/** entry에서 넘어오는 ?duration= 값. 이 목록 밖이거나 파싱 실패 시 DEFAULT_DURATION으로 폴백. */
+const VALID_DURATIONS = [30, 60, 90];
+const DEFAULT_DURATION = 90;
+
 const pulseKeyframes = `
   @keyframes pulse {
     0%, 100% { opacity: 0.3; transform: scale(0.8); }
@@ -147,6 +151,11 @@ function CallPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const durationParam = parseInt(searchParams.get('duration'), 10);
+  const duration = VALID_DURATIONS.includes(durationParam)
+    ? durationParam
+    : DEFAULT_DURATION;
+
   const [scenarioId, setScenarioId] = useState(null);
   const [voiceGender, setVoiceGender] = useState(null);
   const [idolName, setIdolName] = useState('IDOL');
@@ -154,7 +163,7 @@ function CallPageContent() {
   const [isReady, setIsReady] = useState(false);
 
   const [phase, setPhase] = useState('intro');
-  const [timeRemaining, setTimeRemaining] = useState(90);
+  const [timeRemaining, setTimeRemaining] = useState(duration);
   const [currentSubtitle, setCurrentSubtitle] = useState({
     korean: '안녕~',
     roman: toRoman('안녕~'),
@@ -216,7 +225,7 @@ function CallPageContent() {
   const stopSpeakingInnerRef = useRef(() => {});
   const scenarioIdRef = useRef(null);
   const currentPhaseRef = useRef('PHASE_A');
-  const timeRemainingRef = useRef(90);
+  const timeRemainingRef = useRef(duration);
   const phaseLogRef = useRef({});
   const prevPhaseForLogRef = useRef(null);
   const callStartedTrackedRef = useRef(false);
@@ -347,12 +356,17 @@ function CallPageContent() {
 
   useEffect(() => {
     if (!started) return;
-    const elapsed = 90 - timeRemaining;
-    if (elapsed >= 75) setCurrentPhase('PHASE_D');
-    else if (elapsed >= 60) setCurrentPhase('PHASE_C');
-    else if (elapsed >= 15) setCurrentPhase('PHASE_B');
+    const elapsed = duration - timeRemaining;
+    // 기존 90초 기준 Phase 임계값(75/60/15)을 duration 비율로 스케일링.
+    // WARNING/FINAL_TURN 임계값(11-DEV §5-1)은 별도 단계(2-B)에서 구현.
+    const dThreshold = duration * (75 / 90);
+    const cThreshold = duration * (60 / 90);
+    const bThreshold = duration * (15 / 90);
+    if (elapsed >= dThreshold) setCurrentPhase('PHASE_D');
+    else if (elapsed >= cThreshold) setCurrentPhase('PHASE_C');
+    else if (elapsed >= bThreshold) setCurrentPhase('PHASE_B');
     else setCurrentPhase('PHASE_A');
-  }, [timeRemaining, started]);
+  }, [timeRemaining, started, duration]);
 
   useEffect(() => {
     if (timeRemaining <= 5 && timeRemaining > 0) setTimerState('danger');
@@ -400,7 +414,7 @@ function CallPageContent() {
     const stats = {
       completedLines: positiveMoments.length || 4,
       totalLines,
-      timeUsed: 90 - timeRemaining,
+      timeUsed: duration - timeRemaining,
       scenario: scenarioId,
     };
     window.localStorage.setItem('kkobi_m90s_last_stats', JSON.stringify(stats));
@@ -428,7 +442,7 @@ function CallPageContent() {
         ).length,
       });
     }
-  }, [introStep, positiveMoments, timeRemaining, scenarioId, savedScript]);
+  }, [introStep, positiveMoments, timeRemaining, scenarioId, savedScript, duration]);
 
   const formatTime = (sec) =>
     `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
