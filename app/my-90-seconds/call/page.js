@@ -307,7 +307,7 @@ function CallPageContent() {
 
   useEffect(() => {
     if (introStep !== 'started') return;
-    const elapsed = 90 - timeRemaining;
+    const elapsed = duration - timeRemaining;
     const prev = prevPhaseForLogRef.current;
     if (prev != null && prev !== currentPhase) {
       if (prev === 'PHASE_A') phaseLogRef.current.phaseA_end = elapsed;
@@ -316,7 +316,7 @@ function CallPageContent() {
       if (prev === 'PHASE_D') phaseLogRef.current.phaseD_end = elapsed;
     }
     prevPhaseForLogRef.current = currentPhase;
-  }, [introStep, currentPhase, timeRemaining]);
+  }, [introStep, currentPhase, timeRemaining, duration]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -436,7 +436,7 @@ function CallPageContent() {
       callCompletedTrackedRef.current = true;
       trackEvent('m90s_call_completed', {
         scenario: scenarioId,
-        time_used: 90 - timeRemaining,
+        time_used: duration - timeRemaining,
         user_turns: conversationHistoryRef.current.filter(
           (m) => m.role === 'user',
         ).length,
@@ -1412,13 +1412,13 @@ function CallPageContent() {
     setEmotionalMoment(type);
     setPositiveMoments((prev) => [
       ...prev,
-      { type, context, timestamp: 90 - timeRemaining },
+      { type, context, timestamp: duration - timeRemaining },
     ]);
     emotionalClearRef.current = window.setTimeout(() => {
       setEmotionalMoment(null);
       emotionalClearRef.current = null;
     }, 1500);
-  }, [timeRemaining]);
+  }, [timeRemaining, duration]);
 
   const devSkipToReview = useCallback(() => {
     const sid = scenarioIdRef.current || scenarioId;
@@ -1464,13 +1464,13 @@ function CallPageContent() {
       trackEvent('m90s_call_abandoned', {
         scenario: scenarioIdRef.current,
         phase: currentPhaseRef.current,
-        elapsed: 90 - timeRemainingRef.current,
+        elapsed: duration - timeRemainingRef.current,
         source,
       });
     }
     cleanupMicPipeline();
     router.push('/my-90-seconds');
-  }, [router]);
+  }, [router, duration]);
 
   if (!isReady) {
     return (
