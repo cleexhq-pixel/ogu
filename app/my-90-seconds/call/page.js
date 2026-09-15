@@ -293,7 +293,7 @@ function CallPageContent() {
   }, [introStep]);
 
   useEffect(() => {
-    if (introStep !== 'started' || timeRemaining !== 90) return undefined;
+    if (introStep !== 'started' || timeRemaining !== duration) return undefined;
     phaseLogRef.current = {};
     prevPhaseForLogRef.current = 'PHASE_A';
     if (!callStartedTrackedRef.current) {
@@ -303,7 +303,7 @@ function CallPageContent() {
       });
     }
     return undefined;
-  }, [introStep, timeRemaining]);
+  }, [introStep, timeRemaining, duration]);
 
   useEffect(() => {
     if (introStep !== 'started') return;
