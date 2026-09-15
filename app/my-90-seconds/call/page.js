@@ -670,13 +670,10 @@ function CallPageContent() {
           return;
         }
 
-        pinAudioSession();
-
         let settled = false;
         const finish = () => {
           if (settled) return;
           settled = true;
-          pinAudioSession();
           resolve();
         };
 
@@ -684,6 +681,12 @@ function CallPageContent() {
           try {
             if (ctx.state === 'suspended') {
               await ctx.resume();
+              // iOS에서 resume()이 resolve돼도 실제 출력이 살아있다는 보장이 없어
+              // 짧게 대기 후 재확인
+              await new Promise((r) => setTimeout(r, 80));
+              if (ctx.state === 'suspended') {
+                await ctx.resume();
+              }
             }
             await playIdolAudioViaWebAudio(src, ctx);
             finish();
