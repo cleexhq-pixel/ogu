@@ -26,6 +26,11 @@ const FANSIGN_CHAT_API = '/api/chat/fansign';
 /** 마이크 진단 표시줄 킬스위치. true면 통화 화면에서 항상 보인다. 실사용자 배포 전 반드시 false로. */
 const MIC_DEBUG_BAR_ENABLED = false;
 
+/** 오디오 무음(1~2턴 묵음) 원인 진단용 임시 화면 오버레이 킬스위치.
+ * 순수 관측용 — 재생 로직/타이밍은 건드리지 않는다. 원인 확인 후 이 상수와
+ * 관련 코드를 전부 제거할 것. */
+const AUDIO_DEBUG_BAR_ENABLED = true;
+
 /** entry에서 넘어오는 ?duration= 값. 이 목록 밖이거나 파싱 실패 시 DEFAULT_DURATION으로 폴백. */
 const VALID_DURATIONS = [30, 60, 90];
 const DEFAULT_DURATION = 90;
@@ -199,6 +204,11 @@ function CallPageContent() {
   const [ctxCount, setCtxCount] = useState(0);
   const [closePending, setClosePending] = useState(false);
   const [probeExceptions, setProbeExceptions] = useState(0);
+
+  // 오디오 무음 진단용 (임시, AUDIO_DEBUG_BAR_ENABLED로만 켜고 끔 — 진단 완료 후 제거)
+  const [audioDebugLog, setAudioDebugLog] = useState([]);
+  const callAudioCtxCreatedAtRef = useRef(null);
+  const audioDebugTurnRef = useRef(0);
 
   const emotionalClearRef = useRef(null);
   const endSequenceRef = useRef(false);
@@ -511,6 +521,7 @@ function CallPageContent() {
         .catch(() => setClosePending(false));
     }
     callAudioCtxRef.current = null;
+    callAudioCtxCreatedAtRef.current = null; // 진단용 el 기준점 리셋, 관측 전용
   }
 
   /** Answer 버튼(user gesture) 안에서 호출. 통화 전체가 공유할 AudioContext를 이 시점에
@@ -520,6 +531,7 @@ function CallPageContent() {
     if (!callAudioCtxRef.current) {
       const AC = window.AudioContext || window.webkitAudioContext;
       callAudioCtxRef.current = new AC();
+      callAudioCtxCreatedAtRef.current = performance.now(); // 진단용 el(경과시간) 기준점, 관측 전용
       audioContextCreateCount += 1;
       setCtxCount(audioContextCreateCount);
     }
@@ -670,6 +682,10 @@ function CallPageContent() {
           return;
         }
 
+        // 진단용 턴 카운터 (재생 시도 1건당 1 증가, 관측 전용)
+        audioDebugTurnRef.current += 1;
+        const debugTurnNum = audioDebugTurnRef.current;
+
         let settled = false;
         const finish = () => {
           if (settled) return;
@@ -678,15 +694,34 @@ function CallPageContent() {
         };
 
         const attemptPlay = async (isRetry) => {
+          // --- 진단용 관측 변수 (아래 로직/타이밍에는 관여하지 않음) ---
+          const debugPre = ctx.state;
+          let debugT1 = '-';
+          let debugMid = '-';
+          let debugT2 = '-';
           try {
             if (ctx.state === 'suspended') {
+              const debugT1Start = performance.now();
               await ctx.resume();
+              debugT1 = Math.round(performance.now() - debugT1Start);
               // iOS에서 resume()이 resolve돼도 실제 출력이 살아있다는 보장이 없어
               // 짧게 대기 후 재확인
               await new Promise((r) => setTimeout(r, 80));
+              debugMid = ctx.state;
               if (ctx.state === 'suspended') {
+                const debugT2Start = performance.now();
                 await ctx.resume();
+                debugT2 = Math.round(performance.now() - debugT2Start);
               }
+            }
+            if (AUDIO_DEBUG_BAR_ENABLED) {
+              const debugFin = ctx.state;
+              const debugEl = callAudioCtxCreatedAtRef.current
+                ? Math.round(performance.now() - callAudioCtxCreatedAtRef.current)
+                : '-';
+              const code = (s) => (typeof s === 'string' ? s[0] : s);
+              const debugLine = `turn:${debugTurnNum} pre:${code(debugPre)} t1:${debugT1} mid:${code(debugMid)} t2:${debugT2} fin:${code(debugFin)} el:${debugEl}`;
+              setAudioDebugLog((prev) => [debugLine, ...prev].slice(0, 3));
             }
             await playIdolAudioViaWebAudio(src, ctx);
             finish();
@@ -2490,6 +2525,30 @@ function CallPageContent() {
                 {' · playMethod: '}
                 <b style={{ color: '#4ADE80' }}>webaudio</b>
               </div>
+            </div>
+          )}
+          {/* 오디오 무음 진단용 임시 오버레이. AUDIO_DEBUG_BAR_ENABLED=false면 완전히 사라짐.
+              원인 확인 후 이 블록과 관련 state/ref를 전부 제거할 것. */}
+          {AUDIO_DEBUG_BAR_ENABLED && audioDebugLog.length > 0 && (
+            <div
+              style={{
+                alignSelf: 'stretch',
+                pointerEvents: 'none',
+                fontFamily: 'monospace',
+                fontSize: '10px',
+                lineHeight: 1.6,
+                color: 'rgba(255,255,255,0.85)',
+                background: 'rgba(0,0,0,0.55)',
+                border: '0.5px solid rgba(77,216,255,0.35)',
+                borderRadius: '8px',
+                padding: '5px 10px',
+              }}
+            >
+              {audioDebugLog.map((line, i) => (
+                <div key={i} style={{ color: i === 0 ? '#4DD8FF' : 'rgba(255,255,255,0.55)' }}>
+                  {line}
+                </div>
+              ))}
             </div>
           )}
           {(micState === 'your_turn' || micState === 'speaking') && (
