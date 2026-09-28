@@ -209,6 +209,7 @@ function CallPageContent() {
   const [audioDebugLog, setAudioDebugLog] = useState([]);
   const callAudioCtxCreatedAtRef = useRef(null);
   const audioDebugTurnRef = useRef(0);
+  const audioDebugCt0Ref = useRef(null);
 
   const emotionalClearRef = useRef(null);
   const endSequenceRef = useRef(false);
@@ -723,7 +724,22 @@ function CallPageContent() {
               const debugLine = `turn:${debugTurnNum} pre:${code(debugPre)} t1:${debugT1} mid:${code(debugMid)} t2:${debugT2} fin:${code(debugFin)} el:${debugEl}`;
               setAudioDebugLog((prev) => [debugLine, ...prev].slice(0, 3));
             }
+            if (AUDIO_DEBUG_BAR_ENABLED) {
+              audioDebugCt0Ref.current = ctx.currentTime;
+            }
             await playIdolAudioViaWebAudio(src, ctx);
+            if (AUDIO_DEBUG_BAR_ENABLED) {
+              const debugCt1 = ctx.currentTime.toFixed(3);
+              const debugCt0 = typeof audioDebugCt0Ref.current === 'number'
+                ? audioDebugCt0Ref.current.toFixed(3)
+                : '-';
+              setAudioDebugLog((prev) => {
+                if (prev.length === 0 || !prev[0].startsWith(`turn:${debugTurnNum} `)) {
+                  return prev;
+                }
+                return [`${prev[0]} ct0:${debugCt0} ct1:${debugCt1}`, ...prev.slice(1)];
+              });
+            }
             finish();
           } catch (err) {
             if (!isRetry) {
